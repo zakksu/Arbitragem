@@ -1,0 +1,120 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Arbitragem — Blackboard</title>
+    <link rel="stylesheet" href="/static/blackboard.css">
+    <script src="https://unpkg.com/htmx.org@2.0.4"></script>
+</head>
+<body class="bb-app">
+    <header class="bb-status" id="status-bar"
+            hx-get="/board/partials/status"
+            hx-trigger="load, every 30s"
+            hx-swap="outerHTML">
+        <div class="bb-logo">Arbitragem <span>Blackboard</span></div>
+        <div class="bb-status-item"><span class="bb-loading"></span> loading…</div>
+    </header>
+    <div id="setup-panel" class="bb-setup-drawer" aria-live="polite"></div>
+
+    <main class="bb-main">
+        <section class="bb-col bb-col-watch" aria-label="Watchlist">
+            <div class="bb-col-head">
+                <span>Watchlist</span>
+                <em id="watch-count">—</em>
+            </div>
+            <div class="bb-col-body"
+                 id="watchlist"
+                 hx-get="/board/partials/watchlist"
+                 hx-trigger="load, every 15s"
+                 hx-swap="innerHTML">
+                <div class="bb-watch-empty"><span class="bb-loading"></span></div>
+            </div>
+        </section>
+
+        <section class="bb-col bb-col-board" aria-label="Symbol blackboard">
+            <div class="bb-col-head">
+                <span>Blackboard</span>
+                <span id="active-symbol-label" class="htmx-indicator bb-loading"></span>
+            </div>
+            <div class="bb-col-body" id="symbol-panel">
+                <div class="bb-symbol-panel">
+                    <div class="bb-symbol-placeholder">
+                        <div class="bb-ph-icon">▣</div>
+                        <p>Click a symbol in the watchlist<br>to open the blackboard panel</p>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <section class="bb-col bb-col-ideas" aria-label="Idea stack">
+            <div class="bb-col-head">
+                <span>Idea Stack</span>
+                <em id="ideas-count">—</em>
+            </div>
+            <div class="bb-col-body"
+                 id="idea-stack"
+                 hx-get="/board/partials/ideas"
+                 hx-trigger="load, every 20s"
+                 hx-swap="innerHTML">
+                <div class="bb-ideas-empty"><span class="bb-loading"></span></div>
+            </div>
+        </section>
+    </main>
+
+    <footer class="bb-footer">
+        <span>Core14 + BOVA · HTMX workspace</span>
+        <span>Click watchlist row → symbol panel</span>
+        <span><kbd>R</kbd> refresh watchlist</span>
+    </footer>
+
+    <script>
+        document.body.addEventListener("htmx:afterSwap", function (evt) {
+            if (evt.detail.target.id === "watchlist") {
+                var count = evt.detail.target.querySelector("[data-count]");
+                if (count) {
+                    document.getElementById("watch-count").textContent = count.dataset.count;
+                }
+            }
+            if (evt.detail.target.id === "idea-stack") {
+                var ideas = evt.detail.target.querySelector("[data-count]");
+                if (ideas) {
+                    document.getElementById("ideas-count").textContent = ideas.dataset.count;
+                }
+            }
+            if (evt.detail.target.id === "symbol-panel") {
+                var sym = evt.detail.target.querySelector("[data-symbol]");
+                var label = document.getElementById("active-symbol-label");
+                if (sym && label) {
+                    label.textContent = sym.dataset.symbol;
+                    label.classList.remove("bb-loading", "htmx-indicator");
+                }
+            }
+        });
+
+        document.body.addEventListener("click", function (evt) {
+            var row = evt.target.closest(".bb-watch-row");
+            if (!row) return;
+            document.querySelectorAll(".bb-watch-row.is-active").forEach(function (r) {
+                r.classList.remove("is-active");
+            });
+            row.classList.add("is-active");
+        });
+
+        document.addEventListener("keydown", function (evt) {
+            if (evt.key === "r" && !evt.ctrlKey && !evt.metaKey && evt.target.tagName !== "TEXTAREA") {
+                htmx.trigger("#watchlist", "load");
+            }
+        });
+
+        function tickClock() {
+            var el = document.getElementById("bb-clock");
+            if (el) {
+                el.textContent = new Date().toLocaleTimeString("pt-BR", { hour12: false });
+            }
+        }
+        setInterval(tickClock, 1000);
+        tickClock();
+    </script>
+</body>
+</html>

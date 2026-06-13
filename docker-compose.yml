@@ -1,0 +1,93 @@
+services:
+  api:
+    build: .
+    container_name: arbitragem-api
+    env_file: .env
+    ports:
+      - "${API_PORT:-8000}:8000"
+    volumes:
+      - ./data:/app/data
+      - ./logs:/app/logs
+      - ./exports:/app/exports
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/api/v1/health/live"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  dashboard:
+    build: .
+    container_name: arbitragem-dashboard
+    env_file: .env
+    environment:
+      API_BASE_URL: http://api:8000/api/v1
+      DASHBOARD_AUTH_ENABLED: ${DASHBOARD_AUTH_ENABLED:-false}
+      DASHBOARD_USERNAME: ${DASHBOARD_USERNAME:-filipe}
+      DASHBOARD_PASSWORD: ${DASHBOARD_PASSWORD:-}
+    ports:
+      - "${STREAMLIT_PORT:-8501}:8501"
+    volumes:
+      - ./data:/app/data
+    command: >
+      streamlit run dashboard/app.py
+      --server.port=8501
+      --server.address=0.0.0.0
+      --browser.gatherUsageStats=false
+    depends_on:
+      api:
+        condition: service_healthy
+    restart: unless-stopped
+
+  caddy:
+    image: caddy:2-alpine
+    container_name: arbitragem-proxy
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./docker/Caddyfile:/etc/caddy/Caddyfile
+      - caddy_data:/data
+      - caddy_config:/config
+    environment:
+      DOMAIN: ${DOMAIN:-localhost}
+    depends_on:
+      - api
+      - dashboard
+    restart: unless-stopped
+    profiles:
+      - proxy
+
+  # Optional: Ollama on same VPS (or point OLLAMA_BASE_URL to host Ollama)
+  ollama:
+    image: ollama/ollama:latest
+    container_name: arbitragem-ollama
+    ports:
+      - "11434:11434"
+    volumes:
+      - ollama_data:/root/.ollama
+    restart: unless-stopped
+    profiles:
+      - ollama
+
+  # Optional: PostgreSQL for production
+  db:
+    image: postgres:16-alpine
+    container_name: arbitragem-db
+    environment:
+      POSTGRES_USER: arbitragem
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-changeme}
+      POSTGRES_DB: arbitragem
+    volumes:
+      - pg_data:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"
+    restart: unless-stopped
+    profiles:
+      - postgres
+
+volumes:
+  ollama_data:
+  pg_data:
+  caddy_data:
+  caddy_config:

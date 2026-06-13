@@ -1,0 +1,54 @@
+<header class="bb-status" id="status-bar"
+        hx-get="/board/partials/status"
+        hx-trigger="every 30s"
+        hx-swap="outerHTML">
+    <div class="bb-logo">Arbitragem <span>Blackboard</span></div>
+
+    {% if bootstrap %}
+    <div class="bb-status-item">
+        <span class="bb-pill {% if bootstrap.paper_trading_mode %}bb-pill-paper{% else %}bb-pill-live{% endif %}">
+            {% if bootstrap.paper_trading_mode %}Paper{% else %}Live{% endif %}
+        </span>
+    </div>
+    <div class="bb-status-item">
+        P&amp;L
+        <strong class="{% if bootstrap.account and bootstrap.account.day_pnl and bootstrap.account.day_pnl >= 0 %}bb-pnl-pos{% else %}bb-pnl-neg{% endif %}">
+            {% if bootstrap.account and bootstrap.account.day_pnl is not none %}
+            R$ {{ "%.2f"|format(bootstrap.account.day_pnl) }}
+            {% else %}—{% endif %}
+        </strong>
+    </div>
+    <div class="bb-status-item">
+        Balance
+        <strong>
+            {% if bootstrap.account and bootstrap.account.balance_brl is not none %}
+            R$ {{ "%.0f"|format(bootstrap.account.balance_brl) }}
+            {% else %}—{% endif %}
+        </strong>
+    </div>
+    <div class="bb-status-item">
+        Scanner
+        <strong>{{ bootstrap.scanner_mode or "—" }}</strong>
+        <span>({{ bootstrap.scanner_symbol_count or 0 }})</span>
+    </div>
+    <div class="bb-status-item">
+        Clear
+        <strong>{% if bootstrap.clear_api %}OK{% else %}mock{% endif %}</strong>
+    </div>
+    {% else %}
+    <div class="bb-status-item">API offline</div>
+    {% endif %}
+
+    <div class="bb-clock" id="bb-clock"></div>
+    <button type="button" class="bb-btn-toolbar"
+            hx-post="/board/scan"
+            hx-target="#idea-stack"
+            hx-swap="innerHTML">Scan</button>
+    <button type="button" class="bb-btn-toolbar bb-btn-danger"
+            hx-post="/api/v1/strategies/pause-all"
+            hx-swap="none">STOP ALL</button>
+    <button type="button" class="bb-btn-toolbar"
+            hx-get="/board/partials/setup"
+            hx-target="#setup-panel"
+            hx-swap="innerHTML">Setup</button>
+</header>

@@ -1,0 +1,74 @@
+<div class="bb-symbol-panel" data-symbol="{{ symbol }}">
+    <div class="bb-symbol-header">
+        <div class="bb-symbol-title">
+            <h2>{{ symbol }}</h2>
+            {% if meta %}
+            <p>{{ meta.name }}{% if meta.sector %} · {{ meta.sector }}{% endif %}</p>
+            {% endif %}
+        </div>
+        {% if quote and quote.last is not none %}
+        <div class="bb-metric" style="min-width:7rem;text-align:right">
+            <div class="bb-metric-label">Last</div>
+            <div class="bb-metric-value" style="font-size:1.5rem;color:var(--arb-accent)">
+                {{ "%.2f"|format(quote.last) }}
+            </div>
+        </div>
+        {% endif %}
+    </div>
+
+    {% if quote %}
+    <div class="bb-quote-grid">
+        <div class="bb-metric">
+            <div class="bb-metric-label">Bid</div>
+            <div class="bb-metric-value bb-bid">{{ "%.2f"|format(quote.bid) }}</div>
+        </div>
+        <div class="bb-metric">
+            <div class="bb-metric-label">Ask</div>
+            <div class="bb-metric-value bb-ask">{{ "%.2f"|format(quote.ask) }}</div>
+        </div>
+        <div class="bb-metric">
+            <div class="bb-metric-label">Spread</div>
+            <div class="bb-metric-value">{{ "%.3f"|format(quote.ask - quote.bid) }}</div>
+        </div>
+        <div class="bb-metric">
+            <div class="bb-metric-label">Volume</div>
+            <div class="bb-metric-value">{{ "{:,}".format(quote.volume) }}</div>
+        </div>
+    </div>
+  {% if quote.timestamp %}
+    <div class="bb-spread-bar">
+        Quote time <strong>{{ quote.timestamp.strftime("%H:%M:%S") if quote.timestamp else "—" }}</strong>
+        · source Profit bridge
+    </div>
+    {% endif %}
+    {% else %}
+    <div class="bb-panel-loading">
+        <span class="bb-loading"></span>
+        <span>Quote unavailable — bridge offline</span>
+    </div>
+    {% endif %}
+
+    <div class="bb-notes-area">
+        <label for="notes-{{ symbol }}">Board notes ({{ symbol }})</label>
+        <textarea id="notes-{{ symbol }}"
+                  name="content"
+                  placeholder="Levels, tape read, plan…"
+                  rows="3"
+                  hx-post="/board/partials/symbol/{{ symbol }}/notes"
+                  hx-trigger="change delay:800ms"
+                  hx-swap="none"
+                  hx-include="this"
+        >{{ note.content if note else "" }}</textarea>
+        <button type="button" class="bb-btn-secondary"
+                hx-post="/board/partials/symbol/{{ symbol }}/analyze"
+                hx-target="#ai-report-{{ symbol }}"
+                hx-swap="innerHTML">
+            AI report
+        </button>
+        <div id="ai-report-{{ symbol }}" class="bb-ai-report">
+            {% if note and note.ai_report %}
+            <div class="bb-ai-box">{{ note.ai_report }}</div>
+            {% endif %}
+        </div>
+    </div>
+</div>

@@ -1,0 +1,15 @@
+symbol,name,avg_volume_30d,sector
+PETR4,Petrobras PN,85000000,Energia
+VALE3,Vale ON,72000000,Mineração
+PRIO3,PetroRio ON,22000000,Energia
+ITUB4,Itaú PN,65000000,Financeiro
+BBAS3,Banco do Brasil ON,45000000,Financeiro
+BBDC4,Bradesco PN,58000000,Financeiro
+BBSE3,BB Seguridade ON,25000000,Financeiro
+B3SA3,B3 ON,38000000,Financeiro
+ABEV3,Ambev ON,42000000,Consumo
+GGBR4,Gerdau PN,16000000,Siderurgia
+CSNA3,Siderúrgica Nacional ON,12000000,Siderurgia
+USIM5,Usiminas PNA,9000000,Siderurgia
+SUZB3,Suzano ON,24000000,Papel
+WEGE3,WEG ON,35000000,Industrial

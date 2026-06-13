@@ -1,0 +1,40 @@
+<div class="bb-modal-backdrop" id="idea-modal">
+    <div class="bb-modal">
+        <h3>Review idea #{{ idea.id }} — {{ idea.symbol }}</h3>
+        <p class="bb-modal-sub">{{ idea.title }} · {{ idea.side|upper }} · {{ idea.status }}</p>
+        {% if idea.backtest_proof %}
+        <div class="bb-proof bb-proof-pass">
+            Backtest ✓ PF {{ idea.backtest_proof.profit_factor }}
+            · DD {{ idea.backtest_proof.max_drawdown_pct }}%
+        </div>
+        {% else %}
+        <div class="bb-proof bb-proof-warn">No backtest proof — confirm at your own risk</div>
+        {% endif %}
+        <div class="bb-idea-levels" style="margin:0.75rem 0">
+            <span>E <strong>{{ "%.2f"|format(idea.entry_price or 0) }}</strong></span>
+            <span>S <strong>{{ "%.2f"|format(idea.stop_price or 0) }}</strong></span>
+            <span>T <strong>{{ "%.2f"|format(idea.target_price or 0) }}</strong></span>
+        </div>
+        {% if idea.legs %}
+        <ul class="bb-legs">
+            {% for leg in idea.legs %}
+            <li>{{ leg.side|upper }} {{ leg.quantity }} {{ leg.symbol }}</li>
+            {% endfor %}
+        </ul>
+        {% endif %}
+        <p style="font-size:0.75rem;color:var(--arb-muted)">
+            Step 2: exports NTSL to Profit + logs paper trade.
+        </p>
+        <div class="bb-modal-actions">
+            <button type="button" class="bb-btn-secondary"
+                    onclick="document.getElementById('idea-modal').remove()">Cancel</button>
+            <button type="button" class="bb-btn-confirm"
+                    hx-post="/board/partials/ideas/{{ idea.id }}/confirm"
+                    hx-target="#idea-stack"
+                    hx-swap="innerHTML"
+                    onclick="document.getElementById('idea-modal').remove()">
+                Confirm → NTSL
+            </button>
+        </div>
+    </div>
+</div>

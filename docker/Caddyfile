@@ -1,0 +1,14 @@
+# Reverse proxy — optional profile for production VPS
+# Usage: docker compose --profile proxy up -d
+
+{$DOMAIN:localhost} {
+    encode gzip
+
+    handle /api/* {
+        reverse_proxy api:8000
+    }
+
+    handle {
+        reverse_proxy dashboard:8501
+    }
+}

@@ -1,0 +1,41 @@
+{% if symbols %}
+<span data-count="{{ symbols|length }}" hidden></span>
+<table class="bb-watchlist">
+    <thead>
+        <tr>
+            <th>Symbol</th>
+            <th style="text-align:right">Last</th>
+        </tr>
+    </thead>
+    <tbody>
+        {% for row in symbols %}
+        <tr class="bb-watch-row{% if active_symbol == row.symbol %} is-active{% endif %}"
+            hx-get="/board/partials/symbol/{{ row.symbol }}"
+            hx-target="#symbol-panel"
+            hx-swap="innerHTML"
+            hx-indicator="#active-symbol-label">
+            <td>
+                <span class="bb-sym">{{ row.symbol }}</span>
+                {% if row.sector %}
+                <span class="bb-sector">{{ row.sector }}</span>
+                {% elif row.name %}
+                <span class="bb-sector">{{ row.name }}</span>
+                {% endif %}
+            </td>
+            <td class="bb-price">
+                {% if row.last is defined and row.last is not none %}
+                {{ "%.2f"|format(row.last) }}
+                {% else %}
+                —
+                {% endif %}
+            </td>
+        </tr>
+        {% endfor %}
+    </tbody>
+</table>
+{% else %}
+<div class="bb-watch-empty">
+    <p>No symbols in universe.</p>
+    <p style="font-size:0.72rem;margin-top:0.5rem;">Check <code>/api/v1/universe/filipe-core14</code></p>
+</div>
+{% endif %}

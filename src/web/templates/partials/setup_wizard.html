@@ -1,0 +1,17 @@
+<div class="bb-setup-panel">
+    <h3>Setup · v{{ setup.release or "?" }}</h3>
+    <p>Execution: <strong>{{ setup.execution_backend }}</strong> · Paper: {{ setup.paper_trading_mode }}</p>
+    <ul class="bb-setup-steps">
+        {% for step in setup.steps %}
+        <li class="{% if step.ok %}ok{% else %}warn{% endif %}">
+            <span>{{ "✓" if step.ok else "○" }}</span>
+            <div>
+                <strong>{{ step.label }}</strong>
+                <small>{{ step.detail }}</small>
+                {% if not step.ok %}<em>{{ step.action }}</em>{% endif %}
+            </div>
+        </li>
+        {% endfor %}
+    </ul>
+    <p class="bb-setup-docs">Docs: <code>docs/INTEGRATIONS_WIZARD.md</code></p>
+</div>
