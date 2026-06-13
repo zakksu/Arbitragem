@@ -61,3 +61,9 @@ def test_stock_options_chain(client):
     assert r.status_code == 200
     data = r.json()
     assert data.get("underlying") == "PETR4"
+
+
+def test_board_review_partial(client):
+    r = client.get("/board/partials/setup")
+    assert r.status_code == 200
+    assert "Setup" in r.text

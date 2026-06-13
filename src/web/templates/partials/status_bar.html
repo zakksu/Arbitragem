@@ -40,15 +40,17 @@
     {% endif %}
 
     <div class="bb-clock" id="bb-clock"></div>
-    <button type="button" class="bb-btn-toolbar"
-            hx-post="/board/scan"
-            hx-target="#idea-stack"
-            hx-swap="innerHTML">Scan</button>
-    <button type="button" class="bb-btn-toolbar bb-btn-danger"
-            hx-post="/api/v1/strategies/pause-all"
-            hx-swap="none">STOP ALL</button>
-    <button type="button" class="bb-btn-toolbar"
-            hx-get="/board/partials/setup"
-            hx-target="#setup-panel"
-            hx-swap="innerHTML">Setup</button>
+    <div class="bb-toolbar">
+        <button type="button" class="bb-btn-toolbar"
+                hx-post="/board/scan"
+                hx-target="#idea-stack"
+                hx-swap="innerHTML">Scan</button>
+        <button type="button" class="bb-btn-toolbar bb-btn-danger"
+                hx-post="/api/v1/strategies/pause-all"
+                hx-swap="none">STOP ALL</button>
+        <button type="button" class="bb-btn-toolbar"
+                hx-get="/board/partials/setup"
+                hx-target="#setup-panel"
+                hx-swap="innerHTML">Setup</button>
+    </div>
 </header>

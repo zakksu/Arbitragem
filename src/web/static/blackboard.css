@@ -589,7 +589,6 @@ body {
 }
 
 .bb-btn-toolbar {
-    margin-left: auto;
     padding: 0.25rem 0.55rem;
     font-size: 0.72rem;
     font-weight: 600;
@@ -598,6 +597,13 @@ body {
     border: 1px solid var(--arb-border);
     border-radius: var(--arb-radius);
     cursor: pointer;
+}
+
+.bb-toolbar {
+    margin-left: auto;
+    display: flex;
+    align-items: center;
+    gap: 0.35rem;
 }
 
 .bb-btn-danger {
