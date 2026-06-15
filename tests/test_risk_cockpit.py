@@ -40,7 +40,8 @@ def test_portfolio_delta_gate_blocks_confirm(monkeypatch):
             symbol="PETR4",
             structure_type="scalp_long",
             side="long",
-            status="detected",
+            status="backtested",
+            backtest_proof={"profit_factor": 1.5, "max_drawdown_pct": 5.0},
             legs=[
                 {"symbol": "PETR4", "side": "buy", "quantity": 10000, "leg_type": "cash"},
             ],

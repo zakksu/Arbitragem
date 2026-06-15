@@ -1,0 +1,50 @@
+<div class="bb-modal-backdrop" id="idea-modal">
+    <div class="bb-modal">
+        <p class="bb-modal-step">Step 2 of 2 — Execute</p>
+        <h3>Paper execute</h3>
+        <p class="bb-modal-sub">
+            #{{ idea.id }} · <strong>{{ idea.symbol }}</strong> · {{ (idea.side or "—")|upper }}
+            · <span class="bb-status-confirmed">confirmed</span>
+        </p>
+
+        {% if error %}
+        <div class="bb-proof bb-proof-warn bb-risk-banner">
+            <strong>Execute blocked</strong> — {{ error }}
+        </div>
+        {% elif risk and not risk.can_execute_ideas %}
+        <div class="bb-proof bb-proof-warn bb-risk-banner">
+            Execute blocked — kill switch or risk gate active.
+            {% if risk.kill_switch_reason %}({{ risk.kill_switch_reason }}){% endif %}
+        </div>
+        {% else %}
+        <div class="bb-proof bb-proof-pass" style="font-size:0.75rem">
+            Idea confirmed — paper fill uses spread + 1 tick slippage model.
+        </div>
+        {% endif %}
+
+        {% if idea.legs and idea.legs|length > 1 %}
+        <ul class="bb-legs" style="margin:0.5rem 0">
+            {% for leg in idea.legs %}
+            <li>{{ leg.side|upper }} {{ leg.quantity }} {{ leg.symbol }}</li>
+            {% endfor %}
+        </ul>
+        {% endif %}
+
+        <p style="font-size:0.78rem;color:var(--arb-muted);margin:0.75rem 0 0">
+            Calls <code>POST /api/v1/ideas/{{ idea.id }}/execute</code> → journal + Trade record.
+        </p>
+
+        <div class="bb-modal-actions">
+            <button type="button" class="bb-btn-secondary"
+                    onclick="document.getElementById('idea-modal').remove()">Cancel</button>
+            {% if not error and (not risk or risk.can_execute_ideas) %}
+            <button type="button" class="bb-btn-confirm"
+                    hx-post="/board/partials/ideas/{{ idea.id }}/execute"
+                    hx-target="#idea-stack"
+                    hx-swap="innerHTML">
+                Execute → Paper fill
+            </button>
+            {% endif %}
+        </div>
+    </div>
+</div>

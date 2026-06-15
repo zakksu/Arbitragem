@@ -46,6 +46,9 @@ def test_board_layouts_list_and_activate():
 
 
 def test_kill_switch_rejects_pending_ideas():
+    from src.services.kill_switch import set_active
+
+    set_active(False)
     session = get_session_factory()()
     idea = TradeIdea(
         symbol="PETR4",
@@ -120,15 +123,17 @@ def test_layout_presets_partial():
 
 
 def test_confirm_logs_system_event():
+    from src.services.kill_switch import set_active
+
+    set_active(False)
     session = get_session_factory()()
-    svc = TradeIdeaService(session)
     idea = TradeIdea(
         symbol="VALE3",
         title="vale test",
         side="long",
         structure_type="scalp",
         legs=[{"symbol": "VALE3", "side": "buy", "quantity": 100, "leg_type": "cash"}],
-        status="detected",
+        status="backtested",
         backtest_proof={"profit_factor": 1.5, "max_drawdown_pct": 5.0},
     )
     session.add(idea)
@@ -139,6 +144,7 @@ def test_confirm_logs_system_event():
     c = _client()
     r = c.post(f"/api/v1/ideas/{idea_id}/confirm")
     assert r.status_code == 200
+    assert r.json()["status"] == "confirmed"
 
     events = c.get("/api/v1/system/events?limit=5").json()
     assert any(e.get("component") == "trade_ideas" for e in events)

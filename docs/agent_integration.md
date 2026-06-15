@@ -35,6 +35,51 @@
 | `POST /setup/test` | Probe Profit/Clear/BOVA | W2.6 test button |
 | `GET /integrations/profit/test` | Includes `bova_chain` | Settings |
 
+### 2.0-rc → GA (Supervisor)
+
+| Endpoint | Purpose | UI consumer |
+|----------|---------|-------------|
+| `GET /stream/quotes?symbols=PETR4,VALE3` | SSE quote batch + 15s heartbeat | W2.1 watchlist (`EventSource`) |
+| `GET /symbols/{sym}/report?force=false` | AI report card (24h cache) | W2.5 Report tab |
+| `POST /ideas/{id}/confirm?paper_override=false` | Lifecycle gate → `confirmed` | W2.4 modal step 1 |
+| `POST /ideas/{id}/execute` | Paper fill (spread + 1 tick) → `executed` | W2.4 modal step 2 |
+| `POST /risk/kill-switch` | `{"active":true,"reason":"..."}` blocks confirm/execute | Sidebar STOP + board |
+
+`GET /risk/summary` now includes `kill_switch_active`, `kill_switch_reason`, `can_confirm_ideas`, `can_execute_ideas`.
+
+#### Idea lifecycle (A2.10)
+
+`detected` → `backtested` (PF ≥ 1.3, DD ≤ 8%) → `confirmed` → `executed`
+
+- Confirm rejects without passing `backtest_proof` unless `paper_override=true`.
+- Execute requires `status=confirmed`; writes `Trade` + journal with slippage model `spread_plus_1_tick`.
+
+#### `GET /stream/quotes` (SSE)
+
+```json
+{"type":"quotes","ts":1718467200.1,"quotes":{"PETR4":{"last":38.01,"bid":38.00,"ask":38.02,"volume":12000}}}
+{"type":"heartbeat","ts":1718467215.0}
+```
+
+#### `GET /symbols/PETR4/report`
+
+```json
+{
+  "symbol": "PETR4",
+  "sector": "Energia",
+  "narrative": "...",
+  "quote": {"last": 38.01, "bid": 38.0, "ask": 38.02, "volume": 12000},
+  "scan": {"spike_score": 72.5, "pattern_tags": ["vwap_reclaim"]},
+  "backtest_proof": {"profit_factor": 1.42, "max_drawdown_pct": 5.8},
+  "cached": false
+}
+```
+
+#### `POST /risk/kill-switch`
+
+Request: `{"active": true, "reason": "manual stop"}`  
+Response: `{"active": true, "activated_at": "...", "reason": "...", "paused_strategies": 1, "rejected_ideas": 2}`
+
 ### 3.0 Structure Deck (GA)
 
 | Endpoint | Purpose | UI consumer |
@@ -46,14 +91,7 @@
 | `GET /risk/cockpit` | Net delta, sectors, margin | Risk strip |
 | `POST /ideas/from-structure` | Create multi-leg idea | Structure builder |
 | `POST /walk-forward/promote` | Promote gated ideas | Scheduler / manual |
-| `POST /strategies/pause-all` | Kill switch + reject pending | STOP ALL button |
-
-| Endpoint | Purpose | UI consumer |
-|----------|---------|-------------|
-| `GET /symbols/{sym}/report` | AI symbol report card | W2.5 panel |
-| `GET /stream/quotes` | SSE Core14 quotes | Watchlist live prices |
-| `POST /risk/kill-switch` | Block all execution | Sidebar + board |
-| `POST /ideas/{id}/execute` | Paper/live send | W2.4 confirm step 2 |
+| `POST /strategies/pause-all` | Kill switch alias (`active: true`) | STOP ALL button |
 
 #### `POST /backtest/run` (API proxy → bridge)
 

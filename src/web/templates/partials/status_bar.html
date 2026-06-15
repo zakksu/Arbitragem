@@ -39,6 +39,20 @@
     <div class="bb-status-item">API offline</div>
     {% endif %}
 
+    {% if risk %}
+    {% if risk.kill_switch_active %}
+    <div class="bb-status-item bb-kill-status">
+        <span class="bb-pill bb-pill-kill">KILL ON</span>
+        {% if risk.kill_switch_reason %}
+        <span class="bb-kill-reason" title="{{ risk.kill_switch_reason }}">{{ risk.kill_switch_reason }}</span>
+        {% endif %}
+    </div>
+    {% endif %}
+    {% if not risk.can_confirm_ideas %}
+    <div class="bb-status-item bb-muted">Confirms blocked</div>
+    {% endif %}
+    {% endif %}
+
     <div class="bb-clock" id="bb-clock"></div>
     <div id="layout-presets" class="bb-layout-slot"
          hx-get="/board/partials/layout-presets"
@@ -49,9 +63,15 @@
                 hx-post="/board/scan"
                 hx-target="#idea-stack"
                 hx-swap="innerHTML">Scan</button>
-        <button type="button" class="bb-btn-toolbar bb-btn-danger"
-                hx-post="/api/v1/strategies/pause-all"
-                hx-swap="none">STOP ALL</button>
+        <button type="button"
+                class="bb-btn-toolbar bb-btn-danger{% if risk and risk.kill_switch_active %} is-active{% endif %}"
+                id="kill-switch-btn"
+                hx-post="/api/v1/risk/kill-switch"
+                hx-vals='js:{"active": true, "reason": "board stop"}'
+                hx-swap="none"
+                hx-on::after-request="htmx.trigger('#status-bar', 'load'); htmx.trigger('#idea-stack', 'load')">
+            {% if risk and risk.kill_switch_active %}KILL ON{% else %}KILL{% endif %}
+        </button>
         <button type="button" class="bb-btn-toolbar"
                 hx-get="/board/partials/setup"
                 hx-target="#setup-panel"

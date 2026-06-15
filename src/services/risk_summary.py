@@ -10,6 +10,7 @@ from sqlalchemy.orm import Session
 from src.config import get_settings
 from src.integrations.clear_api import get_clear_client
 from src.models import Strategy, Trade
+from src.services.kill_switch import status as kill_switch_status
 
 
 def build_risk_summary(session: Session) -> dict:
@@ -48,6 +49,9 @@ def build_risk_summary(session: Session) -> dict:
     elif loss_used_pct >= 80:
         status = "warning"
 
+    ks = kill_switch_status()
+    can_trade = status != "blocked" and not ks["active"]
+
     return {
         "paper_trading_mode": settings.paper_trading_mode,
         "day_pnl": round(day_pnl, 2),
@@ -61,5 +65,9 @@ def build_risk_summary(session: Session) -> dict:
         "loss_limit_used_pct": round(loss_used_pct, 1),
         "max_contracts_default": settings.default_max_contracts,
         "status": status,
-        "can_start_new_strategy": status != "blocked",
+        "can_start_new_strategy": can_trade,
+        "kill_switch_active": ks["active"],
+        "kill_switch_reason": ks.get("reason"),
+        "can_confirm_ideas": can_trade,
+        "can_execute_ideas": can_trade,
     }

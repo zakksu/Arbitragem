@@ -1,18 +1,29 @@
 <div class="bb-modal-backdrop" id="idea-modal">
     <div class="bb-modal">
-        <p class="bb-modal-step">Step 2 of 2 — Confirm</p>
+        <p class="bb-modal-step">Step 1 of 2 — Confirm</p>
         <h3>Confirm paper trade</h3>
         <p class="bb-modal-sub">
             #{{ idea.id }} · <strong>{{ idea.symbol }}</strong> · {{ (idea.side or "—")|upper }}
         </p>
 
-        {% if idea.status != 'backtested' or not idea.backtest_proof %}
+        {% if error %}
         <div class="bb-proof bb-proof-warn bb-risk-banner">
-            No backtest proof — proceeding logs a paper confirm only.
+            <strong>Confirm blocked</strong> — {{ error }}
         </div>
         {% endif %}
 
-        {% if cockpit and not cockpit.can_confirm %}
+        {% if idea.status != 'backtested' or not idea.backtest_proof %}
+        <div class="bb-proof bb-proof-warn bb-risk-banner">
+            No backtest proof — enable paper override to confirm without gates.
+        </div>
+        {% endif %}
+
+        {% if risk and not risk.can_confirm_ideas %}
+        <div class="bb-proof bb-proof-warn bb-risk-banner">
+            Confirms blocked — kill switch active.
+            {% if risk.kill_switch_reason %}({{ risk.kill_switch_reason }}){% endif %}
+        </div>
+        {% elif cockpit and not cockpit.can_confirm %}
         <div class="bb-proof bb-proof-warn bb-risk-banner">
             Portfolio gate blocked — net Δ {{ "%+.2f"|format(cockpit.net_delta) }}
             (limit ±{{ cockpit.max_net_delta }}). Margin est. R$ {{ "%.0f"|format(cockpit.margin_estimate_brl) }}.
@@ -32,8 +43,17 @@
         </ul>
         {% endif %}
 
+        <form id="idea-confirm-form" class="bb-confirm-form">
+            {% if idea.status != 'backtested' or not idea.backtest_proof %}
+            <label class="bb-check-label">
+                <input type="checkbox" name="paper_override" value="true">
+                Paper override (skip backtest gate)
+            </label>
+            {% endif %}
+        </form>
+
         <p style="font-size:0.78rem;color:var(--arb-muted);margin:0.75rem 0 0">
-            This calls <code>POST /api/v1/ideas/{{ idea.id }}/confirm</code> and exports NTSL to Profit.
+            Step 1: <code>POST /api/v1/ideas/{{ idea.id }}/confirm</code> → status <code>confirmed</code>
         </p>
 
         <div class="bb-modal-actions">
@@ -43,12 +63,15 @@
                     hx-swap="outerHTML">← Back</button>
             <button type="button" class="bb-btn-secondary"
                     onclick="document.getElementById('idea-modal').remove()">Cancel</button>
+            {% if not risk or risk.can_confirm_ideas %}
             <button type="button" class="bb-btn-confirm"
                     hx-post="/board/partials/ideas/{{ idea.id }}/confirm"
-                    hx-target="#idea-stack"
-                    hx-swap="innerHTML">
-                Confirm → Paper
+                    hx-include="#idea-confirm-form"
+                    hx-target="#idea-modal"
+                    hx-swap="outerHTML">
+                Confirm →
             </button>
+            {% endif %}
         </div>
     </div>
 </div>

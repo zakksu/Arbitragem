@@ -9,13 +9,25 @@
         {% if quote and quote.last is not none %}
         <div class="bb-metric" style="min-width:7rem;text-align:right">
             <div class="bb-metric-label">Last</div>
-            <div class="bb-metric-value" style="font-size:1.5rem;color:var(--arb-accent)">
+            <div class="bb-metric-value bb-quote-last" style="font-size:1.5rem;color:var(--arb-accent)">
                 {{ "%.2f"|format(quote.last) }}
             </div>
         </div>
         {% endif %}
     </div>
 
+    <div class="bb-panel-tabs" role="tablist">
+        <button type="button" class="bb-tab is-active" role="tab" aria-selected="true"
+                data-tab="board" onclick="bbSwitchTab('{{ symbol }}', 'board')">Board</button>
+        <button type="button" class="bb-tab" role="tab" aria-selected="false"
+                data-tab="report"
+                hx-get="/board/partials/symbol/{{ symbol }}/report"
+                hx-target="#symbol-tab-report"
+                hx-swap="innerHTML"
+                onclick="bbSwitchTab('{{ symbol }}', 'report')">Report</button>
+    </div>
+
+    <div id="symbol-tab-board" class="bb-tab-panel is-active">
     {% if quote %}
     <div class="bb-quote-grid">
         <div class="bb-metric">
@@ -152,6 +164,13 @@
             {% endif %}
         </div>
     </div>
+    </div>
+
+    <div id="symbol-tab-report" class="bb-tab-panel" hidden>
+        <div class="bb-panel-loading">
+            <span class="bb-muted">Open Report tab to load AI card</span>
+        </div>
+    </div>
 </div>
 <script src="https://unpkg.com/lightweight-charts@4.2.0/dist/lightweight-charts.standalone.production.js"></script>
 <script>
@@ -195,4 +214,24 @@
         chart.applyOptions({ width: el.clientWidth });
     }).observe(el);
 })();
+
+function bbSwitchTab(sym, tab) {
+    var panel = document.querySelector('.bb-symbol-panel[data-symbol="' + sym + '"]');
+    if (!panel) return;
+    panel.querySelectorAll('.bb-tab').forEach(function (btn) {
+        var active = btn.dataset.tab === tab;
+        btn.classList.toggle('is-active', active);
+        btn.setAttribute('aria-selected', active ? 'true' : 'false');
+    });
+    var board = document.getElementById('symbol-tab-board');
+    var report = document.getElementById('symbol-tab-report');
+    if (board) {
+        board.classList.toggle('is-active', tab === 'board');
+        board.hidden = tab !== 'board';
+    }
+    if (report) {
+        report.classList.toggle('is-active', tab === 'report');
+        report.hidden = tab !== 'report';
+    }
+}
 </script>

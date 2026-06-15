@@ -1,0 +1,72 @@
+{% if error %}
+<div class="bb-proof bb-proof-warn bb-risk-banner">{{ error }}</div>
+{% elif report %}
+<div class="bb-report-card" data-symbol="{{ report.symbol }}">
+    <div class="bb-report-head">
+        <div>
+            <span class="bb-report-sector">{{ report.sector or "—" }}</span>
+            {% if report.cached %}
+            <span class="bb-tag">cached</span>
+            {% endif %}
+        </div>
+        <button type="button" class="bb-btn-secondary bb-btn-refresh"
+                hx-get="/board/partials/symbol/{{ report.symbol }}/report?force=true"
+                hx-target="#symbol-tab-report"
+                hx-swap="innerHTML">
+            Refresh
+        </button>
+    </div>
+
+    {% if report.quote %}
+    <div class="bb-quote-grid bb-report-quote">
+        <div class="bb-metric">
+            <div class="bb-metric-label">Last</div>
+            <div class="bb-metric-value bb-quote-last">{{ "%.2f"|format(report.quote.last) }}</div>
+        </div>
+        <div class="bb-metric">
+            <div class="bb-metric-label">Bid</div>
+            <div class="bb-metric-value bb-bid">{{ "%.2f"|format(report.quote.bid) }}</div>
+        </div>
+        <div class="bb-metric">
+            <div class="bb-metric-label">Ask</div>
+            <div class="bb-metric-value bb-ask">{{ "%.2f"|format(report.quote.ask) }}</div>
+        </div>
+        {% if report.quote.volume is not none %}
+        <div class="bb-metric">
+            <div class="bb-metric-label">Volume</div>
+            <div class="bb-metric-value">{{ "{:,}".format(report.quote.volume) }}</div>
+        </div>
+        {% endif %}
+    </div>
+    {% endif %}
+
+    {% if report.scan %}
+    <div class="bb-tags" style="margin:0.5rem 0">
+        {% if report.scan.spike_score is not none %}
+        <span class="bb-tag">spike {{ "%.0f"|format(report.scan.spike_score) }}</span>
+        {% endif %}
+        {% for tag in report.scan.pattern_tags or [] %}
+        <span class="bb-tag">{{ tag|replace("_", " ") }}</span>
+        {% endfor %}
+    </div>
+    {% endif %}
+
+    <div class="bb-ai-box bb-report-narrative">{{ report.narrative or "No narrative generated." }}</div>
+
+    {% if report.backtest_proof %}
+    {% set pf = report.backtest_proof.profit_factor|default(0)|float %}
+    {% set dd = report.backtest_proof.max_drawdown_pct|default(100)|float %}
+    <div class="bb-proof {% if pf >= 1.3 and dd <= 8.0 %}bb-proof-pass{% else %}bb-proof-warn{% endif %}">
+        Backtest proof · PF <strong>{{ "%.2f"|format(pf) }}</strong>
+        · DD <strong>{{ "%.1f"|format(dd) }}%</strong>
+        {% if report.backtest_proof.trades is not none %}
+        · <strong>{{ report.backtest_proof.trades }}</strong> trades
+        {% endif %}
+    </div>
+    {% else %}
+    <div class="bb-proof bb-proof-warn">No backtest proof on file</div>
+    {% endif %}
+</div>
+{% else %}
+<p class="bb-muted">Report unavailable — check API / Ollama.</p>
+{% endif %}

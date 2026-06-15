@@ -17,8 +17,13 @@ def db_session():
 
 
 def test_risk_summary_shape(db_session):
+    from src.services.kill_switch import set_active
+
+    set_active(False)
     summary = build_risk_summary(db_session)
     assert "day_pnl" in summary
     assert "paper_trading_mode" in summary
     assert summary["status"] in ("ok", "warning", "blocked")
     assert summary["tightest_loss_limit_brl"] > 0
+    assert "kill_switch_active" in summary
+    assert "can_confirm_ideas" in summary

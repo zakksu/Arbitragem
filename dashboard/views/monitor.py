@@ -85,12 +85,43 @@ def _render_body() -> None:
             status, status
         )
         rc4.metric("Risk status", status_label)
+        if risk.get("kill_switch_active"):
+            st.error(f"Kill switch ON — {risk.get('kill_switch_reason') or 'all confirms blocked'}")
+        if not risk.get("can_confirm_ideas", True):
+            st.warning("Idea confirms are blocked.")
         if status == "blocked":
             st.error("Daily loss limit reached — strategies should stay stopped.")
         elif status == "warning":
             st.warning("Approaching daily loss limit — reduce size or pause.")
     except Exception:
         st.caption("Risk summary unavailable.")
+
+    st.divider()
+
+    try:
+        risk_ks = cached_get("/risk/summary", ttl=10)
+        ks_col1, ks_col2 = st.columns([1, 3])
+        if ks_col1.button(
+            "KILL SWITCH",
+            type="primary",
+            use_container_width=True,
+            disabled=bool(risk_ks.get("kill_switch_active")),
+            help="Blocks all confirms and executes; pauses active strategies",
+        ):
+            try:
+                out = api_post("/risk/kill-switch", json={"active": True, "reason": "monitor stop"})
+                st.toast(
+                    f"Kill switch ON — paused {out.get('paused_strategies', 0)} strategies"
+                )
+                st.rerun()
+            except Exception as exc:
+                st.error(str(exc))
+        if risk_ks.get("kill_switch_active"):
+            ks_col2.error(
+                f"Kill switch active: {risk_ks.get('kill_switch_reason') or 'manual stop'}"
+            )
+    except Exception:
+        pass
 
     st.divider()
 

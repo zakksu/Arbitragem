@@ -184,6 +184,10 @@ class RiskSummaryResponse(BaseModel):
     max_contracts_default: int
     status: str
     can_start_new_strategy: bool
+    kill_switch_active: bool = False
+    kill_switch_reason: str | None = None
+    can_confirm_ideas: bool = True
+    can_execute_ideas: bool = True
 
 
 class TradeIdeaResponse(BaseModel):

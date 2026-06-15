@@ -43,5 +43,10 @@ def test_confirm_idea_paper(db_session):
     PatternScanner(db_session).run_daily_scan()
     svc = TradeIdeaService(db_session)
     idea = svc.generate_from_latest_scan(limit=1)[0]
+    idea.backtest_proof = {"profit_factor": 1.5, "max_drawdown_pct": 5.0}
+    idea.status = "backtested"
+    db_session.commit()
     confirmed = svc.confirm_idea(idea.id)
-    assert confirmed.status == "executed"
+    assert confirmed.status == "confirmed"
+    executed = svc.execute_idea(idea.id)
+    assert executed.status == "executed"

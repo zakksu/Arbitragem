@@ -329,12 +329,32 @@ def create_idea_from_structure(payload: StructureIdeaRequest, db: Session = Depe
 
 
 @router.post("/ideas/{idea_id}/confirm")
-def confirm_trade_idea(idea_id: int, db: Session = Depends(get_db)):
+def confirm_trade_idea(
+    idea_id: int,
+    paper_override: bool = False,
+    db: Session = Depends(get_db),
+):
     try:
-        idea = TradeIdeaService(db).confirm_idea(idea_id)
+        idea = TradeIdeaService(db).confirm_idea(idea_id, paper_override=paper_override)
     except ValueError as exc:
         raise HTTPException(400, str(exc)) from exc
     return TradeIdeaService(db).to_dict(idea)
+
+
+@router.post("/ideas/{idea_id}/execute")
+def execute_trade_idea(idea_id: int, db: Session = Depends(get_db)):
+    try:
+        idea = TradeIdeaService(db).execute_idea(idea_id)
+    except ValueError as exc:
+        raise HTTPException(400, str(exc)) from exc
+    return TradeIdeaService(db).to_dict(idea)
+
+
+@router.get("/symbols/{symbol}/report")
+def symbol_report(symbol: str, force: bool = False, db: Session = Depends(get_db)):
+    from src.services.symbol_report import build_symbol_report
+
+    return build_symbol_report(db, symbol, force=force)
 
 
 @router.get("/ideas/{idea_id}")
@@ -483,34 +503,65 @@ def stock_options(underlying: str):
     return get_profit_client().get_stock_option_chain(underlying)
 
 
-@router.post("/strategies/pause-all")
-def pause_all_strategies(db: Session = Depends(get_db)):
+@router.post("/risk/kill-switch")
+def risk_kill_switch(
+    payload: dict = Body(default_factory=dict),
+    db: Session = Depends(get_db),
+):
+    """Toggle kill switch — blocks confirm/execute when active (A2.6c)."""
     from src.models import TradeIdea
+    from src.services.kill_switch import set_active
     from src.services.system_audit import log_event
 
-    paused = 0
-    for s in db.query(Strategy).filter(Strategy.status == "active").all():
-        try:
-            StrategyService(db).pause_strategy(s.id)
-            paused += 1
-        except ValueError:
-            pass
+    active = bool(payload.get("active", True))
+    reason = str(payload.get("reason") or "Manual kill switch")
+    state = set_active(active, reason=reason if active else "")
 
     rejected = 0
-    for idea in db.query(TradeIdea).filter(TradeIdea.status.in_(["detected", "backtested"])).all():
-        idea.status = "rejected"
-        idea.rationale = (idea.rationale or "") + "\n[Kill switch] Pending idea cancelled."
-        rejected += 1
+    paused = 0
+    if active:
+        for s in db.query(Strategy).filter(Strategy.status == "active").all():
+            try:
+                StrategyService(db).pause_strategy(s.id)
+                paused += 1
+            except ValueError:
+                pass
+        for idea in db.query(TradeIdea).filter(
+            TradeIdea.status.in_(["detected", "backtested", "confirmed"])
+        ).all():
+            idea.status = "rejected"
+            idea.rationale = (idea.rationale or "") + "\n[Kill switch] Idea cancelled."
+            rejected += 1
+        log_event(
+            db,
+            level="warning",
+            component="kill_switch",
+            message=f"Kill switch ON — paused {paused} strategies, rejected {rejected} ideas",
+            details={**state, "paused_strategies": paused, "rejected_ideas": rejected},
+        )
+        db.commit()
+    else:
+        log_event(
+            db,
+            level="info",
+            component="kill_switch",
+            message="Kill switch OFF — confirms and executes allowed",
+            details=state,
+        )
+        db.commit()
 
-    log_event(
-        db,
-        level="warning",
-        component="kill_switch",
-        message=f"Kill switch — paused {paused} strategies, rejected {rejected} ideas",
-        details={"paused_strategies": paused, "rejected_ideas": rejected},
-    )
-    db.commit()
-    return {"paused": paused, "rejected_ideas": rejected}
+    return {**state, "paused_strategies": paused, "rejected_ideas": rejected}
+
+
+@router.post("/strategies/pause-all")
+def pause_all_strategies(db: Session = Depends(get_db)):
+    """Legacy alias — activates kill switch and rejects pending ideas."""
+    result = risk_kill_switch({"active": True, "reason": "pause-all"}, db=db)
+    return {
+        "paused": result.get("paused_strategies", 0),
+        "rejected_ideas": result.get("rejected_ideas", 0),
+        **result,
+    }
 
 
 @router.get("/signals/opportunity-rail")
@@ -554,27 +605,53 @@ def set_board_layout(preset: str, db: Session = Depends(get_db)):
 
 
 @router.get("/stream/quotes")
-async def stream_quotes():
+async def stream_quotes(symbols: str | None = None):
+    """SSE Core14 quote stream — batch from Profit bridge + 15s heartbeat (A2.8)."""
     import asyncio
     import json
+    import time
 
     from src.services.filipe_universe import symbol_list
 
     async def generate():
         client = get_profit_client()
+        syms = (
+            [s.strip().upper() for s in symbols.split(",") if s.strip()]
+            if symbols
+            else symbol_list()
+        )
+        last_heartbeat = time.monotonic()
         while True:
-            syms = symbol_list()
             batch = client.get_quotes_batch(syms)
             payload = {
-                s: {"last": q.last, "bid": q.bid, "ask": q.ask, "volume": q.volume}
-                for s, q in batch.items()
+                "type": "quotes",
+                "ts": time.time(),
+                "quotes": {
+                    s: {
+                        "last": q.last,
+                        "bid": q.bid,
+                        "ask": q.ask,
+                        "volume": q.volume,
+                    }
+                    for s, q in batch.items()
+                },
             }
             yield f"data: {json.dumps(payload)}\n\n"
+
+            now = time.monotonic()
+            if now - last_heartbeat >= 15:
+                yield f"data: {json.dumps({'type': 'heartbeat', 'ts': time.time()})}\n\n"
+                last_heartbeat = now
+
             await asyncio.sleep(2)
 
     from fastapi.responses import StreamingResponse
 
-    return StreamingResponse(generate(), media_type="text/event-stream")
+    return StreamingResponse(
+        generate(),
+        media_type="text/event-stream",
+        headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"},
+    )
 
 
 @router.post("/exports/scan")

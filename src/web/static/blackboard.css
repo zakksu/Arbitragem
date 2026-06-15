@@ -634,6 +634,123 @@ body {
     border-color: #5a2020;
 }
 
+.bb-btn-danger.is-active {
+    background: #3a1212;
+    color: #ff8a8a;
+    border-color: var(--arb-red);
+}
+
+.bb-pill-kill {
+    background: #3a1212;
+    color: var(--arb-red);
+    border: 1px solid #5a2020;
+    animation: bb-kill-pulse 2s ease-in-out infinite;
+}
+
+@keyframes bb-kill-pulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.72; }
+}
+
+.bb-kill-status {
+    max-width: 12rem;
+}
+
+.bb-kill-reason {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    max-width: 8rem;
+    font-size: 0.68rem;
+}
+
+.bb-price-flash {
+    color: var(--arb-accent);
+    transition: color 0.4s ease;
+}
+
+.bb-panel-tabs {
+    display: flex;
+    gap: 0.25rem;
+    margin-bottom: 0.75rem;
+    border-bottom: 1px solid var(--arb-border);
+    padding-bottom: 0.35rem;
+}
+
+.bb-tab {
+    padding: 0.3rem 0.65rem;
+    font-size: 0.72rem;
+    font-weight: 600;
+    background: transparent;
+    color: var(--arb-muted);
+    border: 1px solid transparent;
+    border-radius: var(--arb-radius) var(--arb-radius) 0 0;
+    cursor: pointer;
+}
+
+.bb-tab:hover {
+    color: var(--arb-text);
+    border-color: var(--arb-border);
+}
+
+.bb-tab.is-active {
+    color: var(--arb-accent);
+    background: var(--arb-panel);
+    border-color: var(--arb-border-bright);
+    border-bottom-color: var(--arb-panel);
+}
+
+.bb-tab-panel {
+    display: none;
+}
+
+.bb-tab-panel.is-active {
+    display: block;
+}
+
+.bb-report-card {
+    padding: 0.25rem 0;
+}
+
+.bb-report-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.5rem;
+    margin-bottom: 0.65rem;
+}
+
+.bb-report-sector {
+    font-size: 0.72rem;
+    color: var(--arb-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+}
+
+.bb-report-narrative {
+    margin: 0.65rem 0;
+    white-space: pre-wrap;
+    line-height: 1.45;
+}
+
+.bb-report-quote {
+    margin-bottom: 0.5rem;
+}
+
+.bb-check-label {
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+    font-size: 0.75rem;
+    color: var(--arb-muted);
+    margin: 0.5rem 0;
+    cursor: pointer;
+}
+
+.bb-status-executed {
+    color: var(--arb-blue);
+}
+
 .bb-idea-actions {
     display: flex;
     gap: 0.35rem;

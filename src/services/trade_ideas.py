@@ -257,15 +257,32 @@ class TradeIdeaService:
             scan_result_id=scan.id,
         )
 
-    def confirm_idea(self, idea_id: int, paper: bool = True) -> TradeIdea:
+    def confirm_idea(self, idea_id: int, paper_override: bool = False) -> TradeIdea:
+        """Lifecycle: detected/backtested → confirmed (A2.10). Execution is separate."""
+        from src.config import get_settings
+        from src.services.kill_switch import ensure_not_blocked
+        from src.services.risk_cockpit import confirm_blocked_by_portfolio
+
+        ensure_not_blocked("confirm")
+
         idea = self.session.get(TradeIdea, idea_id)
         if not idea:
             raise ValueError("Idea not found")
-        if idea.status in ("executed", "rejected"):
+        if idea.status in ("executed", "rejected", "confirmed"):
             raise ValueError(f"Idea already {idea.status}")
+        if idea.status not in ("detected", "backtested"):
+            raise ValueError(f"Cannot confirm idea in status '{idea.status}'")
 
-        from src.config import get_settings
-        from src.services.risk_cockpit import confirm_blocked_by_portfolio
+        if not paper_override and not self.passes_backtest_gate(idea.backtest_proof):
+            settings = get_settings()
+            raise ValueError(
+                f"Backtest gate failed — need PF >= {settings.backtest_min_profit_factor} "
+                f"and max DD <= {settings.backtest_max_drawdown_pct}% "
+                "(or pass paper_override=true)"
+            )
+
+        if idea.backtest_proof and self.passes_backtest_gate(idea.backtest_proof):
+            idea.status = "backtested"
 
         block_msg = confirm_blocked_by_portfolio(self.session, idea.legs)
         if block_msg:
@@ -275,7 +292,6 @@ class TradeIdeaService:
         idea.status = "confirmed"
         idea.confirmed_at = datetime.utcnow()
 
-        ntsl_path = None
         if settings.execution_backend == "ntsl":
             from src.services.ntsl_templates import ntsl_for_idea
 
@@ -288,13 +304,53 @@ class TradeIdeaService:
                 + f"\n[NTSL] Exported to {ntsl_path} — import in Profit Editor and arm strategy."
             )
 
-        if paper or settings.paper_trading_mode:
-            idea.status = "executed"
-            idea.executed_at = datetime.utcnow()
-            idea.rationale = (idea.rationale or "") + "\n[Paper] Logged — confirm NTSL in Profit for live."
+        self.session.commit()
+        self.session.refresh(idea)
+        from src.services.system_audit import log_event
+
+        log_event(
+            self.session,
+            level="info",
+            component="trade_ideas",
+            message=f"Idea #{idea.id} confirmed",
+            details={
+                "symbol": idea.symbol,
+                "structure_type": idea.structure_type,
+                "legs": len(idea.legs or []),
+                "paper_override": paper_override,
+            },
+        )
+        self.session.commit()
+        return idea
+
+    def execute_idea(self, idea_id: int) -> TradeIdea:
+        """Lifecycle: confirmed → executed with paper slippage (A2.6a)."""
+        from src.config import get_settings
+        from src.services.kill_switch import ensure_not_blocked
+
+        ensure_not_blocked("execute")
+
+        idea = self.session.get(TradeIdea, idea_id)
+        if not idea:
+            raise ValueError("Idea not found")
+        if idea.status != "confirmed":
+            raise ValueError(f"Idea must be confirmed before execute (status={idea.status})")
+
+        settings = get_settings()
+        if settings.paper_trading_mode:
             self._log_paper_trades(idea)
+            idea.rationale = (
+                (idea.rationale or "")
+                + "\n[Paper] Filled with spread + 1 tick slippage per leg."
+            )
         elif settings.execution_backend == "clear":
             self._execute_clear_legs(idea)
+        else:
+            self._log_paper_trades(idea)
+            idea.rationale = (idea.rationale or "") + "\n[Paper] Filled (NTSL arm in Profit for live)."
+
+        idea.status = "executed"
+        idea.executed_at = datetime.utcnow()
 
         self.session.commit()
         self.session.refresh(idea)
@@ -304,12 +360,8 @@ class TradeIdeaService:
             self.session,
             level="info",
             component="trade_ideas",
-            message=f"Idea #{idea.id} confirmed (paper)",
-            details={
-                "symbol": idea.symbol,
-                "structure_type": idea.structure_type,
-                "legs": len(idea.legs or []),
-            },
+            message=f"Idea #{idea.id} executed",
+            details={"symbol": idea.symbol, "paper": settings.paper_trading_mode},
         )
         self.session.commit()
         return idea
@@ -463,14 +515,17 @@ class TradeIdeaService:
     def _log_paper_trades(self, idea: TradeIdea) -> None:
         from src.integrations.clear_api import ClearOrder, get_clear_client
         from src.models import JournalEntry, Trade
+        from src.services.paper_execution import paper_fill_price
 
+        fills: list[dict] = []
         for leg in idea.legs or []:
             side = leg.get("side", "buy")
             if side == "flat":
                 continue
             qty = int(leg.get("quantity", 100))
             sym = leg.get("symbol", idea.symbol)
-            price = float(idea.entry_price or 0)
+            quote = self.profit.get_quote(sym)
+            price = paper_fill_price(quote, side, idea.entry_price)
             get_clear_client().place_order(ClearOrder(symbol=sym, side=side, quantity=qty))
             trade = Trade(
                 external_id=f"idea-{idea.id}-{sym}-{side}",
@@ -481,9 +536,16 @@ class TradeIdeaService:
                 price=price,
                 fees=0.0,
                 executed_at=datetime.utcnow(),
-                raw_payload={"idea_id": idea.id, "legs": idea.legs},
+                raw_payload={
+                    "idea_id": idea.id,
+                    "legs": idea.legs,
+                    "slippage_model": "spread_plus_1_tick",
+                    "quote_bid": quote.bid if quote else None,
+                    "quote_ask": quote.ask if quote else None,
+                },
             )
             self.session.add(trade)
+            fills.append({"symbol": sym, "side": side, "price": price, "quantity": qty})
         self.session.flush()
         self.session.add(
             JournalEntry(

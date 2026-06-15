@@ -78,7 +78,17 @@
             </button>
         </div>
         {% elif idea.status == 'confirmed' %}
-        <div class="bb-idea-status-tag bb-status-confirmed">confirmed</div>
+        <div class="bb-idea-actions">
+            <span class="bb-idea-status-tag bb-status-confirmed">confirmed</span>
+            <button type="button" class="bb-btn-confirm"
+                    hx-get="/board/partials/ideas/{{ idea.id }}/execute-step"
+                    hx-target="body"
+                    hx-swap="beforeend">
+                Execute
+            </button>
+        </div>
+        {% elif idea.status == 'executed' %}
+        <div class="bb-idea-status-tag bb-status-executed">executed</div>
         {% endif %}
     </li>
     {% endfor %}
