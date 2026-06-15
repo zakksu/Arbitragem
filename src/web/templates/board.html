@@ -3,7 +3,7 @@
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>Arbitragem — Blackboard</title>
+    <title>Arbitragem — Structure Deck</title>
     <link rel="stylesheet" href="/static/blackboard.css">
     <script src="https://unpkg.com/htmx.org@2.0.4"></script>
 </head>
@@ -12,7 +12,7 @@
             hx-get="/board/partials/status"
             hx-trigger="load, every 30s"
             hx-swap="outerHTML">
-        <div class="bb-logo">Arbitragem <span>Blackboard</span></div>
+        <div class="bb-logo">Arbitragem <span>Structure Deck</span></div>
         <div class="bb-status-item"><span class="bb-loading"></span> loading…</div>
     </header>
     <div id="setup-panel" class="bb-setup-drawer" aria-live="polite"></div>
@@ -63,9 +63,13 @@
     </main>
 
     <footer class="bb-footer">
-        <span>Core14 + BOVA · HTMX workspace</span>
-        <span>Click watchlist row → symbol panel</span>
-        <span><kbd>R</kbd> refresh watchlist</span>
+        <div id="sector-strip" class="bb-footer-sectors"
+             hx-get="/board/partials/sector-strip"
+             hx-trigger="load"
+             hx-swap="innerHTML">
+            <span class="bb-muted">Loading sector baskets…</span>
+        </div>
+        <span class="bb-footer-hint"><kbd>R</kbd> refresh watchlist</span>
     </footer>
 
     <script>
@@ -81,6 +85,8 @@
                 if (ideas) {
                     document.getElementById("ideas-count").textContent = ideas.dataset.count;
                 }
+                var modal = document.getElementById("idea-modal");
+                if (modal) modal.remove();
             }
             if (evt.detail.target.id === "symbol-panel") {
                 var sym = evt.detail.target.querySelector("[data-symbol]");

@@ -5,6 +5,11 @@
     <li class="bb-idea">
         <div class="bb-idea-head">
             <span class="bb-idea-sym">{{ idea.symbol }}</span>
+            {% if idea.structure_type %}
+            <span class="bb-structure-badge bb-structure-{{ idea.structure_type|replace('_', '-') }}">
+                {{ idea.structure_type|replace("_", " ") }}
+            </span>
+            {% endif %}
             {% if idea.reliability is not none %}
             <span class="bb-idea-rel">rel <strong>{{ "%.0f"|format(idea.reliability) }}%</strong></span>
             {% endif %}
@@ -14,13 +19,17 @@
             <span class="{% if side == 'long' %}bb-side-long{% elif side == 'short' %}bb-side-short{% endif %}">
                 {{ side|upper if side else "—" }}
             </span>
-            {% if idea.structure_type %}
-            · {{ idea.structure_type|replace("_", " ") }}
-            {% endif %}
             {% if idea.title %}
             <br>{{ idea.title }}
             {% endif %}
         </div>
+        {% if idea.legs and idea.legs|length > 1 %}
+        <div class="bb-leg-summary">
+            {% for leg in idea.legs[:4] %}
+            <span class="bb-leg-chip">{{ leg.side }} {{ leg.quantity }} {{ leg.symbol }}</span>
+            {% endfor %}
+        </div>
+        {% endif %}
         {% if idea.entry_price is not none or idea.stop_price is not none or idea.target_price is not none %}
         <div class="bb-idea-levels">
             {% if idea.entry_price is not none %}
@@ -49,19 +58,28 @@
         </div>
         {% endif %}
         {% if idea.backtest_proof %}
-        <div class="bb-proof bb-proof-pass">
-            PF {{ idea.backtest_proof.profit_factor }} · DD {{ idea.backtest_proof.max_drawdown_pct }}%
+        {% set pf = idea.backtest_proof.profit_factor|default(0)|float %}
+        {% set dd = idea.backtest_proof.max_drawdown_pct|default(100)|float %}
+        {% set trades = idea.backtest_proof.trades|default(none) %}
+        <div class="bb-proof {% if pf >= 1.3 and dd <= 8.0 %}bb-proof-pass{% else %}bb-proof-warn{% endif %}">
+            PF <strong>{{ "%.2f"|format(pf) }}</strong>
+            · DD <strong>{{ "%.1f"|format(dd) }}%</strong>
+            {% if trades is not none %} · <strong>{{ trades }}</strong> trades{% endif %}
         </div>
+        {% elif idea.status == 'detected' %}
+        <div class="bb-proof bb-proof-warn">No backtest proof</div>
         {% endif %}
-        {% if idea.id and idea.status not in ('executed', 'rejected') %}
+        {% if idea.id and idea.status not in ('executed', 'rejected', 'confirmed') %}
         <div class="bb-idea-actions">
-            <button type="button" class="bb-btn-secondary"
+            <button type="button" class="bb-btn-confirm"
                     hx-get="/board/partials/ideas/{{ idea.id }}/review"
                     hx-target="body"
                     hx-swap="beforeend">
-                Review
+                Confirm
             </button>
         </div>
+        {% elif idea.status == 'confirmed' %}
+        <div class="bb-idea-status-tag bb-status-confirmed">confirmed</div>
         {% endif %}
     </li>
     {% endfor %}

@@ -7,9 +7,29 @@ Self-hosted web dashboard for **B3 IBOV scalping** (Filipe Core14 + BOVA options
 - **Ollama** — symbol reports, journal analysis, NTSL optimization
 - **Python** — autonomous scans, trade ideas, backtest gates, performance tracking
 
-**Primary UI (2.0):** http://localhost:8000/board — HTMX blackboard (watchlist · symbol panel · idea stack)
+**Primary UI (3.0-alpha):** http://localhost:8000/board — Structure Deck (options chain · max pain · multi-leg ideas)
 
 **Legacy UI:** http://localhost:8501 — Streamlit (maintenance / admin)
+
+---
+
+## What's new in 3.0-alpha (Structure Deck)
+
+- **Version** `3.0.0-alpha` — multi-leg `structure_type` + `legs[]` on trade ideas
+- **Options chain panel** — calls/puts table on symbol panel (Profit stub or bridge)
+- **Max pain signal** — scanner tags + `GET /api/v1/signals/max-pain/{underlying}`
+- **Structure types API** — `GET /api/v1/structures/types`
+- **Unified chain** — `GET /api/v1/options/chain/{underlying}`
+- **Multi-leg NTSL** — confirm exports per-leg NTSL when `legs.length > 1`
+- **Lightweight Charts** — mini session chart with max-pain price line
+- **Walk-forward** — `POST /api/v1/walk-forward/run`
+
+Quick start:
+
+```powershell
+.\.venv\Scripts\python.exe scripts/dev.py start --wait --open
+# Structure Deck → http://localhost:8000/board
+```
 
 ---
 

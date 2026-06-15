@@ -283,40 +283,117 @@ class ProfitBridgeClient:
             logger.error("profit_csv_parse_failed", path=str(csv_path), error=str(exc))
             return {"error": "parse_failed", "path": str(csv_path), "message": str(exc)}
 
-    def run_backtest(self, symbol: str, strategy: str = "scalp_default") -> dict[str, Any]:
+    def run_backtest(
+        self,
+        symbol: str,
+        strategy: str = "scalp_default",
+        period: str = "90d",
+    ) -> dict[str, Any]:
         """Trigger backtest on Profit bridge (stub returns synthetic metrics)."""
         sym = symbol.upper()
         if self._should_use_bridge():
             try:
                 with self._client(timeout=30.0) as client:
-                    r = client.post("/backtest/run", json={"symbol": sym, "strategy": strategy})
+                    r = client.post(
+                        "/backtest/run",
+                        json={"symbol": sym, "strategy": strategy, "period": period},
+                    )
                     if r.status_code == 200:
                         data = r.json()
                         data["symbol"] = sym
                         return data
             except Exception as exc:
                 logger.warning("profit_backtest_failed", symbol=sym, error=str(exc))
-        return self._synthetic_backtest(sym)
+        return self._synthetic_backtest(sym, strategy=strategy, period=period)
 
     def get_stock_option_chain(self, underlying: str) -> dict:
+        return self.get_option_chain(underlying)
+
+    def get_option_chain(self, underlying: str) -> dict:
+        """Unified BOVA or stock option chain."""
         sym = underlying.upper()
+        if sym in ("BOVA", "BOVA11"):
+            sym = "BOVA11"
         if self._should_use_bridge():
             try:
                 with self._client() as client:
-                    r = client.get(f"/options/stock/{sym}")
+                    r = client.get(f"/options/chain/{sym}")
+                    if r.status_code == 200:
+                        return r.json()
+                    if sym == "BOVA11":
+                        r2 = client.get("/options/bova")
+                        if r2.status_code == 200:
+                            return r2.json()
+                    r3 = client.get(f"/options/stock/{sym}")
+                    if r3.status_code == 200:
+                        return r3.json()
+            except Exception as exc:
+                logger.warning("option_chain_failed", symbol=sym, error=str(exc))
+        if sym == "BOVA11":
+            return self._synthetic_bova_chain()
+        return self._synthetic_stock_options(sym)
+
+    def get_greeks(self, symbol: str) -> dict:
+        sym = symbol.upper()
+        if self._should_use_bridge():
+            try:
+                with self._client() as client:
+                    r = client.get(f"/greeks/{sym}")
                     if r.status_code == 200:
                         return r.json()
             except Exception as exc:
-                logger.warning("stock_options_failed", symbol=sym, error=str(exc))
-        return self._synthetic_stock_options(sym)
+                logger.warning("greeks_failed", symbol=sym, error=str(exc))
+        seed = _symbol_seed(sym)
+        return {
+            "symbol": sym,
+            "delta": round(0.4 + (seed % 30) / 100.0, 4),
+            "gamma": 0.02,
+            "theta": -0.03,
+            "vega": 0.06,
+            "iv": 22.0,
+            "source": "synthetic",
+        }
+
+    def get_iv_rank(self, underlying: str) -> dict:
+        sym = underlying.upper()
+        if sym in ("BOVA", "BOVA11"):
+            sym = "BOVA11"
+        if self._should_use_bridge():
+            try:
+                with self._client() as client:
+                    r = client.get(f"/iv-rank/{sym}")
+                    if r.status_code == 200:
+                        return r.json()
+            except Exception as exc:
+                logger.warning("iv_rank_failed", symbol=sym, error=str(exc))
+        seed = _symbol_seed(sym)
+        rank = round(20 + (seed % 60), 1)
+        return {
+            "underlying": sym,
+            "iv_rank": rank,
+            "iv_current": round(20 + (seed % 100) / 10.0, 2),
+            "term_structure": "contango",
+            "source": "synthetic",
+        }
 
     @staticmethod
-    def _synthetic_backtest(symbol: str) -> dict[str, Any]:
-        seed = _symbol_seed(symbol)
+    def _synthetic_backtest(
+        symbol: str,
+        *,
+        strategy: str = "scalp_default",
+        period: str = "90d",
+    ) -> dict[str, Any]:
+        import uuid
+
+        seed = _symbol_seed(f"{symbol}:{strategy}:{period}")
         pf = round(1.1 + (seed % 90) / 100.0, 2)
         dd = round(2.0 + (seed % 60) / 10.0, 2)
         return {
+            "job_id": str(uuid.uuid4()),
+            "status": "completed",
             "symbol": symbol,
+            "strategy": strategy,
+            "period": period,
             "profit_factor": pf,
             "max_drawdown_pct": dd,
             "trades": 80 + seed % 150,

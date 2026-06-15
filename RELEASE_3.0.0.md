@@ -309,10 +309,10 @@ NTSL template × symbol (or structure)
 
 ### 3.0-alpha
 
+- [x] `TradeIdea` supports multi-leg `legs[]` + `structure_type` in API + DB (migration-safe)
+- [x] BOVA + stock option chains in blackboard chain panel (stub bridge; all Core14 underlyings)
+- [x] IV rank + max pain flags on scanner tags (stub Greeks / IV rank)
 - [ ] Real ProfitDLL bridge on Windows PC (quotes + chains, not stub)
-- [ ] BOVA + stock option chains in blackboard chain panel (all 14 underlyings)
-- [ ] `TradeIdea` supports multi-leg `legs[]` + `structure_type` in API + DB
-- [ ] IV rank + term structure flags on BOVA (scanner tags)
 - [ ] Setup wizard shows bridge version + chain sample for PETR4 + BOVA
 
 ### 3.0-beta

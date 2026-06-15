@@ -35,6 +35,27 @@ class TradeSide(str, Enum):
     SELL = "sell"
 
 
+class StructureType(str, Enum):
+    """Multi-leg structure template (3.0)."""
+
+    SCALP = "scalp"
+    COVERED_CALL = "covered_call"
+    VERTICAL = "vertical"
+    COLLAR = "collar"
+    BOVA_HEDGE = "bova_hedge"
+    PAIR_SPREAD = "pair_spread"
+
+
+class LegType(str, Enum):
+    """Per-leg asset class for NTSL export and risk."""
+
+    CASH = "cash"
+    CALL = "call"
+    PUT = "put"
+    BOVA_CALL = "bova_call"
+    BOVA_PUT = "bova_put"
+
+
 class Strategy(Base):
     __tablename__ = "strategies"
 
@@ -209,7 +230,7 @@ def get_session_factory():
 
 
 def init_db() -> None:
-    from sqlalchemy import event, text
+    from sqlalchemy import event, inspect, text
 
     from src.config import PROJECT_ROOT
 
@@ -217,7 +238,25 @@ def init_db() -> None:
     data_dir.mkdir(parents=True, exist_ok=True)
     engine = get_engine()
     Base.metadata.create_all(bind=engine)
+
+    # Migration-safe column adds for existing SQLite DBs (2.0 → 3.0)
     if str(get_settings().database_url).startswith("sqlite"):
-        with engine.connect() as conn:
-            conn.execute(text("PRAGMA journal_mode=WAL"))
-            conn.commit()
+        insp = inspect(engine)
+        if "trade_ideas" in insp.get_table_names():
+            existing = {c["name"] for c in insp.get_columns("trade_ideas")}
+            alters: list[str] = []
+            if "legs" not in existing:
+                alters.append("ALTER TABLE trade_ideas ADD COLUMN legs JSON")
+            if "structure_type" not in existing:
+                alters.append(
+                    "ALTER TABLE trade_ideas ADD COLUMN structure_type VARCHAR(40) DEFAULT 'scalp'"
+                )
+            with engine.connect() as conn:
+                for stmt in alters:
+                    conn.execute(text(stmt))
+                conn.execute(text("PRAGMA journal_mode=WAL"))
+                conn.commit()
+        else:
+            with engine.connect() as conn:
+                conn.execute(text("PRAGMA journal_mode=WAL"))
+                conn.commit()

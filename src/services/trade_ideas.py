@@ -28,7 +28,9 @@ class TradeIdeaService:
             q = q.filter(TradeIdea.status == status)
         return q.limit(limit).all()
 
-    def generate_from_latest_scan(self, limit: int = 10) -> list[TradeIdea]:
+    def generate_from_latest_scan(
+        self, limit: int = 10, structure_type: str | None = None
+    ) -> list[TradeIdea]:
         latest = (
             self.session.query(ScanResult.scan_date).order_by(desc(ScanResult.scan_date)).first()
         )
@@ -44,6 +46,15 @@ class TradeIdeaService:
         created: list[TradeIdea] = []
         for scan in scans:
             raw = scan.raw_data or {}
+            if raw.get("signal_type") == "sector_pair":
+                idea = self._idea_from_pair_scan(scan)
+                if idea:
+                    self.session.add(idea)
+                    created.append(idea)
+                if len(created) >= limit:
+                    break
+                continue
+
             reliability = float(raw.get("reliability", 0) or 0)
             if reliability < 20 and not scan.pattern_tags:
                 continue
@@ -51,7 +62,7 @@ class TradeIdeaService:
                 break
 
             side = str(raw.get("side_bias", "neutral")).lower()
-            structure = f"scalp_{side}" if side in ("long", "short") else "scalp"
+            structure = self._infer_structure(scan, side, structure_type)
             quote = self.profit.get_quote(scan.symbol)
             last = quote.last if quote else raw.get("last")
             stop_t = int(raw.get("stop_ticks", 5))
@@ -70,6 +81,8 @@ class TradeIdeaService:
             if sector:
                 tags.append(f"sector:{sector.lower()}")
 
+            legs = self._legs_for_structure(structure, scan.symbol, side, quote)
+
             idea = TradeIdea(
                 symbol=scan.symbol,
                 structure_type=structure,
@@ -81,15 +94,9 @@ class TradeIdeaService:
                 target_price=target_p,
                 stop_ticks=stop_t,
                 target_ticks=target_t,
-                title=f"{scan.symbol} {side.upper()} scalp",
+                title=self._title_for_structure(structure, scan.symbol, side),
                 rationale_tags=tags,
-                legs=[
-                    {
-                        "symbol": scan.symbol,
-                        "side": "buy" if side == "long" else "sell" if side == "short" else "flat",
-                        "quantity": 100,
-                    }
-                ],
+                legs=legs,
                 scan_result_id=scan.id,
             )
             self.session.add(idea)
@@ -104,6 +111,85 @@ class TradeIdeaService:
         self.session.commit()
         logger.info("trade_ideas_generated", count=len(created))
         return created
+
+    def attach_backtest_proof(self, symbol: str, metrics: dict) -> TradeIdea | None:
+        """Promote detected idea or create one when CSV export passes gate (A2.4b)."""
+        if not self.passes_backtest_gate(metrics):
+            return None
+
+        sym = symbol.upper()
+        idea = (
+            self.session.query(TradeIdea)
+            .filter(
+                TradeIdea.symbol == sym,
+                TradeIdea.status.in_(["detected", "backtested"]),
+            )
+            .order_by(desc(TradeIdea.reliability), desc(TradeIdea.created_at))
+            .first()
+        )
+        if not idea and "/" in sym:
+            long_sym = sym.split("/")[0]
+            idea = (
+                self.session.query(TradeIdea)
+                .filter(
+                    TradeIdea.symbol.like(f"{long_sym}/%"),
+                    TradeIdea.status.in_(["detected", "backtested"]),
+                )
+                .order_by(desc(TradeIdea.reliability))
+                .first()
+            )
+
+        if idea:
+            idea.backtest_proof = metrics
+            idea.status = "backtested"
+            tags = list(idea.rationale_tags or [])
+            if "backtest_pass" not in tags:
+                tags.append("backtest_pass")
+            idea.rationale_tags = tags
+            return idea
+
+        pf = float(metrics.get("profit_factor") or 0)
+        idea = TradeIdea(
+            symbol=sym,
+            structure_type="scalp",
+            side="neutral",
+            status="backtested",
+            reliability=min(100.0, pf * 30.0),
+            title=f"{sym} backtest promotion",
+            rationale_tags=["backtest_pass", "csv_import"],
+            backtest_proof=metrics,
+        )
+        self.session.add(idea)
+        return idea
+
+    def _idea_from_pair_scan(self, scan: ScanResult) -> TradeIdea | None:
+        raw = scan.raw_data or {}
+        long_sym = raw.get("pair_long")
+        short_sym = raw.get("pair_short")
+        if not long_sym or not short_sym:
+            return None
+
+        reliability = float(raw.get("reliability", 0) or 0)
+        basket = raw.get("basket", "sector")
+        long_q = self.profit.get_quote(long_sym)
+        short_q = self.profit.get_quote(short_sym)
+        tags = list(scan.pattern_tags or [])
+
+        return TradeIdea(
+            symbol=f"{long_sym}/{short_sym}",
+            structure_type="pair_relative",
+            side="long",
+            status="detected",
+            reliability=reliability,
+            entry_price=long_q.last if long_q else None,
+            title=f"Long {long_sym} / Short {short_sym}",
+            rationale_tags=tags + [f"sector:{basket}"],
+            legs=[
+                {"symbol": long_sym, "side": "buy", "quantity": 100},
+                {"symbol": short_sym, "side": "sell", "quantity": 100},
+            ],
+            scan_result_id=scan.id,
+        )
 
     def confirm_idea(self, idea_id: int, paper: bool = True) -> TradeIdea:
         idea = self.session.get(TradeIdea, idea_id)
@@ -169,17 +255,156 @@ class TradeIdeaService:
         return True
 
     @staticmethod
+    def _infer_structure(
+        scan: ScanResult, side: str, requested: str | None = None
+    ) -> str:
+        if requested:
+            return requested
+        tags = scan.pattern_tags or []
+        if "near_max_pain" in tags or "max_pain" in tags:
+            if side == "long":
+                return "covered_call"
+        if side in ("long", "short"):
+            return f"scalp_{side}"
+        return "scalp"
+
+    @staticmethod
+    def _title_for_structure(structure: str, symbol: str, side: str) -> str:
+        labels = {
+            "covered_call": f"{symbol} covered call",
+            "vertical": f"{symbol} vertical spread",
+            "collar": f"{symbol} collar",
+            "bova_hedge": f"{symbol} + BOVA hedge",
+            "pair_spread": f"{symbol} pair spread",
+        }
+        if structure in labels:
+            return labels[structure]
+        return f"{symbol} {side.upper()} scalp"
+
+    def _legs_for_structure(
+        self, structure: str, symbol: str, side: str, quote
+    ) -> list[dict]:
+        sym = symbol.upper()
+        cash_side = "buy" if side == "long" else "sell" if side == "short" else "flat"
+        if structure in ("scalp", "scalp_long", "scalp_short"):
+            return [
+                {
+                    "symbol": sym,
+                    "side": cash_side,
+                    "quantity": 100,
+                    "leg_type": "cash",
+                }
+            ]
+        chain = self.profit.get_option_chain(sym)
+        calls = chain.get("calls") or []
+        puts = chain.get("puts") or []
+        otm_call = calls[-1] if calls else None
+        otm_put = puts[0] if puts else None
+        if structure == "covered_call" and otm_call:
+            return [
+                {"symbol": sym, "side": "buy", "quantity": 100, "leg_type": "cash"},
+                {
+                    "symbol": otm_call["symbol"],
+                    "side": "sell",
+                    "quantity": 100,
+                    "leg_type": "call",
+                    "strike": otm_call.get("strike"),
+                },
+            ]
+        if structure == "vertical" and len(calls) >= 2:
+            return [
+                {
+                    "symbol": calls[0]["symbol"],
+                    "side": "buy",
+                    "quantity": 100,
+                    "leg_type": "call",
+                    "strike": calls[0].get("strike"),
+                },
+                {
+                    "symbol": calls[1]["symbol"],
+                    "side": "sell",
+                    "quantity": 100,
+                    "leg_type": "call",
+                    "strike": calls[1].get("strike"),
+                },
+            ]
+        if structure == "collar" and otm_call and otm_put:
+            return [
+                {"symbol": sym, "side": "buy", "quantity": 100, "leg_type": "cash"},
+                {
+                    "symbol": otm_put["symbol"],
+                    "side": "buy",
+                    "quantity": 100,
+                    "leg_type": "put",
+                    "strike": otm_put.get("strike"),
+                },
+                {
+                    "symbol": otm_call["symbol"],
+                    "side": "sell",
+                    "quantity": 100,
+                    "leg_type": "call",
+                    "strike": otm_call.get("strike"),
+                },
+            ]
+        if structure == "bova_hedge":
+            bova = self.profit.get_option_chain("BOVA11")
+            b_puts = bova.get("puts") or []
+            b_put = b_puts[len(b_puts) // 2] if b_puts else None
+            legs = [
+                {"symbol": sym, "side": cash_side, "quantity": 100, "leg_type": "cash"},
+            ]
+            if b_put:
+                legs.append(
+                    {
+                        "symbol": b_put["symbol"],
+                        "side": "buy",
+                        "quantity": 50,
+                        "leg_type": "bova_put",
+                        "strike": b_put.get("strike"),
+                    }
+                )
+            return legs
+        return [
+            {"symbol": sym, "side": cash_side, "quantity": 100, "leg_type": "cash"},
+        ]
+
+    @staticmethod
     def _ntsl_for_idea(idea: TradeIdea) -> str:
-        side = idea.side or "neutral"
-        return f"""// Arbitragem — idea #{idea.id} {idea.symbol} ({side})
+        legs = idea.legs or []
+        if len(legs) <= 1:
+            side = idea.side or "neutral"
+            return f"""// Arbitragem — idea #{idea.id} {idea.symbol} ({side})
 // Import in Profit Editor → arm on {idea.symbol}
 input
   StopTicks({idea.stop_ticks or 5});
   TargetTicks({idea.target_ticks or 8});
 begin
-  // TODO: wire pattern from backtest proof — manual arm for 2.0-alpha
+  // Single-leg scalp — wire from backtest proof
 end;
 """
+        header = (
+            f"// Arbitragem 3.0 — multi-leg {idea.structure_type} idea #{idea.id}\n"
+            f"// Symbol: {idea.symbol} · legs: {len(legs)}\n"
+        )
+        leg_blocks: list[str] = []
+        for idx, leg in enumerate(legs, start=1):
+            sym = leg.get("symbol", idea.symbol)
+            side = leg.get("side", "buy")
+            qty = leg.get("quantity", 100)
+            leg_type = leg.get("leg_type", "cash")
+            strike = leg.get("strike")
+            strike_line = f"  Strike({strike});\n" if strike else ""
+            leg_blocks.append(
+                f"""// Leg {idx}: {leg_type} {side} {qty} {sym}
+procedure Leg{idx}();
+begin
+  SetAsset("{sym}");
+  SetQuantity({qty});
+{strike_line}  // TODO: map {side} for {leg_type}
+end;
+"""
+            )
+        return header + "\n".join(leg_blocks) + "\nbegin\n  // Arm legs in sequence (cash first)\nend;\n"
 
     def _log_paper_trades(self, idea: TradeIdea) -> None:
         from src.integrations.clear_api import ClearOrder, get_clear_client

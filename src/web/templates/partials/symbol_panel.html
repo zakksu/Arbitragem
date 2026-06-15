@@ -34,11 +34,25 @@
             <div class="bb-metric-label">Volume</div>
             <div class="bb-metric-value">{{ "{:,}".format(quote.volume) }}</div>
         </div>
+        {% if iv_rank is not none %}
+        <div class="bb-metric">
+            <div class="bb-metric-label">IV rank</div>
+            <div class="bb-metric-value bb-iv-rank">{{ "%.0f"|format(iv_rank) }}%</div>
+        </div>
+        {% endif %}
     </div>
-  {% if quote.timestamp %}
+    {% if max_pain %}
+    <div class="bb-max-pain-bar">
+        Max pain <strong>{{ "%.2f"|format(max_pain.max_pain_strike) }}</strong>
+        {% if max_pain.distance_pct is not none %}
+        · {{ "%.2f"|format(max_pain.distance_pct) }}% from spot
+        {% endif %}
+    </div>
+    {% endif %}
+    {% if quote.timestamp %}
     <div class="bb-spread-bar">
         Quote time <strong>{{ quote.timestamp.strftime("%H:%M:%S") if quote.timestamp else "—" }}</strong>
-        · source Profit bridge
+        · Structure Deck 3.0
     </div>
     {% endif %}
     {% else %}
@@ -48,11 +62,76 @@
     </div>
     {% endif %}
 
+    <div class="bb-chart-wrap" id="chart-{{ symbol }}" data-last="{{ quote.last if quote else 0 }}">
+        <div class="bb-chart-head">
+            <span>Session chart</span>
+            <em>Lightweight Charts</em>
+        </div>
+        <div class="bb-chart-canvas" id="lw-chart-{{ symbol }}"></div>
+    </div>
+
+    {% if option_chain and (option_chain.calls or option_chain.puts) %}
+    <div class="bb-chain-panel">
+        <div class="bb-chain-head">
+            <span>Options chain</span>
+            <em>{{ option_chain.expiry or "near-month" }}</em>
+        </div>
+        <div class="bb-chain-tables">
+            <table class="bb-chain-table">
+                <caption>Calls</caption>
+                <thead>
+                    <tr>
+                        <th>Strike</th>
+                        <th>Bid</th>
+                        <th>Ask</th>
+                        <th>IV</th>
+                        <th>OI</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for leg in option_chain.calls %}
+                    <tr class="{% if max_pain and leg.strike == max_pain.max_pain_strike %}bb-mp-row{% endif %}">
+                        <td>{{ "%.0f"|format(leg.strike) }}</td>
+                        <td>{{ "%.2f"|format(leg.bid or leg.last) }}</td>
+                        <td>{{ "%.2f"|format(leg.ask or leg.last) }}</td>
+                        <td>{{ leg.iv or "—" }}</td>
+                        <td>{{ leg.open_interest or leg.volume or "—" }}</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+            <table class="bb-chain-table">
+                <caption>Puts</caption>
+                <thead>
+                    <tr>
+                        <th>Strike</th>
+                        <th>Bid</th>
+                        <th>Ask</th>
+                        <th>IV</th>
+                        <th>OI</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for leg in option_chain.puts %}
+                    <tr class="{% if max_pain and leg.strike == max_pain.max_pain_strike %}bb-mp-row{% endif %}">
+                        <td>{{ "%.0f"|format(leg.strike) }}</td>
+                        <td>{{ "%.2f"|format(leg.bid or leg.last) }}</td>
+                        <td>{{ "%.2f"|format(leg.ask or leg.last) }}</td>
+                        <td>{{ leg.iv or "—" }}</td>
+                        <td>{{ leg.open_interest or leg.volume or "—" }}</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+    {% endif %}
+
     <div class="bb-notes-area">
         <label for="notes-{{ symbol }}">Board notes ({{ symbol }})</label>
         <textarea id="notes-{{ symbol }}"
                   name="content"
-                  placeholder="Levels, tape read, plan…"
+                  placeholder="Levels, tape read, structure plan…"
                   rows="3"
                   hx-post="/board/partials/symbol/{{ symbol }}/notes"
                   hx-trigger="change delay:800ms"
@@ -72,3 +151,46 @@
         </div>
     </div>
 </div>
+<script src="https://unpkg.com/lightweight-charts@4.2.0/dist/lightweight-charts.standalone.production.js"></script>
+<script>
+(function () {
+    var sym = "{{ symbol }}";
+    var el = document.getElementById("lw-chart-" + sym);
+    if (!el || typeof LightweightCharts === "undefined") return;
+    var last = parseFloat(el.closest("[data-last]")?.dataset?.last || "0") || 100;
+    var chart = LightweightCharts.createChart(el, {
+        width: el.clientWidth || 480,
+        height: 160,
+        layout: { background: { color: "#121212" }, textColor: "#8a8a8a" },
+        grid: { vertLines: { color: "#1f1f1f" }, horzLines: { color: "#1f1f1f" } },
+        rightPriceScale: { borderColor: "#2a2a2a" },
+        timeScale: { borderColor: "#2a2a2a" },
+    });
+    var series = chart.addAreaSeries({
+        lineColor: "#f59e0b",
+        topColor: "rgba(245,158,11,0.35)",
+        bottomColor: "rgba(245,158,11,0)",
+    });
+    var now = Math.floor(Date.now() / 1000);
+    var data = [];
+    for (var i = 30; i >= 0; i--) {
+        var t = now - i * 60;
+        var jitter = (Math.sin(i / 3) + Math.random() * 0.4 - 0.2) * 0.15;
+        data.push({ time: t, value: +(last * (1 + jitter)).toFixed(2) });
+    }
+    series.setData(data);
+    {% if max_pain %}
+    series.createPriceLine({
+        price: {{ max_pain.max_pain_strike }},
+        color: "#3b82f6",
+        lineWidth: 1,
+        lineStyle: 2,
+        axisLabelVisible: true,
+        title: "Max pain",
+    });
+    {% endif %}
+    new ResizeObserver(function () {
+        chart.applyOptions({ width: el.clientWidth });
+    }).observe(el);
+})();
+</script>

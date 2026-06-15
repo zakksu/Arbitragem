@@ -50,11 +50,16 @@ async def _fetch_json(request: Request, path: str) -> dict[str, Any] | list[Any]
     return None
 
 
-async def _fetch_universe(request: Request) -> list[dict[str, Any]]:
+async def _fetch_universe_payload(request: Request) -> dict[str, Any]:
     data = await _fetch_json(request, "/api/v1/universe/filipe-core14")
     if isinstance(data, dict) and data.get("symbols"):
-        return list(data["symbols"])
-    return [dict(s) for s in _CORE14_FALLBACK]
+        return data
+    return {"symbols": [dict(s) for s in _CORE14_FALLBACK], "sector_baskets": {}}
+
+
+async def _fetch_universe(request: Request) -> list[dict[str, Any]]:
+    payload = await _fetch_universe_payload(request)
+    return list(payload.get("symbols") or [])
 
 
 async def _fetch_ideas(request: Request) -> list[dict[str, Any]]:
@@ -158,10 +163,37 @@ async def symbol_partial(request: Request, symbol: str):
     if quote is None:
         quote = get_profit_client().get_quote(sym)
 
+    client = get_profit_client()
+    option_chain = None
+    max_pain = None
+    iv_rank_val = None
+    und = sym if len(sym) <= 6 and not sym.startswith("BOVAX") and not sym.startswith("BOVAY") else sym[:4] + "4"
+    if sym == "BOVA11" or sym.startswith("BOVA"):
+        und = "BOVA11"
+    try:
+        option_chain = client.get_option_chain(und)
+        max_pain = (option_chain or {}).get("max_pain")
+        if not max_pain and option_chain:
+            from src.services.structure_signals import compute_max_pain
+
+            max_pain = compute_max_pain(option_chain)
+        iv_data = client.get_iv_rank(und)
+        iv_rank_val = iv_data.get("iv_rank") if iv_data else None
+    except Exception:
+        pass
+
     return TEMPLATES.TemplateResponse(
         request,
         "partials/symbol_panel.html",
-        {"symbol": sym, "meta": meta, "quote": quote, "note": note},
+        {
+            "symbol": sym,
+            "meta": meta,
+            "quote": quote,
+            "note": note,
+            "option_chain": option_chain,
+            "max_pain": max_pain,
+            "iv_rank": iv_rank_val,
+        },
     )
 
 
@@ -177,16 +209,12 @@ async def ideas_partial(request: Request):
 
 @router.post("/board/partials/ideas/{idea_id}/confirm", response_class=HTMLResponse)
 async def confirm_idea_partial(request: Request, idea_id: int):
-    from src.models import get_session_factory
-    from src.services.trade_ideas import TradeIdeaService
-
-    session = get_session_factory()()
+    base = _api_base(request)
     try:
-        TradeIdeaService(session).confirm_idea(idea_id)
-    except ValueError:
+        async with httpx.AsyncClient(timeout=15.0) as client:
+            await client.post(f"{base}/api/v1/ideas/{idea_id}/confirm")
+    except httpx.HTTPError:
         pass
-    finally:
-        session.close()
     ideas = await _fetch_ideas(request)
     return TEMPLATES.TemplateResponse(
         request,
@@ -203,6 +231,18 @@ async def idea_review_partial(request: Request, idea_id: int):
     return TEMPLATES.TemplateResponse(
         request,
         "partials/idea_review.html",
+        {"idea": data},
+    )
+
+
+@router.get("/board/partials/ideas/{idea_id}/confirm-step", response_class=HTMLResponse)
+async def idea_confirm_step_partial(request: Request, idea_id: int):
+    data = await _fetch_json(request, f"/api/v1/ideas/{idea_id}")
+    if not isinstance(data, dict):
+        return HTMLResponse("<p>Idea not found</p>", status_code=404)
+    return TEMPLATES.TemplateResponse(
+        request,
+        "partials/idea_confirm_step.html",
         {"idea": data},
     )
 
@@ -230,7 +270,53 @@ async def setup_partial(request: Request):
     return TEMPLATES.TemplateResponse(
         request,
         "partials/setup_wizard.html",
-        {"setup": setup},
+        {"setup": setup, "test_result": None},
+    )
+
+
+@router.post("/board/partials/setup/test", response_class=HTMLResponse)
+async def setup_test_partial(request: Request):
+    base = _api_base(request)
+    test_result: dict[str, Any] | None = None
+    try:
+        async with httpx.AsyncClient(timeout=20.0) as client:
+            resp = await client.post(f"{base}/api/v1/setup/test")
+            if resp.status_code == 200:
+                test_result = resp.json()
+    except httpx.HTTPError:
+        pass
+    data = await _fetch_json(request, "/api/v1/setup/status")
+    setup = data if isinstance(data, dict) else {"steps": [], "release": "2.0.0"}
+    return TEMPLATES.TemplateResponse(
+        request,
+        "partials/setup_wizard.html",
+        {"setup": setup, "test_result": test_result},
+    )
+
+
+_SECTOR_LABELS: dict[str, str] = {
+    "banks": "Bancos",
+    "steel": "Siderurgia",
+    "energy": "Energia",
+    "defensive": "Defensivo",
+}
+
+_FALLBACK_BASKETS: dict[str, list[str]] = {
+    "banks": ["ITUB4", "BBAS3", "BBDC4", "BBSE3", "B3SA3"],
+    "steel": ["GGBR4", "CSNA3", "USIM5"],
+    "energy": ["PETR4", "PRIO3"],
+    "defensive": ["ABEV3", "SUZB3", "WEGE3"],
+}
+
+
+@router.get("/board/partials/sector-strip", response_class=HTMLResponse)
+async def sector_strip_partial(request: Request):
+    payload = await _fetch_universe_payload(request)
+    baskets = payload.get("sector_baskets") or _FALLBACK_BASKETS
+    return TEMPLATES.TemplateResponse(
+        request,
+        "partials/sector_strip.html",
+        {"baskets": baskets, "labels": _SECTOR_LABELS},
     )
 
 

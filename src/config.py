@@ -81,6 +81,15 @@ class Settings(BaseSettings):
 
     paper_trading_mode: bool = True
 
+    # 3.0 — Structure Deck
+    structure_types_enabled: str = (
+        "scalp,covered_call,vertical,collar,bova_hedge,pair_spread"
+    )
+    max_pain_signal_enabled: bool = True
+    greeks_stub_mode: bool = True
+    max_portfolio_net_delta: float = 0.5
+    walk_forward_auto_promote: bool = False
+
     journal_auto_analyze: bool = True
     journal_analyze_limit: int = 5
 

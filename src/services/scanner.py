@@ -16,6 +16,7 @@ from src.logging_config import get_logger
 from src.models import ScanResult, SystemEvent
 from src.services.ibov_universe import load_ibov_top20
 from src.services.scalp_patterns import analyze_scalp
+from src.services.structure_signals import compute_max_pain, max_pain_tags
 
 logger = get_logger(__name__)
 
@@ -88,6 +89,11 @@ class PatternScanner:
                         details={"error": str(exc)},
                     )
                 )
+
+        pair_results = self._scan_sector_pairs(results, scan_date)
+        for pr in pair_results:
+            results.append(pr)
+            self.session.add(pr)
 
         self.session.commit()
         logger.info("daily_scan_complete", count=len(results))
@@ -171,6 +177,14 @@ class PatternScanner:
         pattern_tags = list(dict.fromkeys(scalp.pattern_tags or []))
         if iv_skew is not None and abs(iv_skew) > 0.03:
             pattern_tags.append("iv_skew")
+
+        max_pain_signal = None
+        if self.settings.max_pain_signal_enabled:
+            max_pain_signal = self._max_pain_for_symbol(symbol)
+            if max_pain_signal:
+                pattern_tags.extend(max_pain_tags(max_pain_signal))
+                pattern_tags = list(dict.fromkeys(pattern_tags))
+
         alert_level = "info"
         if scalp.reliability >= 60:
             alert_level = "warning"
@@ -192,6 +206,8 @@ class PatternScanner:
             "iv_skew": iv_skew,
             "scanner_mode": self.settings.scanner_mode,
         }
+        if max_pain_signal:
+            raw_data["max_pain"] = max_pain_signal
 
         scan = ScanResult(
             scan_date=scan_date,
@@ -228,6 +244,49 @@ class PatternScanner:
 
         return scan
 
+    def _scan_sector_pairs(
+        self,
+        results: list[ScanResult],
+        scan_date: datetime,
+    ) -> list[ScanResult]:
+        """Append pair scan rows when sector baskets diverge (A2.5a)."""
+        from src.services.sector_pairs import detect_sector_pairs
+
+        member_data = {
+            r.symbol: {
+                "price_change_pct": r.price_change_pct,
+                "last": (r.raw_data or {}).get("last"),
+            }
+            for r in results
+            if "/" not in r.symbol
+        }
+        pair_scans: list[ScanResult] = []
+        for sig in detect_sector_pairs(member_data):
+            label = sig.pair_label()
+            raw_data = {
+                "pair_long": sig.long_symbol,
+                "pair_short": sig.short_symbol,
+                "basket": sig.basket,
+                "spread_pct": sig.spread_pct,
+                "reliability": sig.reliability,
+                "side_bias": "long",
+                "scanner_mode": self.settings.scanner_mode,
+                "signal_type": "sector_pair",
+            }
+            pair_scans.append(
+                ScanResult(
+                    scan_date=scan_date,
+                    symbol=label,
+                    volume=0,
+                    price_change_pct=sig.spread_pct,
+                    spike_score=sig.reliability,
+                    pattern_tags=sig.pattern_tags,
+                    alert_level="warning" if sig.reliability >= 50 else "info",
+                    raw_data=raw_data,
+                )
+            )
+        return pair_scans
+
     @staticmethod
     def _price_change_pct(last_price: float | None, prev: ScanResult | None) -> float | None:
         if last_price is None or prev is None:
@@ -245,3 +304,24 @@ class PatternScanner:
         if mid <= 0:
             return None
         return round((quote.ask - quote.bid) / mid, 4)
+
+    def _max_pain_for_symbol(self, symbol: str) -> dict | None:
+        sym = symbol.upper()
+        from src.services.filipe_universe import BOVA_UNDERLYING, load_filipe_core14
+
+        core14 = {s.symbol for s in load_filipe_core14()}
+        if sym not in core14 and sym != BOVA_UNDERLYING and not sym.startswith("BOVA"):
+            return None
+        underlying = BOVA_UNDERLYING if sym.startswith("BOVA") and sym != BOVA_UNDERLYING else sym
+        if underlying.startswith("BOVAX") or underlying.startswith("BOVAY"):
+            underlying = BOVA_UNDERLYING
+        if len(underlying) > 6 and underlying[4:5] in ("X", "Y"):
+            underlying = underlying[:4] + ("4" if underlying.endswith("4") else "3")
+        try:
+            chain = self.profit.get_option_chain(underlying)
+            if chain.get("max_pain"):
+                return chain["max_pain"]
+            return compute_max_pain(chain)
+        except Exception as exc:
+            logger.debug("max_pain_skip", symbol=sym, error=str(exc))
+            return None

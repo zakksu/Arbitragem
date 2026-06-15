@@ -15,6 +15,7 @@ from src.api.schemas import (
     OllamaChatRequest,
     OptimizationRunResponse,
     OptimizeRequest,
+    ProfitBacktestRunRequest,
     RiskSummaryResponse,
     ScanResultResponse,
     StrategyCreate,
@@ -303,9 +304,15 @@ def list_trade_ideas(
 
 
 @router.post("/ideas/generate")
-def generate_trade_ideas(limit: int = 12, db: Session = Depends(get_db)):
+def generate_trade_ideas(
+    limit: int = 12,
+    structure_type: str | None = None,
+    db: Session = Depends(get_db),
+):
     svc = TradeIdeaService(db)
-    created = svc.generate_from_latest_scan(limit=min(limit, 30))
+    created = svc.generate_from_latest_scan(
+        limit=min(limit, 30), structure_type=structure_type
+    )
     return {"generated": len(created), "ideas": [svc.to_dict(i) for i in created]}
 
 
@@ -365,14 +372,89 @@ def analyze_symbol(symbol: str, db: Session = Depends(get_db)):
 
 
 @router.post("/backtest/run")
-def run_profit_backtest(symbol: str, strategy: str = "scalp_default"):
-    metrics = get_profit_client().run_backtest(symbol, strategy)
+def run_profit_backtest(payload: ProfitBacktestRunRequest):
+    """Proxy to Profit bridge POST /backtest/run — returns job id + metrics."""
+    metrics = get_profit_client().run_backtest(
+        payload.symbol,
+        payload.strategy,
+        payload.period,
+    )
     return metrics
 
 
 @router.get("/options/bova")
 def bova_options():
     return get_profit_client().get_bova_option_chain()
+
+
+@router.get("/options/chain/{underlying}")
+def unified_options_chain(underlying: str):
+    client = get_profit_client()
+    chain = client.get_option_chain(underlying)
+    from src.services.structure_signals import compute_max_pain
+
+    if "max_pain" not in chain:
+        mp = compute_max_pain(chain)
+        if mp:
+            chain["max_pain"] = mp
+    return chain
+
+
+@router.get("/signals/max-pain/{underlying}")
+def max_pain_signal(underlying: str):
+    client = get_profit_client()
+    chain = client.get_option_chain(underlying)
+    from src.services.structure_signals import compute_max_pain
+
+    signal = chain.get("max_pain") or compute_max_pain(chain)
+    if not signal:
+        raise HTTPException(404, "No option chain for underlying")
+    iv = client.get_iv_rank(underlying)
+    return {"max_pain": signal, "iv_rank": iv}
+
+
+@router.get("/structures/types")
+def structure_types():
+    from src.services.structure_types import enabled_structure_types
+
+    settings = get_settings()
+    types = enabled_structure_types(settings.structure_types_enabled)
+    return {
+        "version": __version__,
+        "structure_types": types,
+        "greeks_stub_mode": settings.greeks_stub_mode,
+        "max_pain_enabled": settings.max_pain_signal_enabled,
+    }
+
+
+@router.get("/options/greeks/{symbol}")
+def option_greeks(symbol: str):
+    return get_profit_client().get_greeks(symbol)
+
+
+@router.get("/options/iv-rank/{underlying}")
+def option_iv_rank(underlying: str):
+    return get_profit_client().get_iv_rank(underlying)
+
+
+@router.post("/walk-forward/run")
+def run_walk_forward(payload: OptimizeRequest, db: Session = Depends(get_db)):
+    """Walk-forward optimization — promotion input for 3.0."""
+    strategy = db.get(Strategy, payload.strategy_id)
+    if not strategy:
+        raise HTTPException(404, "Strategy not found")
+    space = _normalize_genetic_space(payload.parameter_space)
+    run = WalkForwardOptimizer(db).run(
+        strategy, payload.symbol, space, folds=payload.folds
+    )
+    return {
+        "run_id": run.id,
+        "method": run.method,
+        "status": run.status,
+        "best_parameters": run.best_parameters,
+        "best_metrics": run.best_metrics,
+        "results": run.results,
+    }
 
 
 @router.get("/options/stock/{underlying}")
