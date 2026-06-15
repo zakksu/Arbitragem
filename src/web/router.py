@@ -96,6 +96,39 @@ def _quote_map(symbols: list[str]) -> dict[str, Any]:
     return {sym: batch[sym] for sym in symbols if sym in batch}
 
 
+async def _fetch_risk_summary(request: Request) -> dict[str, Any] | None:
+    data = await _fetch_json(request, "/api/v1/risk/summary")
+    return data if isinstance(data, dict) else None
+
+
+async def _fetch_idea(request: Request, idea_id: int) -> dict[str, Any] | None:
+    data = await _fetch_json(request, f"/api/v1/ideas/{idea_id}")
+    return data if isinstance(data, dict) else None
+
+
+def _risk_cockpit():
+    from src.models import get_session_factory
+
+    session = get_session_factory()()
+    try:
+        return build_risk_cockpit(session)
+    finally:
+        session.close()
+
+
+def _api_error_detail(resp: httpx.Response) -> str:
+    try:
+        body = resp.json()
+        if isinstance(body, dict) and "detail" in body:
+            detail = body["detail"]
+            if isinstance(detail, list):
+                return "; ".join(str(d) for d in detail)
+            return str(detail)
+        return str(body)
+    except Exception:
+        return resp.text or f"HTTP {resp.status_code}"
+
+
 @router.get("/board", response_class=HTMLResponse)
 async def board_page(request: Request):
     return TEMPLATES.TemplateResponse(request, "board.html", {})
@@ -104,10 +137,11 @@ async def board_page(request: Request):
 @router.get("/board/partials/status", response_class=HTMLResponse)
 async def status_partial(request: Request):
     bootstrap = await _fetch_bootstrap(request)
+    risk = await _fetch_risk_summary(request)
     return TEMPLATES.TemplateResponse(
         request,
         "partials/status_bar.html",
-        {"bootstrap": bootstrap},
+        {"bootstrap": bootstrap, "risk": risk},
     )
 
 
@@ -116,8 +150,9 @@ async def watchlist_partial(request: Request):
     symbols = await _fetch_universe(request)
     sym_list = [s["symbol"] for s in symbols if s.get("symbol")]
     settings = get_settings()
-    if settings.scanner_include_bova_options:
-        chain = get_profit_client().get_bova_option_chain()
+    profit = get_profit_client()
+    if settings.scanner_include_bova_options and profit.is_available():
+        chain = profit.get_bova_option_chain()
         for leg in (chain.get("calls") or [])[:4] + (chain.get("puts") or [])[:4]:
             sym = leg.get("symbol")
             if sym and sym not in sym_list:
@@ -196,6 +231,32 @@ async def symbol_partial(request: Request, symbol: str):
             "iv_rank": iv_rank_val,
             "preview_legs": None,
         },
+    )
+
+
+@router.get("/board/partials/symbol/{symbol}/report", response_class=HTMLResponse)
+async def symbol_report_partial(request: Request, symbol: str):
+    sym = symbol.strip().upper()
+    force = request.query_params.get("force", "false").lower() in ("1", "true", "yes")
+    base = _api_base(request)
+    report: dict[str, Any] | None = None
+    error: str | None = None
+    try:
+        async with httpx.AsyncClient(timeout=90.0) as client:
+            resp = await client.get(
+                f"{base}/api/v1/symbols/{sym}/report",
+                params={"force": str(force).lower()},
+            )
+            if resp.status_code == 200:
+                report = resp.json()
+            else:
+                error = _api_error_detail(resp)
+    except httpx.HTTPError as exc:
+        error = str(exc)
+    return TEMPLATES.TemplateResponse(
+        request,
+        "partials/symbol_report.html",
+        {"report": report, "error": error},
     )
 
 
@@ -278,11 +339,88 @@ async def ideas_partial(request: Request):
 @router.post("/board/partials/ideas/{idea_id}/confirm", response_class=HTMLResponse)
 async def confirm_idea_partial(request: Request, idea_id: int):
     base = _api_base(request)
+    form = await request.form()
+    paper_override = str(form.get("paper_override", "")).lower() in ("true", "1", "on", "yes")
+    idea: dict[str, Any] | None = None
+    error: str | None = None
     try:
         async with httpx.AsyncClient(timeout=15.0) as client:
-            await client.post(f"{base}/api/v1/ideas/{idea_id}/confirm")
-    except httpx.HTTPError:
-        pass
+            resp = await client.post(
+                f"{base}/api/v1/ideas/{idea_id}/confirm",
+                params={"paper_override": str(paper_override).lower()},
+            )
+            if resp.status_code == 200:
+                idea = resp.json()
+            else:
+                error = _api_error_detail(resp)
+    except httpx.HTTPError as exc:
+        error = str(exc)
+
+    if idea and idea.get("status") == "confirmed":
+        risk = await _fetch_risk_summary(request)
+        return TEMPLATES.TemplateResponse(
+            request,
+            "partials/idea_execute_step.html",
+            {"idea": idea, "risk": risk, "error": None},
+        )
+
+    if idea is None:
+        idea = await _fetch_idea(request, idea_id) or {"id": idea_id, "symbol": "?", "side": ""}
+
+    return TEMPLATES.TemplateResponse(
+        request,
+        "partials/idea_confirm_step.html",
+        {
+            "idea": idea,
+            "cockpit": _risk_cockpit(),
+            "risk": await _fetch_risk_summary(request),
+            "error": error,
+        },
+    )
+
+
+@router.get("/board/partials/ideas/{idea_id}/execute-step", response_class=HTMLResponse)
+async def idea_execute_step_partial(request: Request, idea_id: int):
+    idea = await _fetch_idea(request, idea_id)
+    if not idea:
+        return HTMLResponse("<p>Idea not found</p>", status_code=404)
+    return TEMPLATES.TemplateResponse(
+        request,
+        "partials/idea_execute_step.html",
+        {"idea": idea, "risk": await _fetch_risk_summary(request), "error": None},
+    )
+
+
+@router.post("/board/partials/ideas/{idea_id}/execute", response_class=HTMLResponse)
+async def execute_idea_partial(request: Request, idea_id: int):
+    base = _api_base(request)
+    error: str | None = None
+    try:
+        async with httpx.AsyncClient(timeout=15.0) as client:
+            resp = await client.post(f"{base}/api/v1/ideas/{idea_id}/execute")
+            if resp.status_code != 200:
+                error = _api_error_detail(resp)
+                idea = await _fetch_idea(request, idea_id)
+                if idea:
+                    return TEMPLATES.TemplateResponse(
+                        request,
+                        "partials/idea_execute_step.html",
+                        {
+                            "idea": idea,
+                            "risk": await _fetch_risk_summary(request),
+                            "error": error,
+                        },
+                    )
+    except httpx.HTTPError as exc:
+        error = str(exc)
+        idea = await _fetch_idea(request, idea_id)
+        if idea:
+            return TEMPLATES.TemplateResponse(
+                request,
+                "partials/idea_execute_step.html",
+                {"idea": idea, "risk": await _fetch_risk_summary(request), "error": error},
+            )
+
     ideas = await _fetch_ideas(request)
     return TEMPLATES.TemplateResponse(
         request,
@@ -305,20 +443,18 @@ async def idea_review_partial(request: Request, idea_id: int):
 
 @router.get("/board/partials/ideas/{idea_id}/confirm-step", response_class=HTMLResponse)
 async def idea_confirm_step_partial(request: Request, idea_id: int):
-    data = await _fetch_json(request, f"/api/v1/ideas/{idea_id}")
-    if not isinstance(data, dict):
+    idea = await _fetch_idea(request, idea_id)
+    if not idea:
         return HTMLResponse("<p>Idea not found</p>", status_code=404)
-    from src.models import get_session_factory
-
-    session = get_session_factory()()
-    try:
-        cockpit = build_risk_cockpit(session)
-    finally:
-        session.close()
     return TEMPLATES.TemplateResponse(
         request,
         "partials/idea_confirm_step.html",
-        {"idea": data, "cockpit": cockpit},
+        {
+            "idea": idea,
+            "cockpit": _risk_cockpit(),
+            "risk": await _fetch_risk_summary(request),
+            "error": None,
+        },
     )
 
 

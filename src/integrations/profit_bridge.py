@@ -106,12 +106,14 @@ class ProfitBridgeClient:
         """Fetch many quotes — one HTTP call when bridge exposes GET /quotes."""
         wanted = {s.upper() for s in symbols if s}
         out: dict[str, ProfitQuote] = {}
+        batch_ok = False
 
         if self._should_use_bridge():
             try:
-                with self._client() as client:
+                with self._client(timeout=3.0) as client:
                     r = client.get("/quotes")
                     if r.status_code == 200:
+                        batch_ok = True
                         payload = r.json()
                         rows = payload if isinstance(payload, list) else payload.get("quotes", [])
                         for data in rows:
@@ -132,7 +134,7 @@ class ProfitBridgeClient:
         for sym in wanted:
             if sym in out:
                 continue
-            if self._should_use_bridge():
+            if batch_ok and not (sym.startswith("BOVAX") or sym.startswith("BOVAY")):
                 out[sym] = self._get_quote_http(sym)
             else:
                 out[sym] = self._synthetic_quote(sym)
@@ -142,7 +144,7 @@ class ProfitBridgeClient:
         sym = symbol.upper()
         if self._should_use_bridge():
             try:
-                with self._client() as client:
+                with self._client(timeout=1.5) as client:
                     r = client.get(f"/quotes/{sym}")
                     r.raise_for_status()
                     data = r.json()
@@ -314,6 +316,10 @@ class ProfitBridgeClient:
         sym = underlying.upper()
         if sym in ("BOVA", "BOVA11"):
             sym = "BOVA11"
+        if not self.is_available():
+            if sym == "BOVA11":
+                return self._synthetic_bova_chain()
+            return self._synthetic_stock_options(sym)
         if self._should_use_bridge():
             try:
                 with self._client() as client:
@@ -358,6 +364,16 @@ class ProfitBridgeClient:
         sym = underlying.upper()
         if sym in ("BOVA", "BOVA11"):
             sym = "BOVA11"
+        if not self.is_available():
+            seed = _symbol_seed(sym)
+            rank = round(20 + (seed % 60), 1)
+            return {
+                "underlying": sym,
+                "iv_rank": rank,
+                "iv_current": round(20 + (seed % 100) / 10.0, 2),
+                "term_structure": "contango",
+                "source": "synthetic",
+            }
         if self._should_use_bridge():
             try:
                 with self._client() as client:

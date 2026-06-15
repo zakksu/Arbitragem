@@ -33,7 +33,7 @@
             <div class="bb-col-body"
                  id="watchlist"
                  hx-get="/board/partials/watchlist"
-                 hx-trigger="load, every 15s"
+                 hx-trigger="load"
                  hx-swap="innerHTML">
                 <div class="bb-watch-empty"><span class="bb-loading"></span></div>
             </div>
@@ -108,6 +108,9 @@
                 if (count) {
                     document.getElementById("watch-count").textContent = count.dataset.count;
                 }
+                if (window.bbQuoteStream) {
+                    window.bbQuoteStream.resubscribe();
+                }
             }
             if (evt.detail.target.id === "idea-stack") {
                 var ideas = evt.detail.target.querySelector("[data-count]");
@@ -127,6 +130,16 @@
             }
         });
 
+        function loadSymbolPanel(row) {
+            var url = row.getAttribute("data-symbol-url");
+            if (!url || typeof htmx === "undefined") return;
+            htmx.ajax("GET", url, {
+                target: "#symbol-panel",
+                swap: "innerHTML",
+                indicator: "#active-symbol-label",
+            });
+        }
+
         document.body.addEventListener("click", function (evt) {
             var row = evt.target.closest(".bb-watch-row");
             if (!row) return;
@@ -134,6 +147,15 @@
                 r.classList.remove("is-active");
             });
             row.classList.add("is-active");
+            loadSymbolPanel(row);
+        });
+
+        document.body.addEventListener("keydown", function (evt) {
+            if (evt.key !== "Enter" && evt.key !== " ") return;
+            var row = evt.target.closest(".bb-watch-row");
+            if (!row) return;
+            evt.preventDefault();
+            row.click();
         });
 
         document.addEventListener("keydown", function (evt) {
@@ -150,6 +172,59 @@
         }
         setInterval(tickClock, 1000);
         tickClock();
+
+        function bbFormatPrice(v) {
+            if (v == null || isNaN(v)) return "—";
+            return Number(v).toFixed(2);
+        }
+
+        function bbUpdateQuoteCell(el, value) {
+            if (!el) return;
+            var next = bbFormatPrice(value);
+            if (el.textContent.trim() !== next) {
+                el.textContent = next;
+                el.classList.add("bb-price-flash");
+                setTimeout(function () { el.classList.remove("bb-price-flash"); }, 400);
+            }
+        }
+
+        function bbApplyQuotes(quotes) {
+            if (!quotes) return;
+            Object.keys(quotes).forEach(function (sym) {
+                var q = quotes[sym];
+                var row = document.querySelector('.bb-watch-row[data-symbol="' + sym + '"]');
+                if (row) {
+                    bbUpdateQuoteCell(row.querySelector(".bb-quote-last"), q.last);
+                    bbUpdateQuoteCell(row.querySelector(".bb-bid"), q.bid);
+                    bbUpdateQuoteCell(row.querySelector(".bb-ask"), q.ask);
+                }
+                var panel = document.querySelector('.bb-symbol-panel[data-symbol="' + sym + '"]');
+                if (panel) {
+                    bbUpdateQuoteCell(panel.querySelector(".bb-symbol-header .bb-quote-last"), q.last);
+                    panel.querySelectorAll(".bb-quote-grid .bb-quote-last").forEach(function (el) {
+                        bbUpdateQuoteCell(el, q.last);
+                    });
+                    bbUpdateQuoteCell(panel.querySelector(".bb-quote-grid .bb-bid"), q.bid);
+                    bbUpdateQuoteCell(panel.querySelector(".bb-quote-grid .bb-ask"), q.ask);
+                }
+            });
+        }
+
+        (function bbInitQuoteStream() {
+            if (typeof EventSource === "undefined") return;
+            var es = new EventSource("/api/v1/stream/quotes");
+            es.onmessage = function (ev) {
+                try {
+                    var data = JSON.parse(ev.data);
+                    if (data.type === "heartbeat") return;
+                    if (data.type === "quotes") bbApplyQuotes(data.quotes);
+                } catch (err) { /* ignore malformed */ }
+            };
+            window.bbQuoteStream = {
+                resubscribe: function () { /* EventSource stays open; DOM rows refreshed */ },
+                close: function () { es.close(); },
+            };
+        })();
     </script>
 </body>
 </html>

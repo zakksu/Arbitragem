@@ -424,6 +424,20 @@ def cmd_open(_: argparse.Namespace) -> int:
     return 0
 
 
+def cmd_paper_today(_: argparse.Namespace) -> int:
+    if not _http_ok(API_URL):
+        print("[dev] API not running. Starting stack...")
+        ns = argparse.Namespace(wait=True, timeout=DEFAULT_TIMEOUT, json=False, open=False)
+        if cmd_start(ns) != 0:
+            return 1
+    py = _python()
+    env = _env()
+    env["PAPER_TRADING_MODE"] = "true"
+    print("[dev] Running paper_trade_today...")
+    result = subprocess.run([str(py), str(ROOT / "scripts" / "paper_trade_today.py")], env=env, cwd=ROOT)
+    return result.returncode
+
+
 def main() -> int:
     parser = argparse.ArgumentParser(description="Arbitragem dev orchestrator")
     sub = parser.add_subparsers(dest="command", required=True)
@@ -448,6 +462,9 @@ def main() -> int:
 
     p_open = sub.add_parser("open", help="Open dashboard (start if needed)")
     p_open.set_defaults(func=cmd_open)
+
+    p_paper = sub.add_parser("paper-today", help="Scan + paper confirm/execute top ideas")
+    p_paper.set_defaults(func=cmd_paper_today)
 
     args = parser.parse_args()
     try:
