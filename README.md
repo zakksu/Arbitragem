@@ -3,13 +3,36 @@
 Self-hosted web dashboard for **B3 IBOV scalping** (Filipe Core14 + BOVA options), built around your existing stack:
 
 - **ProfitChart / NTSL** — data, tape, Tick-a-Tick backtests, execution export
-- **Clear Corretora Smart Trader API** — execution & account sync
 - **Ollama** — symbol reports, journal analysis, NTSL optimization
 - **Python** — autonomous scans, trade ideas, backtest gates, performance tracking
 
-**Primary UI (3.0-beta):** http://localhost:8000/board — Structure Deck + risk cockpit + builder
+**Primary UI (3.0.0):** http://localhost:8000/board — Structure Deck cockpit
 
 **Legacy UI:** http://localhost:8501 — Streamlit (maintenance / admin)
+
+---
+
+## What's new in 3.0.0 (Structure Deck GA)
+
+- **Version** `3.0.0` — opportunity rail, layout presets, portfolio backtest, GA polish
+- **Opportunity rail** — PETR/PRIO + steel basket z-scores in board footer
+- **Layout presets** — scalp / options_hedge / pairs column widths (SQLite + API)
+- **Portfolio backtest** — `GET /api/v1/portfolio/backtest` + setup drawer panel
+- **Delta-aware BOVA hedge** — `bova_hedge` sizing via basket beta vs IBOV
+- **Multi-leg NTSL** — per-structure templates (covered call, vertical, collar, BOVA, pair)
+- **ProfitDLL bridge** — `profit_dll_bridge.py` preferred when `PROFIT_DLL_PATH` set
+- **Kill switch** — STOP ALL pauses strategies + rejects pending ideas
+- **VPS ready** — Caddy `/board` route, `BOARD_AUTH`, Tailscale notes in docs
+- **Walk-forward** — auto-promote on by default (`WALK_FORWARD_AUTO_PROMOTE=true`)
+
+Quick start:
+
+```powershell
+.\.venv\Scripts\python.exe scripts/dev.py start --wait --open
+# Structure Deck → http://localhost:8000/board
+```
+
+See [docs/STRUCTURES.md](docs/STRUCTURES.md) for structure types and confirm flow.
 
 ---
 

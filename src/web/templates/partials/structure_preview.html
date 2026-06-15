@@ -7,6 +7,9 @@
     </li>
     {% endfor %}
 </ul>
+{% if hedge_info %}
+<p class="bb-muted">BOVA hedge: {{ hedge_info.bova_put_qty }} puts · β {{ hedge_info.cash_beta }} · ratio {{ hedge_info.hedge_ratio }}</p>
+{% endif %}
 {% if notional %}
 <p class="bb-muted">Notional stub ~ R$ {{ "%.0f"|format(notional) }}</p>
 {% endif %}

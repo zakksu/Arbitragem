@@ -16,6 +16,7 @@ from src.models import init_db
 from src.scheduler import start_scheduler, stop_scheduler
 from src.services.strategy_manager import StrategyService
 from src.models import get_session_factory
+from src.web.board_auth import BoardAuthMiddleware
 
 
 @asynccontextmanager
@@ -47,6 +48,7 @@ def create_app() -> FastAPI:
         allow_methods=["*"],
         allow_headers=["*"],
     )
+    app.add_middleware(BoardAuthMiddleware)
     app.include_router(router, prefix="/api/v1")
     app.include_router(web_router)
     app.mount("/static", StaticFiles(directory=str(WEB_ROOT / "static")), name="static")

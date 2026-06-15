@@ -224,16 +224,21 @@ async def structure_preview_partial(request: Request, symbol: str):
     structure_type = str(form.get("structure_type", "covered_call"))
     side = str(form.get("side", "long"))
     session = __import__("src.models", fromlist=["get_session_factory"]).get_session_factory()()
+    hedge_info = None
     try:
         svc = TradeIdeaService(session)
         legs = svc._legs_for_structure(structure_type, sym, side, get_profit_client().get_quote(sym))
         notional = sum(int(l.get("quantity", 100)) * 10.0 for l in legs)
+        if structure_type == "bova_hedge":
+            from src.services.bova_hedge import suggest_bova_hedge
+
+            hedge_info = suggest_bova_hedge(sym, 100)
     finally:
         session.close()
     return TEMPLATES.TemplateResponse(
         request,
         "partials/structure_preview.html",
-        {"legs": legs, "notional": notional},
+        {"legs": legs, "notional": notional, "hedge_info": hedge_info},
     )
 
 
@@ -387,6 +392,58 @@ async def sector_strip_partial(request: Request):
         request,
         "partials/sector_strip.html",
         {"baskets": baskets, "labels": _SECTOR_LABELS},
+    )
+
+
+@router.get("/board/partials/opportunity-rail", response_class=HTMLResponse)
+async def opportunity_rail_partial(request: Request):
+    data = await _fetch_json(request, "/api/v1/signals/opportunity-rail")
+    rail = data if isinstance(data, dict) else {"signals": [], "sector_heat": {}}
+    return TEMPLATES.TemplateResponse(
+        request,
+        "partials/opportunity_rail.html",
+        {"rail": rail},
+    )
+
+
+@router.get("/board/partials/layout-presets", response_class=HTMLResponse)
+async def layout_presets_partial(request: Request):
+    data = await _fetch_json(request, "/api/v1/board/layouts")
+    layouts = []
+    if isinstance(data, dict):
+        layouts = list(data.get("layouts") or [])
+    return TEMPLATES.TemplateResponse(
+        request,
+        "partials/layout_presets.html",
+        {"layouts": layouts},
+    )
+
+
+@router.post("/board/partials/layout/{preset}", response_class=HTMLResponse)
+async def apply_layout_partial(request: Request, preset: str):
+    base = _api_base(request)
+    try:
+        async with httpx.AsyncClient(timeout=5.0) as client:
+            await client.post(f"{base}/api/v1/board/layout/{preset}")
+    except httpx.HTTPError:
+        pass
+    return HTMLResponse("", status_code=204)
+
+
+@router.get("/board/partials/portfolio-backtest", response_class=HTMLResponse)
+async def portfolio_backtest_partial(request: Request):
+    from src.models import get_session_factory
+    from src.services.portfolio_backtest import run_portfolio_backtest
+
+    session = get_session_factory()()
+    try:
+        report = run_portfolio_backtest(session)
+    finally:
+        session.close()
+    return TEMPLATES.TemplateResponse(
+        request,
+        "partials/portfolio_backtest.html",
+        {"report": report},
     )
 
 

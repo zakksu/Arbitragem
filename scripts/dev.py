@@ -199,7 +199,17 @@ def _start_profit_bridge_if_needed() -> int | None:
         return None
     _ensure_env_profit_bridge()
     py = str(_python())
-    bridge_script = os.getenv("PROFIT_BRIDGE_SCRIPT", "profit_bridge_stub.py")
+    dll_path = os.getenv("PROFIT_DLL_PATH", "").strip()
+    if not dll_path and (ROOT / ".env").exists():
+        for line in (ROOT / ".env").read_text(encoding="utf-8").splitlines():
+            if line.startswith("PROFIT_DLL_PATH="):
+                dll_path = line.split("=", 1)[1].strip().strip('"')
+                break
+    if dll_path and Path(dll_path).exists() and sys.platform == "win32":
+        bridge_script = "profit_dll_bridge.py"
+        print(f"[dev] PROFIT_DLL_PATH set — using {bridge_script}")
+    else:
+        bridge_script = os.getenv("PROFIT_BRIDGE_SCRIPT", "profit_bridge_stub.py")
     bridge_path = ROOT / "scripts" / bridge_script
     if not bridge_path.exists():
         bridge_path = ROOT / "scripts" / "profit_bridge_stub.py"

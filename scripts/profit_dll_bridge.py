@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
 """ProfitDLL HTTP bridge — Windows entry point for real Nelogica integration.
 
-Falls back to synthetic quotes when PROFIT_DLL_PATH is missing or unloadable.
-Same HTTP contract as profit_bridge_stub.py so the VPS API needs no changes.
+Prefers ProfitDLL when PROFIT_DLL_PATH is set and loadable; otherwise delegates
+all endpoints to profit_bridge_stub.py (same HTTP contract as VPS API).
 
 Usage (Windows, next to ProfitChart):
     set PROFIT_DLL_PATH=C:\\Nelogica\\Profit\\ProfitDLL.dll
@@ -29,10 +29,15 @@ _spec = importlib.util.spec_from_file_location("profit_bridge_stub", _STUB)
 _stub = importlib.util.module_from_spec(_spec)
 assert _spec.loader is not None
 _spec.loader.exec_module(_stub)
-IBOV_TOP20 = _stub.IBOV_TOP20
-_quote_for = _stub._quote_for
 
-app = FastAPI(title="Profit DLL Bridge", version="1.0.0")
+CORE14 = _stub.CORE14
+BOVA_UNDERLYING = _stub.BOVA_UNDERLYING
+_quote_for = _stub._quote_for
+_build_chain = _stub._build_chain
+_synthetic_greeks = _stub._synthetic_greeks
+_max_pain_from_chain = _stub._max_pain_from_chain
+
+app = FastAPI(title="Profit DLL Bridge", version="3.0.0")
 _DLL_LOADED = False
 
 
@@ -59,15 +64,18 @@ def _startup() -> None:
     _try_load_dll()
 
 
+def _mode() -> str:
+    return "dll" if _DLL_LOADED else "fallback"
+
+
 @app.get("/health")
 def health():
-    mode = "dll" if _DLL_LOADED else "fallback"
     return {
         "status": "ok",
-        "mode": mode,
-        "version": "1.0.0",
+        "mode": _mode(),
+        "version": "3.0.0",
         "dll_path": os.getenv("PROFIT_DLL_PATH", ""),
-        "symbols": "ibov_top20",
+        "symbols": "core14+bova",
     }
 
 
@@ -78,7 +86,62 @@ def quote(symbol: str):
 
 @app.get("/quotes")
 def all_quotes():
-    return [_quote_for(s) for s in IBOV_TOP20]
+    symbols = CORE14 + [BOVA_UNDERLYING]
+    return [_quote_for(s) for s in symbols]
+
+
+@app.get("/options/bova")
+def bova_options_chain():
+    return _build_chain(BOVA_UNDERLYING, strike_range=3)
+
+
+@app.get("/options/stock/{underlying}")
+def stock_options(underlying: str):
+    return _build_chain(underlying.upper(), strike_range=2)
+
+
+@app.get("/options/chain/{underlying}")
+def unified_options_chain(underlying: str):
+    sym = underlying.upper()
+    if sym in (BOVA_UNDERLYING, "BOVA"):
+        chain = _build_chain(BOVA_UNDERLYING, strike_range=3)
+    else:
+        chain = _build_chain(sym, strike_range=2)
+    mp = _max_pain_from_chain(chain)
+    if mp:
+        chain["max_pain"] = mp
+    return chain
+
+
+@app.get("/greeks/{symbol}")
+def greeks(symbol: str):
+    sym = symbol.upper()
+    seed = int(hashlib.md5(sym.encode()).hexdigest()[:8], 16)
+    if "X" in sym[4:] or sym.startswith("BOVAX"):
+        opt_type = "call"
+        strike = float("".join(c for c in sym if c.isdigit()) or seed % 100)
+    elif "Y" in sym[4:] or sym.startswith("BOVAY"):
+        opt_type = "put"
+        strike = float("".join(c for c in sym if c.isdigit()) or seed % 100)
+    else:
+        return {
+            "symbol": sym,
+            "delta": 1.0,
+            "gamma": 0.0,
+            "theta": 0.0,
+            "vega": 0.0,
+            "iv": 0.0,
+            "source": _mode(),
+        }
+    und_last = _quote_for(sym[:4] + "4" if len(sym) > 6 else BOVA_UNDERLYING)["last"]
+    g = _synthetic_greeks(sym, opt_type, strike, und_last)
+    g["source"] = _mode()
+    return g
+
+
+@app.get("/iv-rank/{underlying}")
+def iv_rank(underlying: str):
+    return _stub.iv_rank(underlying)
 
 
 @app.get("/positions")
@@ -88,21 +151,14 @@ def positions():
 
 @app.get("/trades/today")
 def trades_today():
-    now = datetime.utcnow().isoformat()
-    seed = int(hashlib.md5(b"PETR4").hexdigest()[:8], 16)
-    return {
-        "trades": [
-            {
-                "id": "DLL-T-001",
-                "symbol": "PETR4",
-                "side": "buy",
-                "quantity": 100,
-                "price": round(8.0 + (seed % 100) / 100.0, 2),
-                "fees": 0.0,
-                "executed_at": now,
-            }
-        ]
-    }
+    return _stub.trades_today()
+
+
+@app.post("/backtest/run")
+def run_backtest(payload: dict):
+    result = _stub.run_backtest(payload)
+    result["source"] = _mode()
+    return result
 
 
 if __name__ == "__main__":

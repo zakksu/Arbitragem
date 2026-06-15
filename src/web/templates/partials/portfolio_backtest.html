@@ -1,0 +1,17 @@
+<div class="bb-portfolio-bt">
+    <div class="bb-portfolio-bt-head">
+        <strong>Portfolio backtest</strong>
+        <span class="{% if report.gates_pass %}bb-pill-paper{% else %}bb-pill-live{% endif %}">
+            {% if report.gates_pass %}Gates OK{% else %}Review{% endif %}
+        </span>
+    </div>
+    <div class="bb-portfolio-bt-grid">
+        <div><span>PF</span><strong>{{ report.portfolio_profit_factor }}</strong></div>
+        <div><span>Max DD</span><strong>{{ report.portfolio_max_drawdown_pct }}%</strong></div>
+        <div><span>Trades</span><strong>{{ report.total_trades }}</strong></div>
+        <div><span>Structures</span><strong>{{ report.concurrent_structures }}</strong></div>
+        <div><span>Margin peak</span><strong>R$ {{ "%.0f"|format(report.margin_peak_brl) }}</strong></div>
+        <div><span>Period</span><strong>{{ report.period_days }}d</strong></div>
+    </div>
+    <p class="bb-muted">Source: {{ report.source }} · {{ report.generated_at[:10] if report.generated_at else "—" }}</p>
+</div>

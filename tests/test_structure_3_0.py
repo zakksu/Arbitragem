@@ -89,9 +89,9 @@ def test_multi_leg_ntsl_export():
         session.add(idea)
         session.flush()
         ntsl = TradeIdeaService._ntsl_for_idea(idea)
-        assert "multi-leg covered_call" in ntsl
-        assert "Leg1" in ntsl
-        assert "Leg2" in ntsl
+        assert "covered call" in ntsl.lower()
+        assert "Leg 1" in ntsl
+        assert "Leg 2" in ntsl
         assert "PETRX39" in ntsl
     finally:
         session.close()

@@ -217,6 +217,19 @@ class TradeIdea(Base):
     executed_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
 
 
+class BoardLayout(Base):
+    """Saved blackboard column layout presets (3.0-rc)."""
+
+    __tablename__ = "board_layouts"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    name: Mapped[str] = mapped_column(String(40), unique=True, index=True)
+    preset: Mapped[str] = mapped_column(String(40), default="scalp")
+    columns: Mapped[dict | None] = mapped_column(JSON, nullable=True)
+    is_default: Mapped[bool] = mapped_column(Boolean, default=False)
+    updated_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+
 def get_engine():
     settings = get_settings()
     connect_args = {}
@@ -260,3 +273,11 @@ def init_db() -> None:
             with engine.connect() as conn:
                 conn.execute(text("PRAGMA journal_mode=WAL"))
                 conn.commit()
+
+    from src.services.board_layout import BoardLayoutService
+
+    session = get_session_factory()()
+    try:
+        BoardLayoutService(session).seed_defaults()
+    finally:
+        session.close()

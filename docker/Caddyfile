@@ -8,6 +8,14 @@
         reverse_proxy api:8000
     }
 
+    handle /board* {
+        reverse_proxy api:8000
+    }
+
+    handle /static/* {
+        reverse_proxy api:8000
+    }
+
     handle {
         reverse_proxy dashboard:8501
     }

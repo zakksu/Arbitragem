@@ -277,7 +277,9 @@ class TradeIdeaService:
 
         ntsl_path = None
         if settings.execution_backend == "ntsl":
-            ntsl_code = self._ntsl_for_idea(idea)
+            from src.services.ntsl_templates import ntsl_for_idea
+
+            ntsl_code = ntsl_for_idea(idea)
             ntsl_path = get_profit_client().export_ntsl_strategy(
                 f"idea_{idea.id}_{idea.symbol}", ntsl_code
             )
@@ -296,6 +298,20 @@ class TradeIdeaService:
 
         self.session.commit()
         self.session.refresh(idea)
+        from src.services.system_audit import log_event
+
+        log_event(
+            self.session,
+            level="info",
+            component="trade_ideas",
+            message=f"Idea #{idea.id} confirmed (paper)",
+            details={
+                "symbol": idea.symbol,
+                "structure_type": idea.structure_type,
+                "legs": len(idea.legs or []),
+            },
+        )
+        self.session.commit()
         return idea
 
     @staticmethod
@@ -413,6 +429,9 @@ class TradeIdeaService:
                 },
             ]
         if structure == "bova_hedge":
+            from src.services.bova_hedge import suggest_bova_hedge
+
+            hedge = suggest_bova_hedge(sym, 100)
             bova = self.profit.get_option_chain("BOVA11")
             b_puts = bova.get("puts") or []
             b_put = b_puts[len(b_puts) // 2] if b_puts else None
@@ -424,9 +443,10 @@ class TradeIdeaService:
                     {
                         "symbol": b_put["symbol"],
                         "side": "buy",
-                        "quantity": 50,
+                        "quantity": hedge["bova_put_qty"],
                         "leg_type": "bova_put",
                         "strike": b_put.get("strike"),
+                        "hedge_ratio": hedge["hedge_ratio"],
                     }
                 )
             return legs
@@ -436,41 +456,9 @@ class TradeIdeaService:
 
     @staticmethod
     def _ntsl_for_idea(idea: TradeIdea) -> str:
-        legs = idea.legs or []
-        if len(legs) <= 1:
-            side = idea.side or "neutral"
-            return f"""// Arbitragem — idea #{idea.id} {idea.symbol} ({side})
-// Import in Profit Editor → arm on {idea.symbol}
-input
-  StopTicks({idea.stop_ticks or 5});
-  TargetTicks({idea.target_ticks or 8});
-begin
-  // Single-leg scalp — wire from backtest proof
-end;
-"""
-        header = (
-            f"// Arbitragem 3.0 — multi-leg {idea.structure_type} idea #{idea.id}\n"
-            f"// Symbol: {idea.symbol} · legs: {len(legs)}\n"
-        )
-        leg_blocks: list[str] = []
-        for idx, leg in enumerate(legs, start=1):
-            sym = leg.get("symbol", idea.symbol)
-            side = leg.get("side", "buy")
-            qty = leg.get("quantity", 100)
-            leg_type = leg.get("leg_type", "cash")
-            strike = leg.get("strike")
-            strike_line = f"  Strike({strike});\n" if strike else ""
-            leg_blocks.append(
-                f"""// Leg {idx}: {leg_type} {side} {qty} {sym}
-procedure Leg{idx}();
-begin
-  SetAsset("{sym}");
-  SetQuantity({qty});
-{strike_line}  // TODO: map {side} for {leg_type}
-end;
-"""
-            )
-        return header + "\n".join(leg_blocks) + "\nbegin\n  // Arm legs in sequence (cash first)\nend;\n"
+        from src.services.ntsl_templates import ntsl_for_idea
+
+        return ntsl_for_idea(idea)
 
     def _log_paper_trades(self, idea: TradeIdea) -> None:
         from src.integrations.clear_api import ClearOrder, get_clear_client

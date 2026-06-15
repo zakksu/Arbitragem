@@ -70,6 +70,12 @@
     </main>
 
     <footer class="bb-footer">
+        <div id="opportunity-rail" class="bb-footer-opportunity"
+             hx-get="/board/partials/opportunity-rail"
+             hx-trigger="load, every 30s"
+             hx-swap="innerHTML">
+            <span class="bb-muted">Loading opportunity rail…</span>
+        </div>
         <div id="sector-strip" class="bb-footer-sectors"
              hx-get="/board/partials/sector-strip"
              hx-trigger="load"
@@ -80,6 +86,22 @@
     </footer>
 
     <script>
+        document.body.addEventListener("htmx:afterRequest", function (evt) {
+            var preset = evt.detail.elt && evt.detail.elt.dataset && evt.detail.elt.dataset.preset;
+            if (!preset) return;
+            var cols = {
+                scalp: { watch: "220px", ideas: "300px" },
+                options_hedge: { watch: "200px", ideas: "340px" },
+                pairs: { watch: "240px", ideas: "280px" }
+            };
+            var c = cols[preset] || cols.scalp;
+            document.documentElement.style.setProperty("--arb-watch-w", c.watch);
+            document.documentElement.style.setProperty("--arb-ideas-w", c.ideas);
+            document.querySelectorAll(".bb-btn-layout").forEach(function (b) {
+                b.classList.toggle("is-active", b.dataset.preset === preset);
+            });
+        });
+
         document.body.addEventListener("htmx:afterSwap", function (evt) {
             if (evt.detail.target.id === "watchlist") {
                 var count = evt.detail.target.querySelector("[data-count]");

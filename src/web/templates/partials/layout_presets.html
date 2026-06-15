@@ -1,0 +1,12 @@
+<div class="bb-layout-presets">
+    <span class="bb-muted">Layout</span>
+    {% for layout in layouts %}
+    <button type="button"
+            class="bb-btn-layout {% if layout.is_default %}is-active{% endif %}"
+            hx-post="/board/partials/layout/{{ layout.preset }}"
+            hx-swap="none"
+            data-preset="{{ layout.preset }}">
+        {{ layout.name }}
+    </button>
+    {% endfor %}
+</div>

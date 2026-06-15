@@ -35,7 +35,18 @@
 | `POST /setup/test` | Probe Profit/Clear/BOVA | W2.6 test button |
 | `GET /integrations/profit/test` | Includes `bova_chain` | Settings |
 
-### 2.0 — coming (Supervisor builds, Worker wires)
+### 3.0 Structure Deck (GA)
+
+| Endpoint | Purpose | UI consumer |
+|----------|---------|-------------|
+| `GET /signals/opportunity-rail` | PETR/PRIO + steel z-scores | `opportunity_rail.html` footer |
+| `GET /portfolio/backtest` | Combined Core14 book simulation | Setup drawer partial |
+| `GET /board/layouts` | Layout preset list | Status bar presets |
+| `POST /board/layout/{preset}` | Activate column layout | HTMX preset buttons |
+| `GET /risk/cockpit` | Net delta, sectors, margin | Risk strip |
+| `POST /ideas/from-structure` | Create multi-leg idea | Structure builder |
+| `POST /walk-forward/promote` | Promote gated ideas | Scheduler / manual |
+| `POST /strategies/pause-all` | Kill switch + reject pending | STOP ALL button |
 
 | Endpoint | Purpose | UI consumer |
 |----------|---------|-------------|

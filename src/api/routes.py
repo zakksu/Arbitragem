@@ -485,6 +485,9 @@ def stock_options(underlying: str):
 
 @router.post("/strategies/pause-all")
 def pause_all_strategies(db: Session = Depends(get_db)):
+    from src.models import TradeIdea
+    from src.services.system_audit import log_event
+
     paused = 0
     for s in db.query(Strategy).filter(Strategy.status == "active").all():
         try:
@@ -492,7 +495,62 @@ def pause_all_strategies(db: Session = Depends(get_db)):
             paused += 1
         except ValueError:
             pass
-    return {"paused": paused}
+
+    rejected = 0
+    for idea in db.query(TradeIdea).filter(TradeIdea.status.in_(["detected", "backtested"])).all():
+        idea.status = "rejected"
+        idea.rationale = (idea.rationale or "") + "\n[Kill switch] Pending idea cancelled."
+        rejected += 1
+
+    log_event(
+        db,
+        level="warning",
+        component="kill_switch",
+        message=f"Kill switch — paused {paused} strategies, rejected {rejected} ideas",
+        details={"paused_strategies": paused, "rejected_ideas": rejected},
+    )
+    db.commit()
+    return {"paused": paused, "rejected_ideas": rejected}
+
+
+@router.get("/signals/opportunity-rail")
+def opportunity_rail():
+    from src.services.opportunity_rail import build_opportunity_rail
+
+    return build_opportunity_rail()
+
+
+@router.get("/portfolio/backtest")
+def portfolio_backtest(db: Session = Depends(get_db)):
+    from src.services.portfolio_backtest import run_portfolio_backtest
+
+    return run_portfolio_backtest(db)
+
+
+@router.get("/board/layouts")
+def list_board_layouts(db: Session = Depends(get_db)):
+    from src.services.board_layout import BoardLayoutService
+
+    return {"layouts": BoardLayoutService(db).list_presets()}
+
+
+@router.get("/board/layout/active")
+def active_board_layout(db: Session = Depends(get_db)):
+    from src.services.board_layout import BoardLayoutService
+
+    return BoardLayoutService(db).get_active()
+
+
+@router.post("/board/layout/{preset}")
+def set_board_layout(preset: str, db: Session = Depends(get_db)):
+    from src.services.board_layout import DEFAULT_PRESETS, BoardLayoutService
+
+    name = preset.strip().lower()
+    if name not in DEFAULT_PRESETS:
+        raise HTTPException(404, f"Unknown layout preset: {preset}")
+    svc = BoardLayoutService(db)
+    row = svc.save_preset(name, DEFAULT_PRESETS[name], is_default=True)
+    return row
 
 
 @router.get("/stream/quotes")

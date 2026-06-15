@@ -88,9 +88,14 @@ class Settings(BaseSettings):
     max_pain_signal_enabled: bool = True
     greeks_stub_mode: bool = True
     max_portfolio_net_delta: float = 0.5
-    walk_forward_auto_promote: bool = False
+    walk_forward_auto_promote: bool = True
     walk_forward_interval_hours: int = 6
     walk_forward_promote_folds: int = 4
+
+    # 3.0 GA — board auth + VPS
+    board_auth_enabled: bool = False
+    board_username: str = "filipe"
+    board_password: str = ""
 
     journal_auto_analyze: bool = True
     journal_analyze_limit: int = 5

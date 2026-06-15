@@ -474,14 +474,17 @@ body {
 
 .bb-footer {
     padding: 0.4rem 0.85rem;
-    background: var(--arb-panel);
+    background: #0a0a0a;
     border-top: 1px solid var(--arb-border);
     font-size: 0.72rem;
     color: var(--arb-muted);
     display: flex;
-    align-items: center;
-    gap: 1rem;
-    flex-wrap: wrap;
+    flex-direction: column;
+    gap: 0.35rem;
+}
+
+.bb-footer-opportunity {
+    overflow-x: auto;
 }
 
 .bb-footer-sectors {
@@ -555,16 +558,25 @@ body {
 @media (max-width: 768px) {
     .bb-main {
         grid-template-columns: 1fr;
-        grid-template-rows: auto 1fr auto;
+        grid-template-rows: auto 1fr;
     }
 
-    .bb-col-watch {
-        max-height: 180px;
+    .bb-col-watch,
+    .bb-col-board,
+    .bb-footer-hint,
+    .bb-layout-slot,
+    .bb-footer-sectors {
+        display: none !important;
     }
 
     .bb-col-ideas {
-        max-height: 220px;
-        border-top: 1px solid var(--arb-border);
+        max-height: none;
+        border-top: none;
+    }
+
+    #risk-cockpit-wrap .bb-risk-detail,
+    #risk-cockpit-wrap .bb-sector-bars {
+        display: none;
     }
 }
 
@@ -1151,4 +1163,111 @@ body {
     padding: 0.45rem 0.55rem 0.65rem;
     border-top: 1px solid var(--arb-border);
     font-size: 0.72rem;
+}
+
+/* ── Opportunity rail + layout presets (3.0 GA) ───────────── */
+
+.bb-opportunity-rail {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.45rem;
+    align-items: center;
+}
+
+.bb-opp-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+    padding: 0.2rem 0.5rem;
+    border-radius: var(--arb-radius);
+    border: 1px solid var(--arb-border);
+    background: var(--arb-panel);
+    font-size: 0.68rem;
+}
+
+.bb-opp-chip.bb-opp-hot {
+    border-color: var(--arb-accent-dim);
+    background: #1a1508;
+}
+
+.bb-opp-label {
+    font-weight: 600;
+    color: var(--arb-accent);
+}
+
+.bb-opp-z {
+    font-family: var(--arb-mono);
+    color: var(--arb-text);
+}
+
+.bb-opp-bias {
+    color: var(--arb-muted);
+    font-size: 0.62rem;
+}
+
+.bb-opp-heat {
+    font-size: 0.62rem;
+    color: var(--arb-muted);
+    padding: 0.15rem 0.35rem;
+    border: 1px solid var(--arb-border);
+    border-radius: 3px;
+}
+
+.bb-layout-slot {
+    margin-left: 0.5rem;
+}
+
+.bb-layout-presets {
+    display: flex;
+    align-items: center;
+    gap: 0.35rem;
+    flex-wrap: wrap;
+}
+
+.bb-btn-layout {
+    padding: 0.15rem 0.45rem;
+    font-size: 0.65rem;
+    background: var(--arb-panel-2);
+    border: 1px solid var(--arb-border);
+    color: var(--arb-muted);
+    border-radius: 3px;
+    cursor: pointer;
+}
+
+.bb-btn-layout.is-active {
+    border-color: var(--arb-accent);
+    color: var(--arb-accent);
+}
+
+.bb-portfolio-bt {
+    margin: 0.65rem 0;
+    padding: 0.55rem;
+    border: 1px solid var(--arb-border);
+    border-radius: var(--arb-radius);
+    background: var(--arb-panel);
+}
+
+.bb-portfolio-bt-head {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 0.45rem;
+}
+
+.bb-portfolio-bt-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 0.35rem;
+    font-size: 0.72rem;
+}
+
+.bb-portfolio-bt-grid span {
+    display: block;
+    color: var(--arb-muted);
+    font-size: 0.62rem;
+    text-transform: uppercase;
+}
+
+.bb-portfolio-bt-grid strong {
+    font-family: var(--arb-mono);
 }

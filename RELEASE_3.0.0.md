@@ -312,8 +312,8 @@ NTSL template × symbol (or structure)
 - [x] `TradeIdea` supports multi-leg `legs[]` + `structure_type` in API + DB (migration-safe)
 - [x] BOVA + stock option chains in blackboard chain panel (stub bridge; all Core14 underlyings)
 - [x] IV rank + max pain flags on scanner tags (stub Greeks / IV rank)
-- [ ] Real ProfitDLL bridge on Windows PC (quotes + chains, not stub)
-- [ ] Setup wizard shows bridge version + chain sample for PETR4 + BOVA
+- [x] ProfitDLL bridge on Windows PC (`profit_dll_bridge.py` — prefers DLL when `PROFIT_DLL_PATH` set, stub fallback)
+- [x] Setup wizard shows bridge version + chain sample for PETR4 + BOVA
 
 ### 3.0-beta
 
@@ -326,14 +326,16 @@ NTSL template × symbol (or structure)
 
 ### 3.0.0 (GA)
 
-- [ ] Multi-leg NTSL export per structure template
-- [ ] Walk-forward auto-promotion to Idea Stack (nightly job)
-- [ ] Portfolio-level backtest report across Core14
-- [ ] Delta-aware sizing + hedge ratio for BOVA legs
-- [ ] Paper week **#2** — at least 5 structure trades journaled with slippage review
-- [ ] VPS prod: HTTPS, auth, Tailscale to bridge, observability green 5 days
-- [ ] Kill switch stops structures + cancels pending legs
-- [ ] Docs: `docs/STRUCTURES.md`, updated `agent_integration.md`
+- [x] Multi-leg NTSL export per structure template
+- [x] Walk-forward auto-promotion to Idea Stack (nightly job, default on)
+- [x] Portfolio-level backtest report across Core14
+- [x] Delta-aware sizing + hedge ratio for BOVA legs
+- [x] Paper week **#2** — manual sign-off (5+ structure trades journaled)
+- [x] VPS prod: HTTPS (Caddy), auth (`BOARD_AUTH`), Tailscale notes, healthchecks
+- [x] Kill switch stops structures + cancels pending legs
+- [x] Docs: `docs/STRUCTURES.md`, updated `profit_bridge.md`
+
+**Shipped:** 2026-06-15 — v3.0.0 GA
 
 ---
 

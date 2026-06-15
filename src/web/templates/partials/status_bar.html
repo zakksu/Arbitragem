@@ -40,6 +40,10 @@
     {% endif %}
 
     <div class="bb-clock" id="bb-clock"></div>
+    <div id="layout-presets" class="bb-layout-slot"
+         hx-get="/board/partials/layout-presets"
+         hx-trigger="load"
+         hx-swap="innerHTML"></div>
     <div class="bb-toolbar">
         <button type="button" class="bb-btn-toolbar"
                 hx-post="/board/scan"

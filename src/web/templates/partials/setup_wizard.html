@@ -45,6 +45,11 @@
     </div>
     {% endif %}
 
+    <div hx-get="/board/partials/portfolio-backtest"
+         hx-trigger="load"
+         hx-swap="innerHTML"
+         class="bb-setup-portfolio-bt"></div>
+
     <div class="bb-setup-actions">
         <button type="button" class="bb-btn-confirm"
                 hx-post="/board/partials/setup/test"

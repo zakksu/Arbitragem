@@ -1,0 +1,12 @@
+<div class="bb-opportunity-rail" data-source="{{ rail.source or 'stub' }}">
+    {% for sig in rail.signals or [] %}
+    <div class="bb-opp-chip {% if sig.z_score|abs > 1 %}bb-opp-hot{% endif %}" title="{{ sig.symbols|join(', ') }}">
+        <span class="bb-opp-label">{{ sig.label }}</span>
+        <span class="bb-opp-z">z {{ "%.2f"|format(sig.z_score) }}</span>
+        <span class="bb-opp-bias">{{ sig.bias }}</span>
+    </div>
+    {% endfor %}
+    {% for basket, heat in (rail.sector_heat or {})|dictsort %}
+    <span class="bb-opp-heat" title="{{ basket }}">{{ basket }} {{ "%.2f"|format(heat) }}</span>
+    {% endfor %}
+</div>
