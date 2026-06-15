@@ -133,6 +133,14 @@
         function loadSymbolPanel(row) {
             var url = row.getAttribute("data-symbol-url");
             if (!url || typeof htmx === "undefined") return;
+            var sym = row.getAttribute("data-symbol") || "";
+            var panel = document.getElementById("symbol-panel");
+            if (panel) {
+                panel.innerHTML =
+                    '<div class="bb-panel-loading"><span class="bb-loading"></span><span>Loading ' +
+                    sym +
+                    "…</span></div>";
+            }
             htmx.ajax("GET", url, {
                 target: "#symbol-panel",
                 swap: "innerHTML",

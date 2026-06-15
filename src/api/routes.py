@@ -622,7 +622,7 @@ async def stream_quotes(symbols: str | None = None):
         )
         last_heartbeat = time.monotonic()
         while True:
-            batch = client.get_quotes_batch(syms)
+            batch = await asyncio.to_thread(client.get_quotes_batch, syms)
             payload = {
                 "type": "quotes",
                 "ts": time.time(),

@@ -2,17 +2,22 @@
 
 from __future__ import annotations
 
-from types import SimpleNamespace
-from typing import Any
+import asyncio
+from typing import Any, Callable, TypeVar
 
 import httpx
 from fastapi import APIRouter, Request
 from fastapi.responses import HTMLResponse
 
 from src.config import get_settings
-from src.integrations.profit_bridge import get_profit_client
+from src.integrations.profit_bridge import ProfitBridgeClient, get_profit_client
+from src.services.bootstrap_context import build_bootstrap
+from src.services.filipe_universe import load_filipe_core14, SECTOR_BASKETS
 from src.services.risk_cockpit import build_risk_cockpit
+from src.services.risk_summary import build_risk_summary
 from src.web.deps import TEMPLATES
+
+T = TypeVar("T")
 
 router = APIRouter(tags=["blackboard"])
 
@@ -39,10 +44,25 @@ def _api_base(request: Request) -> str:
     return str(request.base_url).rstrip("/")
 
 
-async def _fetch_json(request: Request, path: str) -> dict[str, Any] | list[Any] | None:
+async def _to_thread(fn: Callable[..., T], *args: Any, **kwargs: Any) -> T:
+    return await asyncio.to_thread(fn, *args, **kwargs)
+
+
+def _with_db(fn: Callable[..., T], *args: Any, **kwargs: Any) -> T:
+    from src.models import get_session_factory
+
+    session = get_session_factory()()
+    try:
+        return fn(session, *args, **kwargs)
+    finally:
+        session.close()
+
+
+async def _fetch_json(request: Request, path: str, *, timeout: float = 2.0) -> dict[str, Any] | list[Any] | None:
+    """Loopback GET for rare cases — prefer direct service calls."""
     url = f"{_api_base(request)}{path}"
     try:
-        async with httpx.AsyncClient(timeout=4.0) as client:
+        async with httpx.AsyncClient(timeout=timeout) as client:
             resp = await client.get(url)
             if resp.status_code == 200:
                 return resp.json()
@@ -51,11 +71,18 @@ async def _fetch_json(request: Request, path: str) -> dict[str, Any] | list[Any]
     return None
 
 
+def _universe_payload_sync() -> dict[str, Any]:
+    symbols = load_filipe_core14()
+    if symbols:
+        return {
+            "symbols": [s.to_dict() for s in symbols],
+            "sector_baskets": SECTOR_BASKETS,
+        }
+    return {"symbols": [dict(s) for s in _CORE14_FALLBACK], "sector_baskets": SECTOR_BASKETS}
+
+
 async def _fetch_universe_payload(request: Request) -> dict[str, Any]:
-    data = await _fetch_json(request, "/api/v1/universe/filipe-core14")
-    if isinstance(data, dict) and data.get("symbols"):
-        return data
-    return {"symbols": [dict(s) for s in _CORE14_FALLBACK], "sector_baskets": {}}
+    return await _to_thread(_universe_payload_sync)
 
 
 async def _fetch_universe(request: Request) -> list[dict[str, Any]]:
@@ -63,31 +90,26 @@ async def _fetch_universe(request: Request) -> list[dict[str, Any]]:
     return list(payload.get("symbols") or [])
 
 
+def _list_ideas_sync(limit: int = 20) -> list[dict[str, Any]]:
+    from src.services.trade_ideas import TradeIdeaService
+
+    def _load(session):
+        svc = TradeIdeaService(session)
+        ideas = svc.list_ideas(limit=limit)
+        return [svc.to_dict(i) for i in ideas]
+
+    return _with_db(_load)
+
+
 async def _fetch_ideas(request: Request) -> list[dict[str, Any]]:
-    data = await _fetch_json(request, "/api/v1/ideas")
-    if isinstance(data, dict):
-        if "ideas" in data:
-            return list(data["ideas"])
-        if "items" in data:
-            return list(data["items"])
-    if isinstance(data, list):
-        return data
-    return []
+    return await _to_thread(_list_ideas_sync)
 
 
 async def _fetch_bootstrap(request: Request) -> dict[str, Any] | None:
-    data = await _fetch_json(request, "/api/v1/bootstrap")
-    return data if isinstance(data, dict) else None
-
-
-def _coerce_quote(raw: Any):
-    if raw is None:
+    try:
+        return await _to_thread(_with_db, build_bootstrap)
+    except Exception:
         return None
-    if hasattr(raw, "last"):
-        return raw
-    if isinstance(raw, dict):
-        return SimpleNamespace(**raw)
-    return None
 
 
 def _quote_map(symbols: list[str]) -> dict[str, Any]:
@@ -96,14 +118,76 @@ def _quote_map(symbols: list[str]) -> dict[str, Any]:
     return {sym: batch[sym] for sym in symbols if sym in batch}
 
 
+def _fast_quote(symbol: str):
+    """Instant quote for first paint — SSE stream enriches live prices."""
+    return ProfitBridgeClient._synthetic_quote(symbol.strip().upper())
+
+
+def _watchlist_rows_sync(symbols: list[dict[str, Any]], sym_list: list[str]) -> list[dict[str, Any]]:
+    settings = get_settings()
+    profit = get_profit_client()
+    if settings.scanner_include_bova_options:
+        try:
+            chain = profit.get_bova_option_chain()
+            for leg in (chain.get("calls") or [])[:4] + (chain.get("puts") or [])[:4]:
+                sym = leg.get("symbol")
+                if sym and sym not in sym_list:
+                    sym_list.append(sym)
+                    symbols.append(
+                        {"symbol": sym, "name": sym, "sector": "BOVA opt", "strike": leg.get("strike")}
+                    )
+        except Exception:
+            pass
+    quotes = _quote_map(sym_list)
+    rows: list[dict[str, Any]] = []
+    for row in symbols:
+        sym = row.get("symbol", "")
+        enriched = dict(row)
+        q = quotes.get(sym)
+        if q:
+            enriched["last"] = q.last
+            enriched["bid"] = q.bid
+            enriched["ask"] = q.ask
+        rows.append(enriched)
+    return rows
+
+
+def _fetch_idea_sync(idea_id: int) -> dict[str, Any] | None:
+    from src.models import TradeIdea
+    from src.services.trade_ideas import TradeIdeaService
+
+    def _load(session):
+        idea = session.get(TradeIdea, idea_id)
+        if not idea:
+            return None
+        return TradeIdeaService(session).to_dict(idea)
+
+    return _with_db(_load)
+
+
+def _option_enrichment(sym: str) -> tuple[Any, Any, Any]:
+    client = get_profit_client()
+    und = "BOVA11" if sym.startswith("BOVA") or sym == "BOVA11" else sym
+    option_chain = client.get_option_chain(und)
+    max_pain = (option_chain or {}).get("max_pain")
+    if not max_pain and option_chain:
+        from src.services.structure_signals import compute_max_pain
+
+        max_pain = compute_max_pain(option_chain)
+    iv_data = client.get_iv_rank(und)
+    iv_rank_val = iv_data.get("iv_rank") if iv_data else None
+    return option_chain, max_pain, iv_rank_val
+
+
 async def _fetch_risk_summary(request: Request) -> dict[str, Any] | None:
-    data = await _fetch_json(request, "/api/v1/risk/summary")
-    return data if isinstance(data, dict) else None
+    try:
+        return await _to_thread(_with_db, build_risk_summary)
+    except Exception:
+        return None
 
 
 async def _fetch_idea(request: Request, idea_id: int) -> dict[str, Any] | None:
-    data = await _fetch_json(request, f"/api/v1/ideas/{idea_id}")
-    return data if isinstance(data, dict) else None
+    return await _to_thread(_fetch_idea_sync, idea_id)
 
 
 def _risk_cockpit():
@@ -149,28 +233,7 @@ async def status_partial(request: Request):
 async def watchlist_partial(request: Request):
     symbols = await _fetch_universe(request)
     sym_list = [s["symbol"] for s in symbols if s.get("symbol")]
-    settings = get_settings()
-    profit = get_profit_client()
-    if settings.scanner_include_bova_options and profit.is_available():
-        chain = profit.get_bova_option_chain()
-        for leg in (chain.get("calls") or [])[:4] + (chain.get("puts") or [])[:4]:
-            sym = leg.get("symbol")
-            if sym and sym not in sym_list:
-                sym_list.append(sym)
-                symbols.append(
-                    {"symbol": sym, "name": sym, "sector": "BOVA opt", "strike": leg.get("strike")}
-                )
-    quotes = _quote_map(sym_list)
-    rows: list[dict[str, Any]] = []
-    for row in symbols:
-        sym = row.get("symbol", "")
-        enriched = dict(row)
-        q = quotes.get(sym)
-        if q:
-            enriched["last"] = q.last
-            enriched["bid"] = q.bid
-            enriched["ask"] = q.ask
-        rows.append(enriched)
+    rows = await _to_thread(_watchlist_rows_sync, list(symbols), list(sym_list))
     active = request.query_params.get("active")
     return TEMPLATES.TemplateResponse(
         request,
@@ -185,38 +248,28 @@ async def symbol_partial(request: Request, symbol: str):
     universe = await _fetch_universe(request)
     meta = next((s for s in universe if s.get("symbol") == sym), None)
 
-    note: dict[str, Any] | None = None
-    note_data = await _fetch_json(request, f"/api/v1/board/{sym}/notes")
-    if isinstance(note_data, dict):
-        note = note_data
+    def _load_note(session):
+        from src.services.board_notes import BoardNotesService
 
-    quote = None
-    bootstrap = await _fetch_bootstrap(request)
-    if bootstrap:
-        quotes = bootstrap.get("quotes") or {}
-        quote = _coerce_quote(quotes.get(sym))
+        row = BoardNotesService(session).get(sym)
+        if not row:
+            return None
+        return {"symbol": row.symbol, "content": row.content, "updated_at": row.updated_at.isoformat()}
 
-    if quote is None:
-        quote = get_profit_client().get_quote(sym)
+    note = await _to_thread(_with_db, _load_note)
+    quote = await _to_thread(_fast_quote, sym)
 
-    client = get_profit_client()
     option_chain = None
     max_pain = None
     iv_rank_val = None
-    und = sym if len(sym) <= 6 and not sym.startswith("BOVAX") and not sym.startswith("BOVAY") else sym[:4] + "4"
-    if sym == "BOVA11" or sym.startswith("BOVA"):
-        und = "BOVA11"
-    try:
-        option_chain = client.get_option_chain(und)
-        max_pain = (option_chain or {}).get("max_pain")
-        if not max_pain and option_chain:
-            from src.services.structure_signals import compute_max_pain
-
-            max_pain = compute_max_pain(option_chain)
-        iv_data = client.get_iv_rank(und)
-        iv_rank_val = iv_data.get("iv_rank") if iv_data else None
-    except Exception:
-        pass
+    if sym.startswith("BOVA") or sym in ("BOVA11",):
+        try:
+            option_chain, max_pain, iv_rank_val = await asyncio.wait_for(
+                _to_thread(_option_enrichment, sym),
+                timeout=1.5,
+            )
+        except (asyncio.TimeoutError, Exception):
+            pass
 
     return TEMPLATES.TemplateResponse(
         request,
@@ -262,13 +315,7 @@ async def symbol_report_partial(request: Request, symbol: str):
 
 @router.get("/board/partials/risk-cockpit", response_class=HTMLResponse)
 async def risk_cockpit_partial(request: Request):
-    from src.models import get_session_factory
-
-    session = get_session_factory()()
-    try:
-        cockpit = build_risk_cockpit(session)
-    finally:
-        session.close()
+    cockpit = await _to_thread(_risk_cockpit)
     return TEMPLATES.TemplateResponse(
         request,
         "partials/risk_cockpit.html",
