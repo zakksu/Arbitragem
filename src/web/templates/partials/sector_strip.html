@@ -1,0 +1,8 @@
+<div class="bb-sector-strip" data-sector-count="{{ baskets|length }}">
+    {% for key, syms in baskets.items() %}
+    <div class="bb-sector-group" title="{{ syms|join(', ') }}">
+        <span class="bb-sector-label">{{ labels.get(key, key) }}</span>
+        <span class="bb-sector-syms">{{ syms|join(" · ") }}</span>
+    </div>
+    {% endfor %}
+</div>

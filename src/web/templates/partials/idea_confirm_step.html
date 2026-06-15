@@ -1,0 +1,34 @@
+<div class="bb-modal-backdrop" id="idea-modal">
+    <div class="bb-modal">
+        <p class="bb-modal-step">Step 2 of 2 — Confirm</p>
+        <h3>Confirm paper trade</h3>
+        <p class="bb-modal-sub">
+            #{{ idea.id }} · <strong>{{ idea.symbol }}</strong> · {{ (idea.side or "—")|upper }}
+        </p>
+
+        {% if idea.status != 'backtested' or not idea.backtest_proof %}
+        <div class="bb-proof bb-proof-warn bb-risk-banner">
+            No backtest proof — proceeding logs a paper confirm only.
+        </div>
+        {% endif %}
+
+        <p style="font-size:0.78rem;color:var(--arb-muted);margin:0.75rem 0 0">
+            This calls <code>POST /api/v1/ideas/{{ idea.id }}/confirm</code> and exports NTSL to Profit.
+        </p>
+
+        <div class="bb-modal-actions">
+            <button type="button" class="bb-btn-secondary"
+                    hx-get="/board/partials/ideas/{{ idea.id }}/review"
+                    hx-target="#idea-modal"
+                    hx-swap="outerHTML">← Back</button>
+            <button type="button" class="bb-btn-secondary"
+                    onclick="document.getElementById('idea-modal').remove()">Cancel</button>
+            <button type="button" class="bb-btn-confirm"
+                    hx-post="/board/partials/ideas/{{ idea.id }}/confirm"
+                    hx-target="#idea-stack"
+                    hx-swap="innerHTML">
+                Confirm → Paper
+            </button>
+        </div>
+    </div>
+</div>

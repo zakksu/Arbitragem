@@ -69,6 +69,12 @@ class BacktestRequest(BaseModel):
     profit_csv_path: str | None = None
 
 
+class ProfitBacktestRunRequest(BaseModel):
+    symbol: str = "PETR4"
+    strategy: str = "scalp_default"
+    period: str = "90d"
+
+
 class OptimizeRequest(BaseModel):
     strategy_id: int
     symbol: str = "BOVAX125"

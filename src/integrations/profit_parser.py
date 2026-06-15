@@ -158,6 +158,10 @@ class ProfitBacktestResult:
             "net_pnl": round(self.net_pnl, 4),
             "win_rate": round(self.win_rate, 4),
             "max_drawdown": round(self.max_drawdown, 4),
+            "max_drawdown_pct": round(
+                self.max_drawdown * 100.0 if 0 < self.max_drawdown <= 1.0 else self.max_drawdown,
+                4,
+            ),
             "profit_factor": round(self.profit_factor, 4),
             "sharpe": round(self.sharpe, 4),
             "gross_profit": round(self.gross_profit, 4),
@@ -166,6 +170,7 @@ class ProfitBacktestResult:
             "start_date": self.start_date,
             "end_date": self.end_date,
             "symbols": self.symbols,
+            "symbol": self.symbols[0] if self.symbols else None,
             "trades_preview": self.trades_preview,
             "raw_columns": self.raw_columns,
             "parse_warnings": self.parse_warnings,

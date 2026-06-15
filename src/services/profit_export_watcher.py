@@ -49,15 +49,8 @@ def scan_profit_exports(session: Session) -> dict:
         if not svc.passes_backtest_gate(metrics):
             continue
 
-        idea = (
-            session.query(TradeIdea)
-            .filter(TradeIdea.symbol == symbol, TradeIdea.status == "detected")
-            .order_by(TradeIdea.reliability.desc())
-            .first()
-        )
+        idea = svc.attach_backtest_proof(symbol, metrics)
         if idea:
-            idea.backtest_proof = metrics
-            idea.status = "backtested"
             promoted += 1
 
     session.commit()

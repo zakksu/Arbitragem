@@ -1,17 +1,57 @@
 <div class="bb-setup-panel">
-    <h3>Setup · v{{ setup.release or "?" }}</h3>
-    <p>Execution: <strong>{{ setup.execution_backend }}</strong> · Paper: {{ setup.paper_trading_mode }}</p>
+    <div class="bb-setup-head">
+        <h3>Setup · v{{ setup.release or "?" }}</h3>
+        <button type="button" class="bb-btn-secondary bb-setup-close"
+                onclick="document.getElementById('setup-panel').innerHTML=''">✕</button>
+    </div>
+    <p class="bb-setup-meta">
+        Execution: <strong>{{ setup.execution_backend or "—" }}</strong>
+        · Paper: <strong>{{ "yes" if setup.paper_trading_mode else "no" }}</strong>
+        · Scanner: <strong>{{ setup.scanner_mode or "—" }}</strong>
+    </p>
+
     <ul class="bb-setup-steps">
-        {% for step in setup.steps %}
+        {% for step in setup.steps or [] %}
         <li class="{% if step.ok %}ok{% else %}warn{% endif %}">
             <span>{{ "✓" if step.ok else "○" }}</span>
             <div>
                 <strong>{{ step.label }}</strong>
                 <small>{{ step.detail }}</small>
-                {% if not step.ok %}<em>{{ step.action }}</em>{% endif %}
+                {% if not step.ok and step.action %}<em>{{ step.action }}</em>{% endif %}
             </div>
         </li>
         {% endfor %}
     </ul>
-    <p class="bb-setup-docs">Docs: <code>docs/INTEGRATIONS_WIZARD.md</code></p>
+
+    {% if setup.backtest_gates %}
+    <p class="bb-setup-gates">
+        Backtest gates: PF ≥ <strong>{{ setup.backtest_gates.min_profit_factor }}</strong>
+        · DD ≤ <strong>{{ setup.backtest_gates.max_drawdown_pct }}%</strong>
+    </p>
+    {% endif %}
+
+    {% if test_result %}
+    <div class="bb-setup-test-result">
+        <strong>Probe results</strong>
+        <ul>
+            <li>Profit: {% if test_result.profit and test_result.profit.available %}OK{% else %}offline{% endif %}
+                {% if test_result.profit and test_result.profit.sample %}
+                — {{ test_result.profit.sample.symbol }} @ {{ test_result.profit.sample.last }}
+                {% endif %}
+            </li>
+            <li>Clear: {% if test_result.clear and test_result.clear.configured %}configured{% else %}mock{% endif %}</li>
+            <li>BOVA strikes: {{ test_result.bova_chain_strikes or 0 }}</li>
+        </ul>
+    </div>
+    {% endif %}
+
+    <div class="bb-setup-actions">
+        <button type="button" class="bb-btn-confirm"
+                hx-post="/board/partials/setup/test"
+                hx-target="#setup-panel"
+                hx-swap="innerHTML">
+            Test integrations
+        </button>
+        <span class="bb-muted">Docs: <code>{{ (setup.docs or {}).wizard or "docs/INTEGRATIONS_WIZARD.md" }}</code></span>
+    </div>
 </div>

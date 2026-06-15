@@ -43,11 +43,15 @@ def test_backtest_gate():
 
 
 def test_profit_backtest_proxy(client):
-    r = client.post("/api/v1/backtest/run?symbol=PETR4")
+    r = client.post(
+        "/api/v1/backtest/run",
+        json={"symbol": "PETR4", "strategy": "scalp_default", "period": "90d"},
+    )
     assert r.status_code == 200
     data = r.json()
     assert "profit_factor" in data
     assert "max_drawdown_pct" in data
+    assert "job_id" in data
 
 
 def test_pause_all_strategies(client):
@@ -67,3 +71,15 @@ def test_board_review_partial(client):
     r = client.get("/board/partials/setup")
     assert r.status_code == 200
     assert "Setup" in r.text
+
+
+def test_sector_strip_partial(client):
+    r = client.get("/board/partials/sector-strip")
+    assert r.status_code == 200
+    assert "bb-sector-strip" in r.text
+    assert "PETR4" in r.text or "Energia" in r.text
+
+
+def test_confirm_step_partial_not_found(client):
+    r = client.get("/board/partials/ideas/99999/confirm-step")
+    assert r.status_code == 404
