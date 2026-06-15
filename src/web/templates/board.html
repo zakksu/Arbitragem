@@ -17,6 +17,13 @@
     </header>
     <div id="setup-panel" class="bb-setup-drawer" aria-live="polite"></div>
 
+    <div id="risk-cockpit-wrap"
+         hx-get="/board/partials/risk-cockpit"
+         hx-trigger="load, every 20s"
+         hx-swap="innerHTML">
+        <div class="bb-risk-cockpit bb-risk-ok"><span class="bb-loading"></span></div>
+    </div>
+
     <main class="bb-main">
         <section class="bb-col bb-col-watch" aria-label="Watchlist">
             <div class="bb-col-head">

@@ -22,6 +22,7 @@ from src.api.schemas import (
     StrategyResponse,
     StrategyRiskUpdate,
     StrategyUpdate,
+    StructureIdeaRequest,
     SystemEventResponse,
     TradeResponse,
 )
@@ -36,10 +37,12 @@ from src.services.journal import JournalService
 from src.services.alerting import get_alert_service
 from src.services.optimizer import OptimizerService
 from src.services.risk_summary import build_risk_summary
+from src.services.risk_cockpit import build_risk_cockpit
 from src.services.scanner import PatternScanner
 from src.services.strategy_manager import StrategyService
 from src.services.trade_ideas import TradeIdeaService
 from src.services.walk_forward import WalkForwardOptimizer
+from src.services.walk_forward_promotion import run_walk_forward_promotion
 
 router = APIRouter()
 
@@ -316,6 +319,15 @@ def generate_trade_ideas(
     return {"generated": len(created), "ideas": [svc.to_dict(i) for i in created]}
 
 
+@router.post("/ideas/from-structure")
+def create_idea_from_structure(payload: StructureIdeaRequest, db: Session = Depends(get_db)):
+    svc = TradeIdeaService(db)
+    idea = svc.create_from_structure(
+        payload.symbol, payload.structure_type, payload.side
+    )
+    return svc.to_dict(idea)
+
+
 @router.post("/ideas/{idea_id}/confirm")
 def confirm_trade_idea(idea_id: int, db: Session = Depends(get_db)):
     try:
@@ -435,6 +447,15 @@ def option_greeks(symbol: str):
 @router.get("/options/iv-rank/{underlying}")
 def option_iv_rank(underlying: str):
     return get_profit_client().get_iv_rank(underlying)
+
+
+@router.post("/walk-forward/promote")
+def walk_forward_promote(db: Session = Depends(get_db)):
+    """Manual walk-forward promotion — scans exports + fold gate."""
+    settings = get_settings()
+    return run_walk_forward_promotion(
+        db, folds=settings.walk_forward_promote_folds
+    )
 
 
 @router.post("/walk-forward/run")
@@ -695,6 +716,11 @@ def ollama_chat(payload: OllamaChatRequest):
 @router.get("/account/summary")
 def account_summary():
     return get_clear_client().get_account_summary()
+
+
+@router.get("/risk/cockpit")
+def risk_cockpit(db: Session = Depends(get_db)):
+    return build_risk_cockpit(db)
 
 
 @router.get("/risk/summary", response_model=RiskSummaryResponse)

@@ -1,0 +1,41 @@
+<div class="bb-risk-cockpit bb-risk-{{ cockpit.gate_status }}" id="risk-cockpit"
+     hx-get="/board/partials/risk-cockpit"
+     hx-trigger="every 20s"
+     hx-swap="outerHTML">
+    <div class="bb-cockpit-metric">
+        <span class="bb-cockpit-label">Net Δ</span>
+        <strong class="{% if (cockpit.net_delta | abs) > cockpit.max_net_delta * 0.8 %}bb-pnl-neg{% endif %}">
+            {{ "%+.2f"|format(cockpit.net_delta) }}
+        </strong>
+        <em>/ ±{{ cockpit.max_net_delta }}</em>
+    </div>
+    <div class="bb-cockpit-metric">
+        <span class="bb-cockpit-label">Day P&amp;L</span>
+        <strong class="{% if cockpit.day_pnl >= 0 %}bb-pnl-pos{% else %}bb-pnl-neg{% endif %}">
+            R$ {{ "%.2f"|format(cockpit.day_pnl) }}
+        </strong>
+    </div>
+    {% if cockpit.top_sector %}
+    <div class="bb-cockpit-metric">
+        <span class="bb-cockpit-label">Sector</span>
+        <strong>{{ cockpit.top_sector }}</strong>
+        <em>{{ "%.0f"|format(cockpit.top_sector_pct) }}%</em>
+    </div>
+    {% endif %}
+    <div class="bb-cockpit-metric">
+        <span class="bb-cockpit-label">Margin est.</span>
+        <strong>R$ {{ "%.0f"|format(cockpit.margin_estimate_brl) }}</strong>
+    </div>
+    <div class="bb-cockpit-gate">
+        {% if cockpit.gate_status == 'blocked' %}
+        <span class="bb-gate-blocked">GATE BLOCKED</span>
+        {% elif cockpit.gate_status == 'warning' %}
+        <span class="bb-gate-warn">WARNING</span>
+        {% else %}
+        <span class="bb-gate-ok">OK</span>
+        {% endif %}
+        {% if cockpit.paper_trading_mode %}
+        <span class="bb-pill bb-pill-paper">Paper</span>
+        {% endif %}
+    </div>
+</div>

@@ -89,6 +89,8 @@ class Settings(BaseSettings):
     greeks_stub_mode: bool = True
     max_portfolio_net_delta: float = 0.5
     walk_forward_auto_promote: bool = False
+    walk_forward_interval_hours: int = 6
+    walk_forward_promote_folds: int = 4
 
     journal_auto_analyze: bool = True
     journal_analyze_limit: int = 5

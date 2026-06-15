@@ -12,6 +12,26 @@
         </div>
         {% endif %}
 
+        {% if cockpit and not cockpit.can_confirm %}
+        <div class="bb-proof bb-proof-warn bb-risk-banner">
+            Portfolio gate blocked — net Δ {{ "%+.2f"|format(cockpit.net_delta) }}
+            (limit ±{{ cockpit.max_net_delta }}). Margin est. R$ {{ "%.0f"|format(cockpit.margin_estimate_brl) }}.
+        </div>
+        {% elif cockpit %}
+        <div class="bb-proof bb-proof-pass" style="font-size:0.75rem">
+            Portfolio OK · net Δ {{ "%+.2f"|format(cockpit.net_delta) }}
+            · margin est. R$ {{ "%.0f"|format(cockpit.margin_estimate_brl) }}
+        </div>
+        {% endif %}
+
+        {% if idea.legs and idea.legs|length > 1 %}
+        <ul class="bb-legs" style="margin:0.5rem 0">
+            {% for leg in idea.legs %}
+            <li>{{ leg.side|upper }} {{ leg.quantity }} {{ leg.symbol }}</li>
+            {% endfor %}
+        </ul>
+        {% endif %}
+
         <p style="font-size:0.78rem;color:var(--arb-muted);margin:0.75rem 0 0">
             This calls <code>POST /api/v1/ideas/{{ idea.id }}/confirm</code> and exports NTSL to Profit.
         </p>

@@ -10,6 +10,11 @@
                 {{ idea.structure_type|replace("_", " ") }}
             </span>
             {% endif %}
+            {% if idea.walk_forward_pass or idea.walk_forward_folds %}
+            <span class="bb-wf-badge" title="Walk-forward promotion">
+                WF {% if idea.walk_forward_folds %}{{ idea.walk_forward_folds }}{% else %}✓{% endif %}
+            </span>
+            {% endif %}
             {% if idea.reliability is not none %}
             <span class="bb-idea-rel">rel <strong>{{ "%.0f"|format(idea.reliability) }}%</strong></span>
             {% endif %}
@@ -34,18 +39,12 @@
         <div class="bb-idea-levels">
             {% if idea.entry_price is not none %}
             <span>E <strong>{{ "%.2f"|format(idea.entry_price) }}</strong></span>
-            {% elif idea.entry is not none %}
-            <span>E <strong>{{ "%.2f"|format(idea.entry) }}</strong></span>
             {% endif %}
             {% if idea.stop_price is not none %}
             <span>S <strong>{{ "%.2f"|format(idea.stop_price) }}</strong></span>
-            {% elif idea.stop is not none %}
-            <span>S <strong>{{ "%.2f"|format(idea.stop) }}</strong></span>
             {% endif %}
             {% if idea.target_price is not none %}
             <span>T <strong>{{ "%.2f"|format(idea.target_price) }}</strong></span>
-            {% elif idea.target is not none %}
-            <span>T <strong>{{ "%.2f"|format(idea.target) }}</strong></span>
             {% endif %}
         </div>
         {% endif %}

@@ -1,0 +1,50 @@
+<div class="bb-structure-builder" id="structure-builder-{{ symbol }}">
+    <div class="bb-builder-head">
+        <span>Structure builder</span>
+        <em>{{ symbol }}</em>
+    </div>
+    <form class="bb-builder-form"
+          hx-post="/board/partials/symbol/{{ symbol }}/structure-preview"
+          hx-target="#structure-preview-{{ symbol }}"
+          hx-swap="innerHTML">
+        <label for="struct-type-{{ symbol }}">Template</label>
+        <select id="struct-type-{{ symbol }}" name="structure_type">
+            <option value="covered_call">Covered call</option>
+            <option value="vertical">Vertical spread</option>
+            <option value="collar">Collar</option>
+            <option value="bova_hedge">BOVA hedge</option>
+            <option value="pair_spread">Pair spread</option>
+        </select>
+        <label for="struct-side-{{ symbol }}">Bias</label>
+        <select id="struct-side-{{ symbol }}" name="side">
+            <option value="long">Long</option>
+            <option value="short">Short</option>
+        </select>
+        <div class="bb-builder-actions">
+            <button type="submit" class="bb-btn-secondary">Preview legs</button>
+            <button type="button" class="bb-btn-confirm"
+                    hx-post="/board/partials/symbol/{{ symbol }}/structure-create"
+                    hx-include="#struct-type-{{ symbol }}, #struct-side-{{ symbol }}"
+                    hx-target="#idea-stack"
+                    hx-swap="innerHTML">
+                Create idea
+            </button>
+        </div>
+    </form>
+    <div id="structure-preview-{{ symbol }}" class="bb-structure-preview">
+        {% if preview_legs %}
+        <ul class="bb-legs">
+            {% for leg in preview_legs %}
+            <li>{{ leg.side|upper }} {{ leg.quantity }} {{ leg.symbol }}
+                {% if leg.leg_type %}<em>({{ leg.leg_type }})</em>{% endif %}
+            </li>
+            {% endfor %}
+        </ul>
+        {% if preview_notional %}
+        <p class="bb-muted">Notional stub ~ R$ {{ "%.0f"|format(preview_notional) }}</p>
+        {% endif %}
+        {% else %}
+        <p class="bb-muted">Pick a template and preview legs before creating.</p>
+        {% endif %}
+    </div>
+</div>

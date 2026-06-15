@@ -75,6 +75,12 @@ class ProfitBacktestRunRequest(BaseModel):
     period: str = "90d"
 
 
+class StructureIdeaRequest(BaseModel):
+    symbol: str = "PETR4"
+    structure_type: str = "covered_call"
+    side: str = "long"
+
+
 class OptimizeRequest(BaseModel):
     strategy_id: int
     symbol: str = "BOVAX125"

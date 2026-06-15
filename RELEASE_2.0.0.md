@@ -306,9 +306,9 @@ Items not in your list that strongly support 2.0 goals:
 | Phase | Deliverable | Status |
 |-------|-------------|--------|
 | **2.0-alpha** | Core14 universe + blackboard shell (HTMX) + watchlist + Idea Stack API | **Done** |
-| **2.0-beta** | Profit bridge v2 (quotes, chain, backtest run) | **Next — Supervisor** |
-| **2.0-rc** | Idea stack + backtest proof + AI symbol reports | Supervisor + Worker |
-| **2.0** | Clear live execution + confirm modal + risk gates | Supervisor + Worker |
+| **2.0-beta** | Profit backtest run + CSV watcher + sector pairs | **Done** |
+| **2.0-rc** | Backtest badges + confirm modal + setup wizard + sector strip | **In progress** |
+| **2.0** | Clear live execution + SSE quotes + AI reports + kill switch | Pending |
 
 **Try alpha now:** `http://localhost:8000/board` (API must be running)
 
@@ -322,9 +322,9 @@ Items not in your list that strongly support 2.0 goals:
 - [x] `TradeIdea` model + `/api/v1/ideas` + confirm (paper)
 - [x] BOVA option chain stub (`GET /options/bova` on bridge)
 - [x] Integration wizard (`/setup/status`, `/setup/test`)
-- [ ] Scanner emits ideas with backtest proof badge
-- [ ] Profit auto-backtest → idea promotion pipeline
-- [ ] Idea Stack 2-step confirm UI (modal)
+- [x] Profit auto-backtest → idea promotion pipeline (export watcher + `attach_backtest_proof`)
+- [x] Scanner emits ideas with backtest proof badge (sector pairs + CSV promote)
+- [x] Idea Stack 2-step confirm UI (modal on `/board`)
 - [ ] Clear OR paper execution with journal sync
 - [ ] Load time &lt; 1s perceived (SSE/partial HTMX)
 - [ ] Mobile: watchlist + confirm only

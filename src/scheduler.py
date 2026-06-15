@@ -49,6 +49,19 @@ def _run_export_watcher() -> None:
         session.close()
 
 
+def _run_walk_forward_promotion() -> None:
+    settings = get_settings()
+    if not settings.walk_forward_auto_promote:
+        return
+    session = get_session_factory()()
+    try:
+        run_walk_forward_promotion(session, folds=settings.walk_forward_promote_folds)
+    except Exception as exc:
+        logger.error("walk_forward_promotion_failed", error=str(exc))
+    finally:
+        session.close()
+
+
 def start_scheduler() -> None:
     global _scheduler
     settings = get_settings()
@@ -78,6 +91,13 @@ def start_scheduler() -> None:
         minutes=10,
         id="export_watcher",
     )
+    if settings.walk_forward_auto_promote:
+        _scheduler.add_job(
+            _run_walk_forward_promotion,
+            "interval",
+            hours=settings.walk_forward_interval_hours,
+            id="walk_forward_promotion",
+        )
     _scheduler.start()
     logger.info("scheduler_started")
 

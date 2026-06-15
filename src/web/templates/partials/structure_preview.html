@@ -1,0 +1,15 @@
+{% if legs %}
+<ul class="bb-legs">
+    {% for leg in legs %}
+    <li>{{ leg.side|upper }} {{ leg.quantity }} {{ leg.symbol }}
+        {% if leg.strike %} @ {{ leg.strike }}{% endif %}
+        <em>({{ leg.leg_type or "cash" }})</em>
+    </li>
+    {% endfor %}
+</ul>
+{% if notional %}
+<p class="bb-muted">Notional stub ~ R$ {{ "%.0f"|format(notional) }}</p>
+{% endif %}
+{% else %}
+<p class="bb-muted">No legs for this template.</p>
+{% endif %}

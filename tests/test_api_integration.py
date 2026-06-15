@@ -55,7 +55,7 @@ def test_setup_status():
     assert r.status_code == 200
     data = r.json()
     assert "steps" in data
-    assert data.get("release", "").startswith("2.")
+    assert data.get("release", "").startswith("3.")
 
 
 def test_board_page():

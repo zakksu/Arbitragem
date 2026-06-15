@@ -7,9 +7,28 @@ Self-hosted web dashboard for **B3 IBOV scalping** (Filipe Core14 + BOVA options
 - **Ollama** — symbol reports, journal analysis, NTSL optimization
 - **Python** — autonomous scans, trade ideas, backtest gates, performance tracking
 
-**Primary UI (3.0-alpha):** http://localhost:8000/board — Structure Deck (options chain · max pain · multi-leg ideas)
+**Primary UI (3.0-beta):** http://localhost:8000/board — Structure Deck + risk cockpit + builder
 
 **Legacy UI:** http://localhost:8501 — Streamlit (maintenance / admin)
+
+---
+
+## What's new in 3.0-beta
+
+- **Version** `3.0.0-beta` — risk cockpit, structure builder, walk-forward promotion
+- **Risk cockpit** — `GET /api/v1/risk/cockpit` + live strip on blackboard (net Δ, sector %, margin)
+- **Portfolio gate** — blocks confirm when `max_portfolio_net_delta` exceeded
+- **Structure builder** — template picker on symbol panel → preview legs → `POST /ideas/from-structure`
+- **Walk-forward promote** — `POST /api/v1/walk-forward/promote` + optional 6h scheduler job
+- **WF badge** — idea cards show `WF 3/4` when walk-forward promoted
+- **IV rank tags** — scanner + builder attach `iv_rank_high` / `iv_rank_low` rationale tags
+
+Quick start:
+
+```powershell
+.\.venv\Scripts\python.exe scripts/dev.py start --wait --open
+# Structure Deck → http://localhost:8000/board
+```
 
 ---
 

@@ -80,6 +80,7 @@ class TradeIdeaService:
             sector = sector_for(scan.symbol)
             if sector:
                 tags.append(f"sector:{sector.lower()}")
+            tags.extend(self._iv_rank_tags(scan.symbol))
 
             legs = self._legs_for_structure(structure, scan.symbol, side, quote)
 
@@ -111,6 +112,71 @@ class TradeIdeaService:
         self.session.commit()
         logger.info("trade_ideas_generated", count=len(created))
         return created
+
+    def create_from_structure(
+        self,
+        symbol: str,
+        structure_type: str,
+        side: str = "long",
+    ) -> TradeIdea:
+        sym = symbol.upper()
+        structure = structure_type.lower()
+        quote = self.profit.get_quote(sym)
+        last = quote.last if quote else None
+        stop_t, target_t = 5, 8
+        tick = 0.01 if last and last < 50 else 0.05
+        entry = float(last) if last else None
+        side_l = side.lower()
+        stop_p = round(entry - stop_t * tick, 4) if entry and side_l == "long" else (
+            round(entry + stop_t * tick, 4) if entry and side_l == "short" else None
+        )
+        target_p = round(entry + target_t * tick, 4) if entry and side_l == "long" else (
+            round(entry - target_t * tick, 4) if entry and side_l == "short" else None
+        )
+        legs = self._legs_for_structure(structure, sym, side_l, quote)
+        tags = [f"structure:{structure}", "builder"] + self._iv_rank_tags(sym)
+
+        idea = TradeIdea(
+            symbol=sym,
+            structure_type=structure,
+            side=side_l,
+            status="detected",
+            reliability=55.0,
+            entry_price=entry,
+            stop_price=stop_p,
+            target_price=target_p,
+            stop_ticks=stop_t,
+            target_ticks=target_t,
+            title=self._title_for_structure(structure, sym, side_l),
+            rationale_tags=tags,
+            legs=legs,
+        )
+        self.session.add(idea)
+        self.session.flush()
+
+        metrics = self.profit.run_backtest(sym, strategy=structure)
+        if self.passes_backtest_gate(metrics):
+            idea.backtest_proof = metrics
+            idea.status = "backtested"
+            idea.rationale_tags = list(idea.rationale_tags or []) + ["backtest_pass"]
+
+        self.session.commit()
+        self.session.refresh(idea)
+        logger.info("structure_idea_created", symbol=sym, structure=structure)
+        return idea
+
+    def _iv_rank_tags(self, symbol: str) -> list[str]:
+        try:
+            iv = self.profit.get_iv_rank(symbol)
+            rank = float(iv.get("iv_rank", 50))
+            tags: list[str] = []
+            if rank >= 70:
+                tags.extend(["iv_rank_high", "covered_call_bias"])
+            elif rank <= 25:
+                tags.extend(["iv_rank_low", "protective_put_bias"])
+            return tags
+        except Exception:
+            return []
 
     def attach_backtest_proof(self, symbol: str, metrics: dict) -> TradeIdea | None:
         """Promote detected idea or create one when CSV export passes gate (A2.4b)."""
@@ -199,16 +265,16 @@ class TradeIdeaService:
             raise ValueError(f"Idea already {idea.status}")
 
         from src.config import get_settings
-        from src.services.risk_summary import build_risk_summary
+        from src.services.risk_cockpit import confirm_blocked_by_portfolio
 
-        risk = build_risk_summary(self.session)
-        if risk["status"] == "blocked":
-            raise ValueError("Daily loss limit blocked — cannot confirm")
+        block_msg = confirm_blocked_by_portfolio(self.session, idea.legs)
+        if block_msg:
+            raise ValueError(block_msg)
 
+        settings = get_settings()
         idea.status = "confirmed"
         idea.confirmed_at = datetime.utcnow()
 
-        settings = get_settings()
         ntsl_path = None
         if settings.execution_backend == "ntsl":
             ntsl_code = self._ntsl_for_idea(idea)
@@ -459,6 +525,10 @@ end;
         idea.executed_at = datetime.utcnow()
 
     def to_dict(self, idea: TradeIdea) -> dict:
+        proof = idea.backtest_proof or {}
+        wf_passed = proof.get("walk_forward_folds_passed")
+        wf_total = proof.get("walk_forward_folds_total")
+        tags = idea.rationale_tags or []
         return {
             "id": idea.id,
             "symbol": idea.symbol,
@@ -473,10 +543,14 @@ end;
             "target_ticks": idea.target_ticks,
             "title": idea.title,
             "rationale": idea.rationale,
-            "rationale_tags": idea.rationale_tags or [],
-            "tags": idea.rationale_tags or [],
+            "rationale_tags": tags,
+            "tags": tags,
             "legs": idea.legs or [],
             "backtest_proof": idea.backtest_proof,
+            "walk_forward_pass": "walk_forward_pass" in tags,
+            "walk_forward_folds": (
+                f"{wf_passed}/{wf_total}" if wf_passed is not None and wf_total else None
+            ),
             "created_at": idea.created_at.isoformat() if idea.created_at else None,
             "confirmed_at": idea.confirmed_at.isoformat() if idea.confirmed_at else None,
             "executed_at": idea.executed_at.isoformat() if idea.executed_at else None,

@@ -11,6 +11,7 @@ from fastapi.responses import HTMLResponse
 
 from src.config import get_settings
 from src.integrations.profit_bridge import get_profit_client
+from src.services.risk_cockpit import build_risk_cockpit
 from src.web.deps import TEMPLATES
 
 router = APIRouter(tags=["blackboard"])
@@ -193,7 +194,69 @@ async def symbol_partial(request: Request, symbol: str):
             "option_chain": option_chain,
             "max_pain": max_pain,
             "iv_rank": iv_rank_val,
+            "preview_legs": None,
         },
+    )
+
+
+@router.get("/board/partials/risk-cockpit", response_class=HTMLResponse)
+async def risk_cockpit_partial(request: Request):
+    from src.models import get_session_factory
+
+    session = get_session_factory()()
+    try:
+        cockpit = build_risk_cockpit(session)
+    finally:
+        session.close()
+    return TEMPLATES.TemplateResponse(
+        request,
+        "partials/risk_cockpit.html",
+        {"cockpit": cockpit},
+    )
+
+
+@router.post("/board/partials/symbol/{symbol}/structure-preview", response_class=HTMLResponse)
+async def structure_preview_partial(request: Request, symbol: str):
+    from src.services.trade_ideas import TradeIdeaService
+
+    sym = symbol.strip().upper()
+    form = await request.form()
+    structure_type = str(form.get("structure_type", "covered_call"))
+    side = str(form.get("side", "long"))
+    session = __import__("src.models", fromlist=["get_session_factory"]).get_session_factory()()
+    try:
+        svc = TradeIdeaService(session)
+        legs = svc._legs_for_structure(structure_type, sym, side, get_profit_client().get_quote(sym))
+        notional = sum(int(l.get("quantity", 100)) * 10.0 for l in legs)
+    finally:
+        session.close()
+    return TEMPLATES.TemplateResponse(
+        request,
+        "partials/structure_preview.html",
+        {"legs": legs, "notional": notional},
+    )
+
+
+@router.post("/board/partials/symbol/{symbol}/structure-create", response_class=HTMLResponse)
+async def structure_create_partial(request: Request, symbol: str):
+    sym = symbol.strip().upper()
+    form = await request.form()
+    structure_type = str(form.get("structure_type", "covered_call"))
+    side = str(form.get("side", "long"))
+    base = _api_base(request)
+    try:
+        async with httpx.AsyncClient(timeout=30.0) as client:
+            await client.post(
+                f"{base}/api/v1/ideas/from-structure",
+                json={"symbol": sym, "structure_type": structure_type, "side": side},
+            )
+    except httpx.HTTPError:
+        pass
+    ideas = await _fetch_ideas(request)
+    return TEMPLATES.TemplateResponse(
+        request,
+        "partials/idea_stack.html",
+        {"ideas": ideas},
     )
 
 
@@ -240,10 +303,17 @@ async def idea_confirm_step_partial(request: Request, idea_id: int):
     data = await _fetch_json(request, f"/api/v1/ideas/{idea_id}")
     if not isinstance(data, dict):
         return HTMLResponse("<p>Idea not found</p>", status_code=404)
+    from src.models import get_session_factory
+
+    session = get_session_factory()()
+    try:
+        cockpit = build_risk_cockpit(session)
+    finally:
+        session.close()
     return TEMPLATES.TemplateResponse(
         request,
         "partials/idea_confirm_step.html",
-        {"idea": data},
+        {"idea": data, "cockpit": cockpit},
     )
 
 

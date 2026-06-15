@@ -317,11 +317,12 @@ NTSL template × symbol (or structure)
 
 ### 3.0-beta
 
-- [ ] Structure builder UI — add/remove legs, preview notional
-- [ ] Templates: covered call, vertical spread, BOVA vs basket hedge
-- [ ] Risk cockpit strip: day P&L, net delta estimate, sector exposure
-- [ ] Pair signals (PETR/PRIO, steel basket) in opportunity rail
-- [ ] 2-step confirm shows all legs + margin warning
+- [x] Structure builder UI — template picker, leg preview, create idea
+- [x] Templates: covered call, vertical spread, collar, BOVA hedge, pair spread
+- [x] Risk cockpit strip: day P&L, net delta estimate, sector exposure, margin stub
+- [x] Pair signals (PETR/PRIO, steel basket) in sector strip + scanner
+- [x] 2-step confirm shows all legs + portfolio/margin warning
+- [x] Walk-forward manual promote + scheduler hook (`WALK_FORWARD_AUTO_PROMOTE=true`)
 
 ### 3.0.0 (GA)
 

@@ -136,6 +136,12 @@ def render() -> None:
     st.title("Trading Command Center")
     st.caption("IBOV Top 20 · 30d volume leaders · Scalping (seconds to minutes)")
 
+    st.link_button(
+        "Open Structure Deck (blackboard)",
+        "http://localhost:8000/board",
+        use_container_width=False,
+    )
+
     render_alerts_banner()
 
     ctx = get_sidebar_context()

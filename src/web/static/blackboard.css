@@ -1008,3 +1008,147 @@ body {
 .bb-iv-rank {
     color: var(--arb-accent);
 }
+
+/* ── 3.0-beta Risk cockpit + builder ─────────────────────────── */
+
+#risk-cockpit-wrap {
+    border-bottom: 1px solid var(--arb-border);
+}
+
+.bb-risk-cockpit {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 0.75rem 1.25rem;
+    padding: 0.35rem 0.85rem;
+    background: linear-gradient(90deg, #0a0a0a 0%, #141414 100%);
+    font-size: 0.72rem;
+}
+
+.bb-risk-blocked {
+    background: linear-gradient(90deg, #2a0a0a 0%, #141414 100%);
+    border-bottom: 1px solid #7f1d1d;
+}
+
+.bb-cockpit-metric {
+    display: flex;
+    align-items: baseline;
+    gap: 0.35rem;
+    color: var(--arb-muted);
+}
+
+.bb-cockpit-metric strong {
+    color: var(--arb-text);
+    font-family: var(--arb-mono);
+}
+
+.bb-cockpit-metric em {
+    font-style: normal;
+    font-size: 0.65rem;
+    color: var(--arb-muted);
+}
+
+.bb-cockpit-label {
+    text-transform: uppercase;
+    font-size: 0.62rem;
+    letter-spacing: 0.04em;
+}
+
+.bb-cockpit-gate {
+    margin-left: auto;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.bb-gate-ok {
+    color: var(--arb-green);
+    font-weight: 700;
+    font-size: 0.65rem;
+}
+
+.bb-gate-warn {
+    color: var(--arb-accent);
+    font-weight: 700;
+}
+
+.bb-gate-blocked {
+    color: var(--arb-red);
+    font-weight: 700;
+    animation: bb-pulse 1.5s ease infinite;
+}
+
+@keyframes bb-pulse {
+    50% { opacity: 0.65; }
+}
+
+.bb-wf-badge {
+    display: inline-block;
+    padding: 0.08rem 0.35rem;
+    border-radius: 3px;
+    font-size: 0.6rem;
+    font-weight: 700;
+    background: #0f2a1a;
+    color: var(--arb-green);
+    border: 1px solid #166534;
+}
+
+.bb-structure-builder {
+    margin: 0.65rem 0;
+    border: 1px solid var(--arb-border-bright);
+    border-radius: var(--arb-radius);
+    background: var(--arb-panel);
+    overflow: hidden;
+}
+
+.bb-builder-head {
+    display: flex;
+    justify-content: space-between;
+    padding: 0.4rem 0.55rem;
+    background: linear-gradient(90deg, #1a1508 0%, var(--arb-panel) 100%);
+    border-bottom: 1px solid var(--arb-border);
+    font-weight: 600;
+    font-size: 0.75rem;
+}
+
+.bb-builder-head em {
+    font-style: normal;
+    color: var(--arb-accent);
+    font-family: var(--arb-mono);
+}
+
+.bb-builder-form {
+    padding: 0.55rem;
+    display: grid;
+    grid-template-columns: auto 1fr;
+    gap: 0.35rem 0.5rem;
+    align-items: center;
+}
+
+.bb-builder-form label {
+    font-size: 0.68rem;
+    color: var(--arb-muted);
+    text-transform: uppercase;
+}
+
+.bb-builder-form select {
+    background: var(--arb-panel-2);
+    border: 1px solid var(--arb-border);
+    color: var(--arb-text);
+    padding: 0.25rem 0.4rem;
+    border-radius: 3px;
+    font-size: 0.75rem;
+}
+
+.bb-builder-actions {
+    grid-column: 1 / -1;
+    display: flex;
+    gap: 0.5rem;
+    margin-top: 0.35rem;
+}
+
+.bb-structure-preview {
+    padding: 0.45rem 0.55rem 0.65rem;
+    border-top: 1px solid var(--arb-border);
+    font-size: 0.72rem;
+}

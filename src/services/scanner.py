@@ -209,6 +209,11 @@ class PatternScanner:
         if max_pain_signal:
             raw_data["max_pain"] = max_pain_signal
 
+        iv_tags = self._iv_rank_tags(symbol)
+        if iv_tags:
+            pattern_tags.extend(iv_tags)
+            pattern_tags = list(dict.fromkeys(pattern_tags))
+
         scan = ScanResult(
             scan_date=scan_date,
             symbol=symbol,
@@ -286,6 +291,21 @@ class PatternScanner:
                 )
             )
         return pair_scans
+
+    def _iv_rank_tags(self, symbol: str) -> list[str]:
+        sym = symbol.upper()
+        if sym.startswith("BOVAX") or sym.startswith("BOVAY") or len(sym) > 6:
+            return []
+        try:
+            iv = self.profit.get_iv_rank(sym)
+            rank = float(iv.get("iv_rank", 50))
+            if rank >= 70:
+                return ["iv_rank_high"]
+            if rank <= 25:
+                return ["iv_rank_low"]
+        except Exception:
+            pass
+        return []
 
     @staticmethod
     def _price_change_pct(last_price: float | None, prev: ScanResult | None) -> float | None:
