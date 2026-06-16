@@ -19,8 +19,8 @@ def client(monkeypatch):
     return TestClient(create_app())
 
 
-def test_version_is_3_0_1():
-    assert __version__ == "3.0.1-alpha"
+def test_version_is_4_0():
+    assert __version__ == "4.0.0-alpha"
 
 
 def test_normalize_drawdown_pct_missing():
@@ -67,7 +67,7 @@ def test_watchlist_help_tips(client):
 def test_idea_stack_dd_missing_not_100(client, monkeypatch):
     monkeypatch.setattr(
         "src.web.router._list_ideas_sync",
-        lambda limit=20: [
+        lambda limit=20, symbol=None: [
             {
                 "id": 1,
                 "symbol": "PETR4",
@@ -88,7 +88,7 @@ def test_idea_stack_dd_missing_not_100(client, monkeypatch):
 def test_idea_stack_help_tips(client, monkeypatch):
     monkeypatch.setattr(
         "src.web.router._list_ideas_sync",
-        lambda limit=20: [
+        lambda limit=20, symbol=None: [
             {
                 "id": 1,
                 "symbol": "PETR4",

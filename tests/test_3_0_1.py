@@ -41,7 +41,7 @@ def test_risk_cockpit_has_help_tip(client):
 def test_idea_stack_dd_missing_not_100(client, monkeypatch):
     monkeypatch.setattr(
         "src.web.router._list_ideas_sync",
-        lambda limit=20: [
+        lambda limit=20, symbol=None: [
             {
                 "id": 1,
                 "symbol": "PETR4",
@@ -66,10 +66,10 @@ def test_normalize_drawdown_pct_missing():
     assert TradeIdeaService.normalize_drawdown_pct({"profit_factor": 1.5}) is None
 
 
-def test_version_is_3_0_1_alpha():
+def test_version_is_4_0():
     from src import __version__
 
-    assert __version__ == "3.0.1-alpha"
+    assert __version__ == "4.0.0-alpha"
 
 
 def test_bootstrap_includes_profit_bridge_flag(client):

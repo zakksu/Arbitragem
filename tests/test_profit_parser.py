@@ -41,6 +41,16 @@ def test_parse_summary_kv_csv():
     assert result.net_pnl == pytest.approx(1250.50)
     assert result.max_drawdown == pytest.approx(320.0)
     assert result.profit_factor == pytest.approx(1.85)
+    d = result.to_dict()
+    assert "max_drawdown_pct" in d
+    assert d["max_drawdown_pct"] < 100.0
+
+
+def test_trade_list_dd_pct_not_absurd():
+    result = parse_profit_backtest_csv(FIXTURES / "profit_backtest_trades.csv")
+    d = result.to_dict()
+    if "max_drawdown_pct" in d:
+        assert d["max_drawdown_pct"] <= 100.0
 
 
 def test_file_not_found():

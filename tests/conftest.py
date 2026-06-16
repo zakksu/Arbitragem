@@ -24,3 +24,18 @@ def _reset_settings_cache():
     get_settings.cache_clear()
     yield
     get_settings.cache_clear()
+
+
+@pytest.fixture(autouse=True)
+def _reset_risk_profile():
+    """Isolate risk profile row between tests."""
+    from src.models import RiskProfile, get_session_factory, init_db
+
+    init_db()
+    session = get_session_factory()()
+    try:
+        session.query(RiskProfile).delete()
+        session.commit()
+    finally:
+        session.close()
+    yield

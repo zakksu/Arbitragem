@@ -307,8 +307,8 @@ Items not in your list that strongly support 2.0 goals:
 |-------|-------------|--------|
 | **2.0-alpha** | Core14 universe + blackboard shell (HTMX) + watchlist + Idea Stack API | **Done** |
 | **2.0-beta** | Profit backtest run + CSV watcher + sector pairs | **Done** |
-| **2.0-rc** | Backtest badges + confirm modal + setup wizard + sector strip | **In progress** |
-| **2.0** | Clear live execution + SSE quotes + AI reports + kill switch | Pending |
+| **2.0-rc** | Backtest badges + confirm modal + setup wizard + sector strip | **Done** |
+| **2.0** | Clear live execution + SSE quotes + AI reports + kill switch | **In progress** (GA: lifecycle, Clear live, mobile) |
 
 **Try alpha now:** `http://localhost:8000/board` (API must be running)
 
@@ -325,9 +325,13 @@ Items not in your list that strongly support 2.0 goals:
 - [x] Profit auto-backtest → idea promotion pipeline (export watcher + `attach_backtest_proof`)
 - [x] Scanner emits ideas with backtest proof badge (sector pairs + CSV promote)
 - [x] Idea Stack 2-step confirm UI (modal on `/board`)
-- [ ] Clear OR paper execution with journal sync
-- [ ] Load time &lt; 1s perceived (SSE/partial HTMX)
-- [ ] Mobile: watchlist + confirm only
+- [x] SSE quote stream on blackboard watchlist (A2.8 / W2.1)
+- [x] AI symbol report panel (A2.9 / W2.5)
+- [x] Paper execute + kill switch wired (A2.6a/c / W2.4)
+- [ ] Clear live execution with journal sync (A2.6b)
+- [ ] Idea lifecycle gates enforced end-to-end (A2.10)
+- [ ] Load time &lt; 1s perceived (SSE tuning)
+- [ ] Mobile: watchlist + confirm only (W2.9)
 
 ---
 
@@ -336,6 +340,33 @@ Items not in your list that strongly support 2.0 goals:
 **Rule:** Supervisor owns `src/`, `scripts/`, `tests/`, `dashboard/api_cache.py`. Worker owns `dashboard/views/`, `dashboard/scanner_ui.py`, `dashboard/components/` (except `api_cache`), `src/web/` (HTMX blackboard).
 
 **Coordination:** When Supervisor ships an API, update `docs/agent_integration.md` and ping Worker with endpoint + sample JSON. Worker never imports `src/` in Streamlit — HTTP only.
+
+**Parallel rule (mandatory):** Supervisor picking **A2.x** → Worker starts mapped **W2.x** same sprint. See [AGENTS.md § Parallel release protocol](AGENTS.md#parallel-release-protocol-mandatory).
+
+---
+
+### 11.1 Parallel kickoff matrix
+
+Status as of **2.0-rc complete → GA sprint**. ✅ = shipped · 🔲 = remaining.
+
+| Supervisor | Worker | Before API? | Sup | Worker |
+|------------|--------|-------------|-----|--------|
+| A2.4a `POST /backtest/run` | W2.8 backtest proof badge | yes | ✅ | ✅ |
+| A2.4b CSV export watcher | W2.8 badge from `backtest_proof` | no | ✅ | ✅ |
+| A2.5a sector correlation pairs | W2.7 sector strip + corr mini-map | yes | ✅ | ✅ |
+| A2.5b VWAP reclaim signal | W2.2 symbol panel VWAP | yes | 🔲 | 🔲 |
+| A2.8 SSE `/stream/quotes` | W2.1 watchlist SSE | yes | ✅ | ✅ |
+| A2.9 `GET /symbols/{sym}/report` | W2.5 report panel tab | no | ✅ | ✅ |
+| A2.10 idea lifecycle gates | W2.4 modal states + gate UX | yes | 🔲 | 🔲 |
+| A2.6a paper `POST /ideas/{id}/execute` | W2.4 execute after confirm | no | ✅ | ✅ |
+| A2.6b Clear order router | W2.4 live confirm + risk copy | no | 🔲 | 🔲 |
+| A2.6c `POST /risk/kill-switch` | W2.4 sidebar STOP ALL | yes | ✅ | ✅ |
+| A2.7 `/setup/status` *(alpha)* | W2.6 setup wizard UI | yes | ✅ | ✅ |
+| — | W2.3 board notes persist | yes | — | 🔲 |
+| — | W2.9 mobile watchlist + confirm | yes | — | 🔲 |
+| — | W2.10 Streamlit ↔ board link | yes | — | 🔲 |
+
+**GA remaining (both agents):** A2.5b, A2.10, A2.6b · W2.3, W2.9, W2.10 · W2.4 live path after A2.6b.
 
 ---
 
@@ -352,7 +383,7 @@ Items not in your list that strongly support 2.0 goals:
 
 ---
 
-### 🔵 Now — parallel sprint (2.0-beta → 2.0-rc)
+### 🔵 Now — GA sprint (2.0-rc done → 2.0.0)
 
 #### Supervisor (Alpha) — start here
 
@@ -405,19 +436,21 @@ A2.6 paper execute ────────────────────�
 ### Paste into Supervisor chat
 
 ```
-You are Supervisor (Alpha). Read RELEASE_2.0.0.md §11.
-2.0-alpha is done. Your sprint: A2.4a → A2.4b → A2.5a → A2.8 → A2.9 → A2.10 → A2.6.
+You are Supervisor (Alpha). Read AGENTS.md + RELEASE_2.0.0.md §11–§11.1.
+2.0-rc is done (SSE, reports, execute, kill switch). GA sprint: A2.5b → A2.10 → A2.6b.
+When you pick A2.x, Worker MUST start mapped W2.x in parallel (§11.1 matrix).
 Do NOT touch src/web/ or dashboard/views/. Update docs/agent_integration.md per endpoint.
-Run pytest after each task. Coordinate Worker when API is ready.
+Run pytest after each task. python scripts/dev.py restart --wait after API changes.
 ```
 
 ### Paste into Worker chat
 
 ```
-You are Worker. Read RELEASE_2.0.0.md §11.
-2.0-alpha shell is done. Your sprint: W2.4 confirm modal → W2.6 setup wizard → W2.3 notes → W2.5/W2.7 when Supervisor ships APIs.
-Own src/web/ and dashboard/. Do NOT edit src/api/ or api_cache.py.
-Wire new endpoints via HTMX or dashboard/utils.py only.
+You are Worker (Beta). Read AGENTS.md + RELEASE_2.0.0.md §11–§11.1.
+When Supervisor starts A2.x, start mapped W2.x immediately unless §11.1 "Before API?" = no.
+GA sprint: W2.3 notes → W2.10 board link → W2.9 mobile; W2.4 live path when A2.6b ships.
+Own src/web/ and dashboard/views/. Do NOT edit src/api/ or api_cache.py.
+Wire endpoints via HTMX or cached_get() only. Test http://localhost:8000/board.
 ```
 
 ---
