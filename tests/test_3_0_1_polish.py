@@ -19,8 +19,8 @@ def client(monkeypatch):
     return TestClient(create_app())
 
 
-def test_version_is_4_0():
-    assert __version__ == "4.0.0-alpha"
+def test_version_is_4_0_beta():
+    assert __version__ == "4.0.0"
 
 
 def test_normalize_drawdown_pct_missing():
@@ -50,7 +50,7 @@ def test_status_bar_single_day_pnl(client):
     assert r.status_code == 200
     assert r.text.count("Day P&amp;L") == 1
     assert "Arbitragem Scalper" in r.text
-    assert "Clear" not in r.text
+    assert 'class="bb-pnl-source"' in r.text
 
 
 def test_status_bar_help_tips(client):

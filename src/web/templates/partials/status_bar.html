@@ -9,7 +9,7 @@
         <span class="bb-pill {% if bootstrap.paper_trading_mode %}bb-pill-paper{% else %}bb-pill-live{% endif %}">
             {% if bootstrap.paper_trading_mode %}Paper{% else %}Live{% endif %}
         </span>
-        {% with tip="Paper simulates fills without broker risk. Live sends real orders after confirm.", pt="Simulado vs real" %}
+        {% with key="cockpit.paper_mode" %}
         {% include "partials/help_tip.html" %}
         {% endwith %}
     </div>
@@ -29,7 +29,7 @@
     {% if cockpit %}
     <div class="bb-status-kpi">
         <span class="bb-cockpit-label">Net Δ</span>
-        {% with tip="Portfolio net delta vs limit — options + cash exposure.", pt="Delta líquido" %}
+        {% with key="cockpit.net_delta" %}
         {% include "partials/help_tip.html" %}
         {% endwith %}
         <strong class="{% if (cockpit.net_delta | abs) > cockpit.max_net_delta * 0.8 %}bb-pnl-neg{% endif %}">
@@ -39,14 +39,14 @@
     </div>
     <div class="bb-status-kpi">
         <span class="bb-cockpit-label">Day P&amp;L</span>
-        {% with tip="Session P&L: journal fills first, then Profit bridge, else paper stub.", pt="Resultado do dia" %}
+        {% with key="cockpit.day_pnl" %}
         {% include "partials/help_tip.html" %}
         {% endwith %}
         <strong class="{% if cockpit.day_pnl >= 0 %}bb-pnl-pos{% else %}bb-pnl-neg{% endif %}">
             R$ {{ "%.2f"|format(cockpit.day_pnl) }}
         </strong>
         {% if cockpit.pnl_source %}
-        <em class="bb-pnl-source" title="P&L source">{{ cockpit.pnl_source }}</em>
+        <em class="bb-pnl-source" title="P&L source">{{ cockpit.pnl_source|capitalize }}</em>
         {% endif %}
     </div>
     {% if cockpit.top_sector %}
@@ -58,7 +58,7 @@
     {% endif %}
     <div class="bb-status-kpi">
         <span class="bb-cockpit-label">Margin est.</span>
-        {% with tip="Estimated margin for open structures from bridge stub.", pt="Margem estimada" %}
+        {% with key="cockpit.margin" %}
         {% include "partials/help_tip.html" %}
         {% endwith %}
         <strong>R$ {{ "%.0f"|format(cockpit.margin_estimate_brl) }}</strong>
@@ -109,7 +109,7 @@
                 hx-target="#idea-stack"
                 hx-swap="innerHTML">
             Scan
-            {% with tip="Run Core14 scanner and refresh ranked ideas.", pt="Varredura do scanner" %}
+            {% with key="cockpit.scan" %}
             {% include "partials/help_tip.html" %}
             {% endwith %}
         </button>
@@ -121,7 +121,7 @@
                 hx-swap="none"
                 hx-on::after-request="htmx.trigger('#status-bar', 'load'); htmx.trigger('#idea-stack', 'load')">
             {% if risk and risk.kill_switch_active %}KILL ON{% else %}KILL{% endif %}
-            {% with tip="Pause all strategies and block new confirms.", pt="Parar tudo" %}
+            {% with key="cockpit.kill" %}
             {% include "partials/help_tip.html" %}
             {% endwith %}
         </button>
@@ -130,7 +130,7 @@
                 hx-target="body"
                 hx-swap="beforeend">
             Risk
-            {% with tip="Max daily loss R$500, position caps, cost per trade.", pt="Perfil de risco" %}
+            {% with key="cockpit.risk" %}
             {% include "partials/help_tip.html" %}
             {% endwith %}
         </button>
@@ -139,7 +139,7 @@
                 hx-target="#setup-panel"
                 hx-swap="innerHTML">
             Setup
-            {% with tip="Profit bridge, gates, and integration checks.", pt="Configuração" %}
+            {% with key="cockpit.setup" %}
             {% include "partials/help_tip.html" %}
             {% endwith %}
         </button>

@@ -1,33 +1,41 @@
 # Release 4.0.0 — Progress tracker
 
-**Sprint:** 4.0.0 GA — **complete**  
+**Sprint:** 4.0-beta **complete** → next: 4.0-rc  
+**Version:** `4.0.0-beta`  
 **Last updated:** 2026-06-16
 
 ---
 
-## 3.0.1 — polish
+## 3.0.1 — polish ✅
 
-- [x] All DoD items (see prior commits)
+- [x] All DoD items · version `3.0.1-alpha`
 
 ---
 
-## 4.0-alpha — cockpit foundation
+## 4.0-alpha — cockpit foundation ✅
+
+### Supervisor (A4.x)
 
 | ID | Task | Status |
 |----|------|--------|
-| A4.1 | RiskProfile + GET/PUT `/api/v1/risk/profile` | **done** |
-| A4.2 | GET `/api/v1/profit/pnl` | **done** |
-| A4.3 | Idea score service | **done** |
-| A4.4 | Watchlist enrich API | **done** |
-| A4.5 | Per-symbol ideas filter | **done** |
-| A4.6 | GET `/api/v1/market/clocks` | **done** |
-| A4.7 | ProfitDLL detect + dev.py hook | **done** |
-| W4.1 | Risk drawer UI | **done** |
-| W4.2 | Scalper header + KPI strip | **done** |
-| W4.3 | Watchlist cols/sort | **done** |
-| W4.4 | World clocks row | **done** |
-| W4.5 | Per-symbol idea stack | **done** |
-| W4.6 | HelpTips on watchlist + cockpit | **done** |
+| A4.1 | RiskProfile + `GET/PUT /risk/profile` | [x] |
+| A4.2 | `GET /profit/pnl` + scheduler sync | [x] |
+| A4.3 | Idea score 0–100 | [x] |
+| A4.4 | `GET /watchlist/enriched` | [x] |
+| A4.5 | `GET /ideas?symbol=` | [x] |
+| A4.6 | `GET /market/clocks` | [x] |
+| A4.7 | ProfitDLL detect + dev.py | [x] |
+
+### Worker (W4.x)
+
+| ID | Task | Status |
+|----|------|--------|
+| W4.1 | Risk drawer UI | [x] |
+| W4.2 | Scalper header + KPI strip | [x] |
+| W4.3 | Watchlist cols/sort/reset | [x] |
+| W4.4 | World clocks row | [x] |
+| W4.5 | Per-symbol idea stack | [x] |
+| W4.6 | HelpTips watchlist + cockpit | [x] |
 
 ### Definition of done (4.0-alpha)
 
@@ -38,78 +46,69 @@
 - [x] Idea stack filters by active symbol
 - [x] Idea score on cards and watchlist
 - [x] ProfitDLL detect script + wizard step
-- [x] Version `4.0.0-alpha`; `tests/test_4_0_alpha.py`
+- [x] `tests/test_4_0_alpha.py` + API tests green
 
 ---
 
-## 4.0-beta — Trade Product + pulse
+## 4.0-beta — Trade Product + pulse ✅ (backend)
+
+### Supervisor (A4.x) — all shipped this phase
 
 | ID | Task | Status |
 |----|------|--------|
-| A4.8 | Trade Product schema | **done** |
-| A4.9 | Chart levels E/S/T | **done** |
-| A4.10 | NTSL one-click arm | **done** |
-| A4.11 | Pulse rail feeds | **done** |
-| A4.12 | Replay lab API v0 | **done** |
-| W4.7 | Trade Product blackboard | **done** |
-| W4.8 | Chart overlays | **done** |
-| W4.9 | Bottom pulse rail 33/33/33 | **done** |
-| W4.10 | Arm NTSL flow | **done** |
-| W4.11 | Replay lab stub script | **done** |
+| A4.8 | Trade Product schema (`/symbols/{sym}/trade-product`) | [x] |
+| A4.9 | Chart levels E/S/T on trade product | [x] |
+| A4.10 | NTSL arm `POST /ntsl/arm` | [x] |
+| A4.11 | Pulse rail `GET /pulse` | [x] |
+| A4.12 | Replay lab `POST /replay/run` | [x] |
+| A4.13 | Odds panel `GET /symbols/{sym}/odds` + journal/BT | [x] |
+
+### Worker (W4.x)
+
+| ID | Task | Status |
+|----|------|--------|
+| W4.7 | Trade Product blackboard template | [x] |
+| W4.8 | Chart entry/stop/target overlays | [x] |
+| W4.9 | Bottom pulse rail 33/33/33 | [x] |
+| W4.10 | Builder → Arm NTSL flow | [x] |
+| W4.11 | Replay lab UI | [x] |
+| W4.12 | Odds panel widget (`odds.source` badge) | [x] |
 
 ### Definition of done (4.0-beta)
 
-- [x] Trade Product blackboard template live for Core14
-- [x] Chart entry/stop/target overlays
-- [x] One-click NTSL arm flow
+- [x] Trade Product API live for Core14
+- [x] Chart E/S/T overlays verified in browser (W4.8)
+- [x] One-click NTSL arm flow end-to-end (W4.10)
 - [x] Bottom pulse rail 33/33/33
-- [x] Replay lab v0 (sandbox)
-- [x] Version `4.0.0-beta`
+- [x] Replay lab v0 (sandbox API)
+- [x] Odds panel shows `source` from journal/BT (W4.12)
+- [x] Version `4.0.0-beta`; pytest green (152)
+
+### Perf (alpha carry-over)
+
+- [x] Watchlist enrich ATR cache (30s TTL) + skip candle fetch when bridge offline
 
 ---
 
-## 4.0-rc — history + habits
+## 4.0-rc — in progress
 
-| ID | Task | Status |
-|----|------|--------|
-| A4.14 | KPI history service | **done** |
-| A4.15 | Profit co-start in dev.py | **done** |
-| A4.17 | Education axioms pack | **done** |
-| W4.13 | KPI date-range chips | **done** |
-| W4.14 | Keyboard shortcuts | **done** |
-| W4.17 | HelpTip coverage expanded | **done** |
-
-### Definition of done (4.0-rc)
-
-- [x] KPI history filters (today / 5d / 20d / 3mo)
-- [x] Education copy on structures
-- [x] Keyboard shortcuts documented + working
-- [x] Profit co-start optional
-- [x] Version `4.0.0-rc`
+| A4.14 | KPI history | [x] stub shipped early |
+| A4.15 | Profit co-start | [ ] |
+| A4.16 | Paper slippage on confirm | [ ] |
+| A4.17 | Education pack | [ ] partial (`data/education/`) |
 
 ---
 
-## 4.0.0 — GA
+## 4.0.0 GA — not started
 
-| ID | Task | Status |
-|----|------|--------|
-| A4.18 | Paper validation script | **done** |
-| A4.19 | Docs README + SCALPER_COCKPIT | **done** |
-| Both | Tag v4.0.0 | **done** |
-
-### Definition of done (4.0.0 GA)
-
-- [x] Paper validation script shipped
-- [x] `docs/SCALPER_COCKPIT.md` + README 4.0
-- [x] Tag **v4.0.0**
-- [x] Version `4.0.0`
-- [x] pytest green (130+)
-- [x] Kill switch + risk gates with Profit stub
+- [ ] Paper week #3 signed off
+- [ ] Tag **v4.0.0**
+- [ ] Full HelpTips sections 0–10
 
 ---
 
-## 4.1 / 4.2 / 4.3 (follow-on — not GA)
+## 4.1+ follow-on
 
-- [ ] 4.1: WIN/WDO quotes + RSS/Twitter read-only
-- [ ] 4.2: Trade archaeology + BTC/ETH/SOL watchlist
-- [ ] 4.3: B3 CEI research import spike
+- [ ] WIN/WDO quotes + RSS read-only
+- [ ] Trade archaeology + crypto watchlist
+- [ ] B3 CEI research spike

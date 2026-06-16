@@ -1,5 +1,8 @@
 {% if product %}
-<div class="bb-trade-product" data-symbol="{{ product.symbol }}">
+<div class="bb-trade-product" data-symbol="{{ product.symbol }}"
+     data-entry="{{ product.chart_levels.get('entry', '') if product.chart_levels else '' }}"
+     data-stop="{{ product.chart_levels.get('stop', '') if product.chart_levels else '' }}"
+     data-target="{{ product.chart_levels.get('target', '') if product.chart_levels else '' }}">
     <div class="bb-tp-head">
         <span class="bb-tp-score" title="Idea score 0–100">{{ product.score }}</span>
         <strong>{{ product.symbol }}</strong>
@@ -23,11 +26,20 @@
         {% endif %}
         {% if product.odds %}
         <div class="bb-tp-odds">
-            {% if product.odds.profit_factor %}
-            PF <strong>{{ "%.2f"|format(product.odds.profit_factor) }}</strong>
+            {% if product.odds.source %}
+            <span class="bb-odds-source" title="Odds data source">{{ product.odds.source }}</span>
             {% endif %}
-            {% if product.odds.max_drawdown_pct is not none %}
+            {% if product.odds.win_rate_pct is defined and product.odds.win_rate_pct is not none %}
+            Win <strong>{{ "%.0f"|format(product.odds.win_rate_pct) }}%</strong>
+            {% endif %}
+            {% if product.odds.profit_factor %}
+            · PF <strong>{{ "%.2f"|format(product.odds.profit_factor) }}</strong>
+            {% endif %}
+            {% if product.odds.max_drawdown_pct is defined and product.odds.max_drawdown_pct is not none %}
             · DD <strong>{{ "%.1f"|format(product.odds.max_drawdown_pct) }}%</strong>
+            {% endif %}
+            {% if product.odds.sample_size is defined and product.odds.sample_size %}
+            · n={{ product.odds.sample_size }}
             {% endif %}
         </div>
         {% endif %}
@@ -60,12 +72,11 @@
     </div>
     <div class="bb-tp-actions">
         <button type="button" class="bb-btn-confirm"
-                hx-post="/api/v1/ntsl/arm"
-                hx-vals='{"symbol": "{{ product.symbol }}", "structure_type": "{{ product.structure_type }}", "side": "{{ product.side }}"}'
-                hx-swap="none"
-                hx-on::after-request="alert(event.detail.xhr.responseText)">
+                hx-get="/board/partials/ntsl-arm-confirm?symbol={{ product.symbol }}&structure_type={{ product.structure_type }}&side={{ product.side }}"
+                hx-target="body"
+                hx-swap="beforeend">
             Arm NTSL
-            {% with tip="Export one-click NTSL to exports/ntsl/", pt="Armar no Profit" %}
+            {% with key="cockpit.arm_ntsl" %}
             {% include "partials/help_tip.html" %}
             {% endwith %}
         </button>
@@ -73,9 +84,10 @@
 </div>
 <script>
 (function () {
-    document.querySelectorAll(".bb-tp-tab").forEach(function (btn) {
+    var root = document.querySelector('.bb-trade-product[data-symbol="{{ product.symbol }}"]');
+    if (!root) return;
+    root.querySelectorAll(".bb-tp-tab").forEach(function (btn) {
         btn.addEventListener("click", function () {
-            var root = btn.closest(".bb-trade-product");
             var tab = btn.dataset.tpTab;
             root.querySelectorAll(".bb-tp-tab").forEach(function (b) { b.classList.toggle("is-active", b === btn); });
             root.querySelectorAll(".bb-tp-panel").forEach(function (p) {
@@ -85,6 +97,21 @@
             });
         });
     });
+    var panel = document.querySelector('.bb-symbol-panel[data-symbol="{{ product.symbol }}"]');
+    if (panel) {
+        var wrap = panel.querySelector(".bb-chart-wrap");
+        var canvas = panel.querySelector(".bb-chart-canvas");
+        if (wrap) {
+            ["entry", "stop", "target"].forEach(function (k) {
+                var v = root.dataset[k];
+                if (v) wrap.dataset[k] = v;
+            });
+            if (canvas) {
+                canvas.dataset.mounted = "";
+                if (window.bbMountSymbolChart) window.bbMountSymbolChart(panel);
+            }
+        }
+    }
 })();
 </script>
 {% endif %}

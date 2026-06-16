@@ -93,3 +93,19 @@ def test_world_clocks_partial(client):
 def test_status_scalper_brand(client):
     r = client.get("/board/partials/status")
     assert "Arbitragem Scalper" in r.text
+
+
+def test_watchlist_sortable_columns(client):
+    r = client.get("/board/partials/watchlist")
+    assert r.status_code == 200
+    assert "bb-sortable" in r.text
+    assert "data-sort-idea_score" in r.text
+
+
+def test_tooltips_from_docs(client):
+    from src.web.tooltips import get_tooltip
+
+    t = get_tooltip("watchlist.score")
+    assert "Idea score" in t["en"]
+    r = client.get("/board/partials/watchlist")
+    assert t["en"] in r.text

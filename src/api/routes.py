@@ -932,7 +932,14 @@ def symbol_trade_product(symbol: str, db: Session = Depends(get_db)):
         raise HTTPException(404, f"No ideas for {sym}")
     note_row = BoardNotesService(db).get(sym)
     note = note_row.content if note_row else None
-    return build_trade_product(svc.to_dict(ideas[0]), note=note)
+    return build_trade_product(svc.to_dict(ideas[0]), note=note, session=db)
+
+
+@router.get("/symbols/{symbol}/odds")
+def symbol_odds(symbol: str, structure_type: str | None = None, db: Session = Depends(get_db)):
+    from src.services.odds_panel import pattern_odds
+
+    return pattern_odds(db, symbol=symbol, structure_type=structure_type)
 
 
 @router.get("/pulse")

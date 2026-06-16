@@ -1,0 +1,21 @@
+<div class="bb-modal-backdrop" id="ntsl-arm-modal">
+    <div class="bb-modal">
+        <p class="bb-modal-step">Arm NTSL — confirm</p>
+        <h3>{{ symbol }} · {{ structure_type|replace("_", " ") }}</h3>
+        <p class="bb-modal-sub">
+            Exports a one-click strategy file to <code>exports/ntsl/</code>.
+            Import in Profit Editor and arm manually — paper mode stays on.
+        </p>
+        <div class="bb-modal-actions">
+            <button type="button" class="bb-btn-muted"
+                    onclick="document.getElementById('ntsl-arm-modal').remove()">Cancel</button>
+            <button type="button" class="bb-btn-confirm"
+                    hx-post="/api/v1/ntsl/arm"
+                    hx-vals='{"symbol": "{{ symbol }}", "structure_type": "{{ structure_type }}", "side": "{{ side }}"}'
+                    hx-swap="none"
+                    hx-on::after-request="bbNtslArmDone(event)">
+                Confirm arm
+            </button>
+        </div>
+    </div>
+</div>

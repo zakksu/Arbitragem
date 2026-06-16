@@ -210,6 +210,43 @@ Scheduler: `profit_pnl_sync` every **2 min** (stub refresh via `resolve_day_pnl`
 
 ProfitDLL: `python scripts/detect_profit_dll.py` · `GET /setup/status` → `profit_dll_detect`.
 
+### 4.0-beta — Trade Product + pulse (Supervisor API · Worker HTMX)
+
+| Endpoint | Purpose | UI consumer |
+|----------|---------|-------------|
+| `GET /symbols/{sym}/trade-product` | Trade Product card JSON (thesis, odds, levels, legs) | W4.7 `trade_product.html` |
+| `GET /symbols/{sym}/odds` | Pattern win rate from journal + backtest | W4.12 odds widget |
+| `GET /pulse` | News / calendar / lesson thirds | W4.9 pulse rail |
+| `POST /replay/run` | Sandbox replay job id | W4.11 replay UI |
+| `POST /ntsl/arm` | Export NTSL to `exports/ntsl/` | W4.10 arm flow |
+
+#### `GET /symbols/PETR4/odds`
+
+```json
+{
+  "symbol": "PETR4",
+  "structure_type": "scalp",
+  "win_rate_pct": 52.0,
+  "sample_size": 20,
+  "journal_trades": 0,
+  "backtest_trades": 0,
+  "profit_factor": null,
+  "source": "stub",
+  "lookback_days": 90
+}
+```
+
+`source`: `journal` (≥3 trades) · `backtest` · `stub`. Merged into `trade-product.odds` when DB session available.
+
+#### `POST /replay/run`
+
+```json
+{"strategy": "scalp_default", "symbol": "PETR4", "speed": 10, "mode": "sandbox"}
+```
+
+Response includes `job_id`, `mode: "sandbox"`, `message` (manual ProfitChart hint when DLL cannot auto-start).
+
+
 
 #### `POST /backtest/run` (API proxy → bridge)
 

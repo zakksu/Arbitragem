@@ -1,0 +1,58 @@
+{
+  "cockpit.paper_mode": {
+    "en": "Paper simulates fills without broker risk. Live sends real orders after confirm.",
+    "pt": "Simulado vs real"
+  },
+  "cockpit.net_delta": {
+    "en": "Portfolio net delta vs limit — options + cash exposure.",
+    "pt": "Delta líquido"
+  },
+  "cockpit.day_pnl": {
+    "en": "Session P&L: journal fills first, then Profit bridge, else paper stub.",
+    "pt": "Resultado do dia"
+  },
+  "cockpit.margin": {
+    "en": "Estimated margin for open structures from bridge stub.",
+    "pt": "Margem estimada"
+  },
+  "cockpit.scan": {
+    "en": "Run Core14 scanner and refresh ranked ideas.",
+    "pt": "Varredura do scanner"
+  },
+  "cockpit.kill": {
+    "en": "Pause all strategies and block new confirms.",
+    "pt": "Parar tudo"
+  },
+  "cockpit.risk": {
+    "en": "Max daily loss R$500, position caps, cost per trade.",
+    "pt": "Perfil de risco"
+  },
+  "cockpit.setup": {
+    "en": "Profit bridge, gates, and integration checks.",
+    "pt": "Configuração"
+  },
+  "cockpit.market_clock": {
+    "en": "Market session status — green open, yellow pre, red closed.",
+    "pt": "Relógio de mercado"
+  },
+  "risk.max_daily_loss": {
+    "en": "Session loss cap before kill / block confirm.",
+    "pt": "Perda máxima diária"
+  },
+  "risk.cost_per_trade": {
+    "en": "Commission + slippage budget per structure.",
+    "pt": "Custo por trade"
+  },
+  "risk.profile": {
+    "en": "Editable limits — max daily loss R$500 default.",
+    "pt": "Perfil de risco"
+  },
+  "cockpit.arm_ntsl": {
+    "en": "Export NTSL strategy file to imports folder — confirm before write.",
+    "pt": "Armar estratégia NTSL"
+  },
+  "cockpit.replay_lab": {
+    "en": "Sandbox replay job — no live orders; tune speed 1–20×.",
+    "pt": "Laboratório de replay"
+  }
+}

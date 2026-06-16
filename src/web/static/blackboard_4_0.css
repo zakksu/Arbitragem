@@ -66,6 +66,25 @@
 .bb-score-mid { color: var(--arb-accent); }
 .bb-score-low { color: var(--arb-muted); }
 
+.bb-sortable {
+    cursor: pointer;
+    user-select: none;
+}
+
+.bb-sortable:hover {
+    color: var(--arb-accent);
+}
+
+.bb-sortable.is-sorted-asc::after,
+.bb-sortable.is-sorted-desc::after {
+    font-size: 0.55rem;
+    margin-left: 0.2rem;
+    opacity: 0.8;
+}
+
+.bb-sortable.is-sorted-asc::after { content: "▲"; }
+.bb-sortable.is-sorted-desc::after { content: "▼"; }
+
 .bb-risk-drawer {
     position: fixed;
     top: 3rem;
@@ -183,6 +202,68 @@
 .bb-footer-pulse {
     flex: 1;
     min-width: 0;
+}
+
+.bb-odds-source {
+    display: inline-block;
+    font-size: 0.62rem;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    padding: 0.1rem 0.35rem;
+    margin-right: 0.35rem;
+    border: 1px solid var(--arb-border);
+    color: var(--arb-muted);
+    border-radius: 3px;
+}
+
+.bb-replay-lab {
+    margin: 0.75rem 0;
+    padding: 0.65rem;
+    border: 1px solid var(--arb-border);
+    border-radius: var(--arb-radius);
+    background: var(--arb-panel);
+}
+
+.bb-replay-head {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    margin-bottom: 0.5rem;
+}
+
+.bb-replay-form {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.75rem;
+    margin-bottom: 0.5rem;
+}
+
+.bb-replay-form label {
+    display: flex;
+    align-items: center;
+    gap: 0.35rem;
+    font-size: 0.75rem;
+}
+
+.bb-replay-log {
+    font-size: 0.72rem;
+    padding-top: 0.35rem;
+    border-top: 1px solid var(--arb-border);
+}
+
+.bb-toast {
+    position: fixed;
+    bottom: 1rem;
+    right: 1rem;
+    z-index: 9999;
+    padding: 0.65rem 1rem;
+    background: #1a3d1a;
+    border: 1px solid #22c55e;
+    color: #e8ffe8;
+    border-radius: var(--arb-radius);
+    font-size: 0.8rem;
+    max-width: 24rem;
 }
 
 @media (max-width: 768px) {

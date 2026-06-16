@@ -1,7 +1,7 @@
 <div class="bb-risk-drawer" id="risk-profile-drawer">
     <div class="bb-risk-drawer-head">
         <h3>Risk Profile</h3>
-        {% with tip="Editable limits — max daily loss R$500 default.", pt="Perfil de risco" %}
+        {% with key="risk.profile" %}
         {% include "partials/help_tip.html" %}
         {% endwith %}
         <button type="button" class="bb-btn-close" onclick="document.getElementById('risk-profile-drawer').remove()">×</button>
@@ -10,10 +10,10 @@
     <form class="bb-risk-form"
           hx-post="/board/partials/risk-profile/save"
           hx-swap="none"
-          hx-on::after-request="htmx.trigger('#status-bar', 'load')">
+          hx-on::after-request="htmx.trigger('#status-bar', 'load'); htmx.trigger('#watchlist', 'load')">
         <label>
             Max daily loss (R$)
-            {% with tip="Session loss cap before kill / block confirm.", pt="Perda máxima diária" %}
+            {% with key="risk.max_daily_loss" %}
             {% include "partials/help_tip.html" %}
             {% endwith %}
             <input type="number" name="max_daily_loss_brl" step="50" value="{{ profile.max_daily_loss_brl }}">
@@ -24,7 +24,7 @@
         </label>
         <label>
             Cost per trade (R$)
-            {% with tip="Commission + slippage budget per structure.", pt="Custo por trade" %}
+            {% with key="risk.cost_per_trade" %}
             {% include "partials/help_tip.html" %}
             {% endwith %}
             <input type="number" name="cost_per_trade_brl" step="5" value="{{ profile.cost_per_trade_brl }}">

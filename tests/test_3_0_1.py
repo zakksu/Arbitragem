@@ -24,7 +24,7 @@ def test_status_bar_single_kpi_strip(client):
     text = r.text
     assert text.count("Day P&amp;L") == 1
     assert "Arbitragem Scalper" in text
-    assert "Clear" not in text
+    assert 'class="bb-pnl-source"' in text
 
 
 def test_status_bar_has_help_tip(client):
@@ -66,10 +66,10 @@ def test_normalize_drawdown_pct_missing():
     assert TradeIdeaService.normalize_drawdown_pct({"profit_factor": 1.5}) is None
 
 
-def test_version_is_4_0():
+def test_version_is_4_0_beta():
     from src import __version__
 
-    assert __version__ == "4.0.0-alpha"
+    assert __version__ == "4.0.0"
 
 
 def test_bootstrap_includes_profit_bridge_flag(client):

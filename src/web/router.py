@@ -763,3 +763,47 @@ async def trade_product_partial(request: Request, symbol: str):
         "partials/trade_product.html",
         {"product": product},
     )
+
+
+@router.get("/board/partials/replay-lab", response_class=HTMLResponse)
+async def replay_lab_partial(request: Request):
+    sym = (request.query_params.get("symbol") or "PETR4").strip().upper()
+    speed = request.query_params.get("speed", "10")
+    return TEMPLATES.TemplateResponse(
+        request,
+        "partials/replay_lab.html",
+        {"symbol": sym, "speed": speed, "last_run": None},
+    )
+
+
+@router.post("/board/partials/replay-lab/run", response_class=HTMLResponse)
+async def replay_lab_run(request: Request):
+    from src.services.replay_lab import start_replay
+
+    form = await request.form()
+    sym = str(form.get("symbol", "PETR4")).strip().upper()
+    speed = float(form.get("speed", 10) or 10)
+    run = await _to_thread(
+        start_replay,
+        strategy="scalp_default",
+        symbol=sym,
+        speed=speed,
+        mode="sandbox",
+    )
+    return TEMPLATES.TemplateResponse(
+        request,
+        "partials/replay_lab_log.html",
+        {"run": run},
+    )
+
+
+@router.get("/board/partials/ntsl-arm-confirm", response_class=HTMLResponse)
+async def ntsl_arm_confirm(request: Request):
+    sym = request.query_params.get("symbol", "").strip().upper()
+    structure_type = request.query_params.get("structure_type", "scalp")
+    side = request.query_params.get("side", "long")
+    return TEMPLATES.TemplateResponse(
+        request,
+        "partials/ntsl_arm_confirm.html",
+        {"symbol": sym, "structure_type": structure_type, "side": side},
+    )

@@ -153,6 +153,11 @@
          hx-trigger="load"
          hx-swap="innerHTML"></div>
 
+    <div id="replay-lab-slot"
+         hx-get="/board/partials/replay-lab?symbol={{ symbol }}"
+         hx-trigger="load"
+         hx-swap="innerHTML"></div>
+
     {% include "partials/structure_builder.html" %}
 
     <div class="bb-notes-area">

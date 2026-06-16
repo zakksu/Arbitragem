@@ -1,0 +1,31 @@
+<div class="bb-replay-lab" id="replay-lab-panel">
+    <div class="bb-replay-head">
+        <strong>Replay Lab</strong>
+        <span class="bb-muted">sandbox · no live orders</span>
+        {% with key="cockpit.replay_lab" %}
+        {% include "partials/help_tip.html" %}
+        {% endwith %}
+    </div>
+    <form class="bb-replay-form"
+          hx-post="/board/partials/replay-lab/run"
+          hx-target="#replay-lab-log"
+          hx-swap="innerHTML">
+        <input type="hidden" name="symbol" value="{{ symbol }}">
+        <label>
+            Speed
+            <input type="range" name="speed" min="1" max="20" value="{{ speed or 10 }}"
+                   oninput="this.nextElementSibling.textContent=this.value+'×'">
+            <em>{{ speed or 10 }}×</em>
+        </label>
+        <button type="submit" class="bb-btn-confirm">Start replay</button>
+    </form>
+    <div id="replay-lab-log" class="bb-replay-log">
+        {% if last_run %}
+        <p><strong>{{ last_run.status|upper }}</strong> · {{ last_run.symbol }} · {{ last_run.speed }}×</p>
+        <p class="bb-muted">{{ last_run.message }}</p>
+        <code>job {{ last_run.job_id }}</code>
+        {% else %}
+        <p class="bb-muted">Pick a symbol and run a sandbox replay job.</p>
+        {% endif %}
+    </div>
+</div>

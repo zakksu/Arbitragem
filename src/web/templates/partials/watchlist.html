@@ -1,36 +1,37 @@
 {% if symbols %}
 <span data-count="{{ symbols|length }}" hidden></span>
 <div class="bb-watch-toolbar">
-    <button type="button" class="bb-btn-toolbar bb-watch-reset" onclick="htmx.trigger('#watchlist', 'load')">Reset sort</button>
+    <button type="button" class="bb-btn-toolbar bb-watch-reset" id="watchlist-reset-sort"
+            onclick="htmx.trigger('#watchlist', 'load')">Reset sort</button>
 </div>
-<table class="bb-watchlist">
+<table class="bb-watchlist" id="watchlist-table">
     <thead>
         <tr>
-            <th>
+            <th class="bb-sortable" data-sort="symbol" data-sort-type="text">
                 Symbol
-                {% with tip="Core14 ticker — click row to open blackboard.", pt="Papel" %}
+                {% with key="watchlist.symbol" %}
                 {% include "partials/help_tip.html" %}
                 {% endwith %}
             </th>
-            <th style="text-align:right">
+            <th class="bb-sortable" data-sort="idea_score" data-sort-type="number" style="text-align:right">
                 Score
-                {% with tip="Idea score 0–100 — reliability × gates × WF.", pt="Pontuação" %}
+                {% with key="watchlist.score" %}
                 {% include "partials/help_tip.html" %}
                 {% endwith %}
             </th>
-            <th style="text-align:right">
+            <th class="bb-sortable" data-sort="atr_pct" data-sort-type="number" style="text-align:right">
                 ATR%
-                {% with tip="Average true range % — vol context.", pt="Volatilidade ATR" %}
+                {% with key="watchlist.atr_pct" %}
                 {% include "partials/help_tip.html" %}
                 {% endwith %}
             </th>
-            <th style="text-align:right">
+            <th class="bb-sortable" data-sort="est_cost_brl" data-sort-type="number" style="text-align:right">
                 Cost
-                {% with tip="Est. commission + slippage per trade.", pt="Custo estimado" %}
+                {% with key="watchlist.cost" %}
                 {% include "partials/help_tip.html" %}
                 {% endwith %}
             </th>
-            <th style="text-align:right">Last</th>
+            <th class="bb-sortable" data-sort="last" data-sort-type="number" style="text-align:right">Last</th>
         </tr>
     </thead>
     <tbody>
@@ -38,6 +39,11 @@
         <tr class="bb-watch-row bb-bias-{{ row.bias or 'neutral' }}{% if active_symbol == row.symbol %} is-active{% endif %}"
             data-symbol="{{ row.symbol }}"
             data-symbol-url="/board/partials/symbol/{{ row.symbol }}"
+            data-sort-symbol="{{ row.symbol }}"
+            data-sort-idea_score="{{ row.idea_score or 0 }}"
+            data-sort-atr_pct="{{ row.atr_pct if row.atr_pct is not none else -1 }}"
+            data-sort-est_cost_brl="{{ row.est_cost_brl if row.est_cost_brl is not none else -1 }}"
+            data-sort-last="{{ row.last if row.last is defined and row.last is not none else -1 }}"
             role="button"
             tabindex="0">
             <td>

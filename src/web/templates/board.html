@@ -171,6 +171,20 @@
             requestAnimationFrame(mount);
         };
 
+        window.bbNtslArmDone = function (evt) {
+            var modal = document.getElementById("ntsl-arm-modal");
+            var xhr = evt.detail.xhr;
+            var msg = xhr && xhr.responseText ? xhr.responseText : "NTSL armed";
+            if (modal) modal.remove();
+            if (window.htmx && xhr && xhr.status < 400) {
+                var toast = document.createElement("div");
+                toast.className = "bb-toast";
+                toast.textContent = msg;
+                document.body.appendChild(toast);
+                setTimeout(function () { toast.remove(); }, 4000);
+            }
+        };
+
         document.body.addEventListener("htmx:afterRequest", function (evt) {
             var preset = evt.detail.elt && evt.detail.elt.dataset && evt.detail.elt.dataset.preset;
             if (!preset) return;
@@ -187,6 +201,57 @@
             });
         });
 
+        function bbInitWatchlistSort(root) {
+            if (!root) return;
+            var table = root.querySelector("#watchlist-table");
+            if (!table || table.dataset.sortReady === "1") return;
+            table.dataset.sortReady = "1";
+            var tbody = table.querySelector("tbody");
+            if (!tbody) return;
+
+            function sortBy(key, asc) {
+                var type = table.querySelector('th[data-sort="' + key + '"]');
+                var sortType = type ? type.getAttribute("data-sort-type") : "text";
+                var rows = Array.prototype.slice.call(tbody.querySelectorAll("tr"));
+                rows.sort(function (a, b) {
+                    var av = a.getAttribute("data-sort-" + key) || "";
+                    var bv = b.getAttribute("data-sort-" + key) || "";
+                    if (sortType === "number") {
+                        av = parseFloat(av);
+                        bv = parseFloat(bv);
+                        if (isNaN(av)) av = -1;
+                        if (isNaN(bv)) bv = -1;
+                        return asc ? av - bv : bv - av;
+                    }
+                    av = String(av).toUpperCase();
+                    bv = String(bv).toUpperCase();
+                    if (av < bv) return asc ? -1 : 1;
+                    if (av > bv) return asc ? 1 : -1;
+                    return 0;
+                });
+                rows.forEach(function (r) { tbody.appendChild(r); });
+                table.querySelectorAll(".bb-sortable").forEach(function (th) {
+                    th.classList.remove("is-sorted-asc", "is-sorted-desc");
+                });
+                if (type) {
+                    type.classList.add(asc ? "is-sorted-asc" : "is-sorted-desc");
+                }
+            }
+
+            table.querySelectorAll(".bb-sortable").forEach(function (th) {
+                th.addEventListener("click", function (evt) {
+                    if (evt.target.closest(".bb-help-tip")) return;
+                    var key = th.getAttribute("data-sort");
+                    var asc = th.dataset.sortAsc !== "1";
+                    th.dataset.sortAsc = asc ? "1" : "0";
+                    table.querySelectorAll(".bb-sortable").forEach(function (other) {
+                        if (other !== th) other.dataset.sortAsc = "";
+                    });
+                    sortBy(key, asc);
+                });
+            });
+        }
+
         document.body.addEventListener("htmx:afterSwap", function (evt) {
             if (evt.detail.target.id === "watchlist") {
                 var count = evt.detail.target.querySelector("[data-count]");
@@ -196,6 +261,7 @@
                 if (window.bbQuoteStream) {
                     window.bbQuoteStream.resubscribe();
                 }
+                bbInitWatchlistSort(evt.detail.target);
             }
             if (evt.detail.target.id === "idea-stack") {
                 var ideas = evt.detail.target.querySelector("[data-count]");

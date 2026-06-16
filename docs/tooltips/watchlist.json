@@ -1,0 +1,18 @@
+{
+  "watchlist.symbol": {
+    "en": "Core14 ticker — click row to open blackboard.",
+    "pt": "Papel"
+  },
+  "watchlist.score": {
+    "en": "Idea score 0–100 — reliability × gates × walk-forward.",
+    "pt": "Pontuação"
+  },
+  "watchlist.atr_pct": {
+    "en": "Average true range % — vol context for sizing.",
+    "pt": "Volatilidade ATR"
+  },
+  "watchlist.cost": {
+    "en": "Est. commission + slippage per trade (from risk profile).",
+    "pt": "Custo estimado"
+  }
+}
