@@ -15,7 +15,7 @@ Scope: [RELEASE_7.0_LOCAL.md](RELEASE_7.0_LOCAL.md)
 - [x] `scripts/test_worker.py` + `data/.dev/test_status.json`
 - [x] `dev.py start` spawns test worker (non-blocking) + `dev.py test-worker` subcommand
 - [x] `status_tick.py --json` (api, motor, sleeves, test_status, golden_path, ram_mb)
-- [x] Tests — `tests/test_golden_path_petr4.py`, `tests/test_golden_path_mode.py`
+- [x] Tests — `tests/test_golden_path_petr4.py`, `tests/test_golden_path_mode.py` (9/9 green)
 - [x] Quote cache TTL 1s in `profit_bridge.get_quotes_batch`
 - [x] Trader desk SSE interval 30s in golden path mode
 - [ ] Board first paint < 800 ms (manual verify)
