@@ -116,10 +116,11 @@
         <button type="button"
                 class="bb-btn-toolbar bb-btn-danger{% if risk and risk.kill_switch_active %} is-active{% endif %}"
                 id="kill-switch-btn"
+                data-kill-active="{% if risk and risk.kill_switch_active %}true{% else %}false{% endif %}"
                 hx-post="/api/v1/risk/kill-switch"
-                hx-vals='js:{"active": true, "reason": "board stop"}'
+                hx-vals='js:(function(){var b=document.getElementById("kill-switch-btn");var on=b&&b.dataset.killActive==="true";return {active:!on,reason:on?"board resume":"board stop"};})()'
                 hx-swap="none"
-                hx-on::after-request="htmx.trigger('#status-bar', 'load'); htmx.trigger('#idea-stack', 'load')">
+                hx-on::after-request="var b=document.getElementById('kill-switch-btn');if(b){b.dataset.killActive=b.dataset.killActive==='true'?'false':'true';}htmx.trigger('#status-bar','load');htmx.trigger('#idea-stack','load');">
             {% if risk and risk.kill_switch_active %}KILL ON{% else %}KILL{% endif %}
             {% with key="cockpit.kill" %}
             {% include "partials/help_tip.html" %}

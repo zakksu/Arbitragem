@@ -68,6 +68,9 @@ class TradeIdeaService:
 
             side = str(raw.get("side_bias", "neutral")).lower()
             structure = self._infer_structure(scan, side, structure_type)
+            if self._has_open_idea(scan.symbol, structure):
+                continue
+
             quote = self.profit.get_quote(scan.symbol)
             last = quote.last if quote else raw.get("last")
             stop_t = int(raw.get("stop_ticks", 5))
@@ -418,6 +421,45 @@ class TradeIdeaService:
         if dd > s.backtest_max_drawdown_pct:
             return False
         return True
+
+    def _has_open_idea(self, symbol: str, structure: str) -> bool:
+        """Skip duplicate stack entries for same symbol+structure today."""
+        from datetime import time
+
+        today_start = datetime.combine(datetime.utcnow().date(), time.min)
+        row = (
+            self.session.query(TradeIdea.id)
+            .filter(
+                TradeIdea.symbol == symbol.upper(),
+                TradeIdea.structure_type == structure,
+                TradeIdea.status.in_(["detected", "backtested", "confirmed"]),
+                TradeIdea.created_at >= today_start,
+            )
+            .first()
+        )
+        return row is not None
+
+    def list_ideas_for_stack(
+        self, limit: int = 20, symbol: str | None = None
+    ) -> list[TradeIdea]:
+        """Active ideas only — one best row per symbol."""
+        rows = self.list_ideas(limit=200, symbol=symbol)
+        best: dict[str, TradeIdea] = {}
+        for idea in rows:
+            if idea.status in ("rejected", "executed"):
+                continue
+            sym = idea.symbol
+            prev = best.get(sym)
+            if prev is None or score_idea(self.to_dict(idea)) > score_idea(
+                self.to_dict(prev)
+            ):
+                best[sym] = idea
+        ranked = sorted(
+            best.values(),
+            key=lambda i: score_idea(self.to_dict(i)),
+            reverse=True,
+        )
+        return ranked[:limit]
 
     @staticmethod
     def _infer_structure(

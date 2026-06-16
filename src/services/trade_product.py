@@ -8,6 +8,18 @@ from src.services.idea_score import score_idea
 from src.services.odds_panel import pattern_odds
 
 
+def _clean_thesis(rationale: str | None, title: str | None) -> str:
+    """Avoid kill-switch log spam in Trade Product thesis panel."""
+    if title and (not rationale or "[Kill switch]" in rationale):
+        return title
+    if not rationale:
+        return "Structure opportunity from scanner."
+    first = rationale.strip().split("\n")[0]
+    if "[Kill switch]" in first:
+        return title or "Idea cancelled — run Scan for fresh setups."
+    return first[:600]
+
+
 def build_trade_product(
     idea: dict[str, Any], *, note: str | None = None, session=None
 ) -> dict[str, Any]:
@@ -29,7 +41,7 @@ def build_trade_product(
         "structure_type": idea.get("structure_type"),
         "side": idea.get("side"),
         "score": score,
-        "thesis": idea.get("rationale") or idea.get("title") or "Structure opportunity from scanner.",
+        "thesis": _clean_thesis(idea.get("rationale"), idea.get("title")),
         "economics_tags": tags[:5],
         "why_not_alternatives": _alternatives(idea),
         "odds": {

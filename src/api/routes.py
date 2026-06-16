@@ -539,7 +539,8 @@ def risk_kill_switch(
             TradeIdea.status.in_(["detected", "backtested", "confirmed"])
         ).all():
             idea.status = "rejected"
-            idea.rationale = (idea.rationale or "") + "\n[Kill switch] Idea cancelled."
+            if "[Kill switch]" not in (idea.rationale or ""):
+                idea.rationale = (idea.rationale or "") + "\n[Kill switch] Idea cancelled."
             rejected += 1
         log_event(
             db,

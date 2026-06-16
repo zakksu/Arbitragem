@@ -56,7 +56,7 @@
             <div class="bb-col-body"
                  id="idea-stack"
                  hx-get="/board/partials/ideas"
-                 hx-trigger="load, every 20s"
+                 hx-trigger="load, every 60s"
                  hx-swap="innerHTML">
                 <div class="bb-ideas-empty"><span class="bb-loading"></span></div>
             </div>
@@ -66,11 +66,11 @@
     <footer class="bb-footer">
         <div id="pulse-rail" class="bb-footer-pulse"
              hx-get="/board/partials/pulse-rail"
-             hx-trigger="load, every 60s"
+             hx-trigger="load, every 120s"
              hx-swap="innerHTML">
             <span class="bb-muted">Loading pulse rail…</span>
         </div>
-        <span class="bb-footer-hint"><kbd>S</kbd> scan · <kbd>K</kbd> kill · <kbd>1-9</kbd> watchlist · <kbd>R</kbd> refresh</span>
+        <span class="bb-footer-hint"><kbd>S</kbd> scan · <kbd>K</kbd> kill toggle · <kbd>1-9</kbd> watchlist · <kbd>R</kbd> refresh</span>
     </footer>
 
     <script src="https://unpkg.com/lightweight-charts@4.2.0/dist/lightweight-charts.standalone.production.js"></script>
@@ -135,15 +135,18 @@
                 }
 
                 var mp = parseFloat(wrap.dataset.maxPain || "");
-                if (!isNaN(mp) && mp > 0) {
-                    series.createPriceLine({
-                        price: mp,
-                        color: "#3b82f6",
-                        lineWidth: 1,
-                        lineStyle: 2,
-                        axisLabelVisible: true,
-                        title: "Max pain",
-                    });
+                if (!isNaN(mp) && mp > 0 && last > 0) {
+                    var dist = Math.abs(mp - last) / last;
+                    if (dist < 0.35) {
+                        series.createPriceLine({
+                            price: mp,
+                            color: "#3b82f6",
+                            lineWidth: 1,
+                            lineStyle: 2,
+                            axisLabelVisible: true,
+                            title: "Max pain",
+                        });
+                    }
                 }
 
                 function addLevel(attr, color, title) {
@@ -341,7 +344,17 @@
             }
             if (evt.key === "k" || evt.key === "K") {
                 var btn = document.getElementById("kill-switch-btn");
-                if (btn) btn.click();
+                if (btn) {
+                    var on = btn.dataset.killActive === "true";
+                    htmx.ajax("POST", "/api/v1/risk/kill-switch", {
+                        values: { active: !on, reason: on ? "keyboard resume" : "keyboard stop" },
+                        swap: "none"
+                    }).then(function () {
+                        btn.dataset.killActive = on ? "false" : "true";
+                        htmx.trigger("#status-bar", "load");
+                        htmx.trigger("#idea-stack", "load");
+                    });
+                }
             }
             if (evt.key >= "1" && evt.key <= "9") {
                 var rows = document.querySelectorAll(".bb-watch-row");

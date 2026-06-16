@@ -95,7 +95,7 @@ def _list_ideas_sync(limit: int = 20, symbol: str | None = None) -> list[dict[st
 
     def _load(session):
         svc = TradeIdeaService(session)
-        ideas = svc.list_ideas(limit=limit, symbol=symbol)
+        ideas = svc.list_ideas_for_stack(limit=limit, symbol=symbol)
         return [svc.to_dict(i) for i in ideas]
 
     return _with_db(_load)
