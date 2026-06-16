@@ -11,6 +11,7 @@ from src.integrations.profit_bridge import get_profit_client
 from src.logging_config import get_logger
 from src.models import ScanResult, TradeIdea
 from src.services.filipe_universe import sector_for
+from src.services.idea_score import score_idea
 
 logger = get_logger(__name__)
 
@@ -20,12 +21,16 @@ class TradeIdeaService:
         self.session = session
         self.profit = get_profit_client()
 
-    def list_ideas(self, limit: int = 20, status: str | None = None) -> list[TradeIdea]:
+    def list_ideas(
+        self, limit: int = 20, status: str | None = None, symbol: str | None = None
+    ) -> list[TradeIdea]:
         q = self.session.query(TradeIdea).order_by(
             desc(TradeIdea.reliability), desc(TradeIdea.created_at)
         )
         if status:
             q = q.filter(TradeIdea.status == status)
+        if symbol:
+            q = q.filter(TradeIdea.symbol == symbol.strip().upper())
         return q.limit(limit).all()
 
     def generate_from_latest_scan(
@@ -607,7 +612,7 @@ class TradeIdeaService:
         wf_passed = proof.get("walk_forward_folds_passed")
         wf_total = proof.get("walk_forward_folds_total")
         tags = idea.rationale_tags or []
-        return {
+        idea_dict = {
             "id": idea.id,
             "symbol": idea.symbol,
             "structure_type": idea.structure_type,
@@ -634,3 +639,5 @@ class TradeIdeaService:
             "confirmed_at": idea.confirmed_at.isoformat() if idea.confirmed_at else None,
             "executed_at": idea.executed_at.isoformat() if idea.executed_at else None,
         }
+        idea_dict["idea_score"] = score_idea(idea_dict)
+        return idea_dict

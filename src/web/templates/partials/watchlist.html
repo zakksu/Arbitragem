@@ -1,73 +1,73 @@
-{% if symbols %}
-<span data-count="{{ symbols|length }}" hidden></span>
-<table class="bb-watchlist">
-    <thead>
-        <tr>
-            <th>
-                Symbol
-                {% with tip="Core14 ticker — click row to open blackboard.", pt="Papel" %}
-                {% include "partials/help_tip.html" %}
-                {% endwith %}
-            </th>
-            <th style="text-align:right">
-                Last
-                {% with tip="Last traded price from Profit bridge.", pt="Último preço" %}
-                {% include "partials/help_tip.html" %}
-                {% endwith %}
-            </th>
-            <th style="text-align:right">
-                Bid
-                {% with tip="Best bid in the book.", pt="Compra" %}
-                {% include "partials/help_tip.html" %}
-                {% endwith %}
-            </th>
-            <th style="text-align:right">
-                Ask
-                {% with tip="Best ask in the book.", pt="Venda" %}
-                {% include "partials/help_tip.html" %}
-                {% endwith %}
-            </th>
-        </tr>
-    </thead>
-    <tbody>
-        {% for row in symbols %}
-        <tr class="bb-watch-row{% if active_symbol == row.symbol %} is-active{% endif %}"
-            data-symbol="{{ row.symbol }}"
-            data-symbol-url="/board/partials/symbol/{{ row.symbol }}"
-            role="button"
-            tabindex="0">
-            <td>
-                <span class="bb-sym">{{ row.symbol }}</span>
-                {% if row.sector %}
-                <span class="bb-sector">{{ row.sector }}</span>
-                {% elif row.name %}
-                <span class="bb-sector">{{ row.name }}</span>
-                {% endif %}
-            </td>
-            <td class="bb-price bb-quote-last">
-                {% if row.last is defined and row.last is not none %}
-                {{ "%.2f"|format(row.last) }}
-                {% else %}
-                —
-                {% endif %}
-            </td>
-            <td class="bb-price bb-bid" style="text-align:right">
-                {% if row.bid is defined and row.bid is not none %}
-                {{ "%.2f"|format(row.bid) }}
-                {% else %}—{% endif %}
-            </td>
-            <td class="bb-price bb-ask" style="text-align:right">
-                {% if row.ask is defined and row.ask is not none %}
-                {{ "%.2f"|format(row.ask) }}
-                {% else %}—{% endif %}
-            </td>
-        </tr>
-        {% endfor %}
-    </tbody>
-</table>
-{% else %}
-<div class="bb-watch-empty">
-    <p>No symbols in universe.</p>
-    <p style="font-size:0.72rem;margin-top:0.5rem;">Check <code>/api/v1/universe/filipe-core14</code></p>
-</div>
-{% endif %}
+{% if symbols %}
+<span data-count="{{ symbols|length }}" hidden></span>
+<div class="bb-watch-toolbar">
+    <button type="button" class="bb-btn-toolbar bb-watch-reset" onclick="htmx.trigger('#watchlist', 'load')">Reset sort</button>
+</div>
+<table class="bb-watchlist">
+    <thead>
+        <tr>
+            <th>
+                Symbol
+                {% with tip="Core14 ticker — click row to open blackboard.", pt="Papel" %}
+                {% include "partials/help_tip.html" %}
+                {% endwith %}
+            </th>
+            <th style="text-align:right">
+                Score
+                {% with tip="Idea score 0–100 — reliability × gates × WF.", pt="Pontuação" %}
+                {% include "partials/help_tip.html" %}
+                {% endwith %}
+            </th>
+            <th style="text-align:right">
+                ATR%
+                {% with tip="Average true range % — vol context.", pt="Volatilidade ATR" %}
+                {% include "partials/help_tip.html" %}
+                {% endwith %}
+            </th>
+            <th style="text-align:right">
+                Cost
+                {% with tip="Est. commission + slippage per trade.", pt="Custo estimado" %}
+                {% include "partials/help_tip.html" %}
+                {% endwith %}
+            </th>
+            <th style="text-align:right">Last</th>
+        </tr>
+    </thead>
+    <tbody>
+        {% for row in symbols %}
+        <tr class="bb-watch-row bb-bias-{{ row.bias or 'neutral' }}{% if active_symbol == row.symbol %} is-active{% endif %}"
+            data-symbol="{{ row.symbol }}"
+            data-symbol-url="/board/partials/symbol/{{ row.symbol }}"
+            role="button"
+            tabindex="0">
+            <td>
+                <span class="bb-sym">{{ row.symbol }}</span>
+                {% if row.sector %}
+                <span class="bb-sector">{{ row.sector }}</span>
+                {% endif %}
+            </td>
+            <td class="bb-score" style="text-align:right">
+                <strong class="{% if (row.idea_score or 0) >= 60 %}bb-score-high{% elif (row.idea_score or 0) >= 40 %}bb-score-mid{% else %}bb-score-low{% endif %}">
+                    {{ row.idea_score or 0 }}
+                </strong>
+            </td>
+            <td style="text-align:right">
+                {% if row.atr_pct is not none %}{{ "%.1f"|format(row.atr_pct) }}%{% else %}—{% endif %}
+            </td>
+            <td style="text-align:right">
+                {% if row.est_cost_brl is not none %}R${{ "%.0f"|format(row.est_cost_brl) }}{% else %}—{% endif %}
+            </td>
+            <td class="bb-price bb-quote-last" style="text-align:right">
+                {% if row.last is defined and row.last is not none %}
+                {{ "%.2f"|format(row.last) }}
+                {% else %}—{% endif %}
+            </td>
+        </tr>
+        {% endfor %}
+    </tbody>
+</table>
+{% else %}
+<div class="bb-watch-empty">
+    <p>No symbols in universe.</p>
+</div>
+{% endif %}

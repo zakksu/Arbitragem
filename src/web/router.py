@@ -90,12 +90,12 @@ async def _fetch_universe(request: Request) -> list[dict[str, Any]]:
     return list(payload.get("symbols") or [])
 
 
-def _list_ideas_sync(limit: int = 20) -> list[dict[str, Any]]:
+def _list_ideas_sync(limit: int = 20, symbol: str | None = None) -> list[dict[str, Any]]:
     from src.services.trade_ideas import TradeIdeaService
 
     def _load(session):
         svc = TradeIdeaService(session)
-        ideas = svc.list_ideas(limit=limit)
+        ideas = svc.list_ideas(limit=limit, symbol=symbol)
         return [svc.to_dict(i) for i in ideas]
 
     return _with_db(_load)
@@ -124,6 +124,10 @@ def _fast_quote(symbol: str):
 
 
 def _watchlist_rows_sync(symbols: list[dict[str, Any]], sym_list: list[str]) -> list[dict[str, Any]]:
+    from src.services.risk_profile import get_or_create_profile
+    from src.services.trade_ideas import TradeIdeaService
+    from src.services.watchlist_enrich import enrich_watchlist_rows
+
     settings = get_settings()
     profit = get_profit_client()
     if settings.scanner_include_bova_options:
@@ -149,7 +153,18 @@ def _watchlist_rows_sync(symbols: list[dict[str, Any]], sym_list: list[str]) -> 
             enriched["bid"] = q.bid
             enriched["ask"] = q.ask
         rows.append(enriched)
-    return rows
+
+    def _ideas(session):
+        svc = TradeIdeaService(session)
+        return [svc.to_dict(i) for i in svc.list_ideas(limit=50)]
+
+    ideas = _with_db(_ideas)
+
+    def _profile(session):
+        return get_or_create_profile(session)
+
+    profile = _with_db(_profile)
+    return enrich_watchlist_rows(rows, ideas, cost_per_trade_brl=profile.cost_per_trade_brl)
 
 
 def _fetch_idea_sync(idea_id: int) -> dict[str, Any] | None:
@@ -257,7 +272,16 @@ async def symbol_partial(request: Request, symbol: str):
             return None
         return {"symbol": row.symbol, "content": row.content, "updated_at": row.updated_at.isoformat()}
 
+    def _top_idea(session):
+        from src.services.trade_ideas import TradeIdeaService
+
+        ideas = TradeIdeaService(session).list_ideas(limit=1, symbol=sym)
+        if not ideas:
+            return None
+        return TradeIdeaService(session).to_dict(ideas[0])
+
     note = await _to_thread(_with_db, _load_note)
+    top_idea = await _to_thread(_with_db, _top_idea)
     quote = await _to_thread(_fast_quote, sym)
     candles = await _to_thread(get_profit_client().get_session_candles, sym)
 
@@ -286,6 +310,7 @@ async def symbol_partial(request: Request, symbol: str):
             "iv_rank": iv_rank_val,
             "preview_legs": None,
             "candles": candles,
+            "top_idea": top_idea,
         },
     )
 
@@ -378,11 +403,12 @@ async def structure_create_partial(request: Request, symbol: str):
 
 @router.get("/board/partials/ideas", response_class=HTMLResponse)
 async def ideas_partial(request: Request):
-    ideas = await _fetch_ideas(request)
+    symbol = request.query_params.get("symbol")
+    ideas = await _to_thread(_list_ideas_sync, 20, symbol)
     return TEMPLATES.TemplateResponse(
         request,
         "partials/idea_stack.html",
-        {"ideas": ideas},
+        {"ideas": ideas, "filter_symbol": symbol},
     )
 
 
@@ -665,4 +691,75 @@ async def analyze_symbol_partial(request: Request, symbol: str):
         request,
         "partials/ai_report.html",
         {"report": report},
+    )
+
+
+@router.get("/board/partials/world-clocks", response_class=HTMLResponse)
+async def world_clocks_partial(request: Request):
+    from src.services.market_clocks import get_market_clocks
+
+    clocks = await _to_thread(get_market_clocks)
+    return TEMPLATES.TemplateResponse(
+        request,
+        "partials/world_clocks.html",
+        {"clocks": clocks},
+    )
+
+
+@router.get("/board/partials/risk-profile", response_class=HTMLResponse)
+async def risk_profile_partial(request: Request):
+    from src.services.risk_profile import get_or_create_profile, profile_to_dict
+
+    profile = await _to_thread(_with_db, lambda s: profile_to_dict(get_or_create_profile(s)))
+    return TEMPLATES.TemplateResponse(
+        request,
+        "partials/risk_profile.html",
+        {"profile": profile},
+    )
+
+
+@router.post("/board/partials/risk-profile/save", response_class=HTMLResponse)
+async def risk_profile_save(request: Request):
+    from src.services.risk_profile import update_profile
+
+    form = await request.form()
+    payload = {}
+    for key in ("max_daily_loss_brl", "max_open_positions", "cost_per_trade_brl", "max_net_delta"):
+        if key in form and form.get(key):
+            val = form.get(key)
+            payload[key] = float(val) if "brl" in key or key == "max_net_delta" else int(val)
+
+    def _save(session):
+        update_profile(session, payload)
+
+    await _to_thread(_with_db, _save)
+    return HTMLResponse('<span class="bb-muted">Saved</span>')
+
+
+@router.get("/board/partials/pulse-rail", response_class=HTMLResponse)
+async def pulse_rail_partial(request: Request):
+    from src.services.pulse_rail import get_pulse_rail
+
+    pulse = await _to_thread(get_pulse_rail)
+    return TEMPLATES.TemplateResponse(
+        request,
+        "partials/pulse_rail.html",
+        {"pulse": pulse},
+    )
+
+
+@router.get("/board/partials/symbol/{symbol}/trade-product", response_class=HTMLResponse)
+async def trade_product_partial(request: Request, symbol: str):
+    sym = symbol.strip().upper()
+    product = None
+    try:
+        data = await _fetch_json(request, f"/api/v1/symbols/{sym}/trade-product")
+        if isinstance(data, dict):
+            product = data
+    except Exception:
+        pass
+    return TEMPLATES.TemplateResponse(
+        request,
+        "partials/trade_product.html",
+        {"product": product},
     )

@@ -1,0 +1,44 @@
+<div class="bb-risk-drawer" id="risk-profile-drawer">
+    <div class="bb-risk-drawer-head">
+        <h3>Risk Profile</h3>
+        {% with tip="Editable limits — max daily loss R$500 default.", pt="Perfil de risco" %}
+        {% include "partials/help_tip.html" %}
+        {% endwith %}
+        <button type="button" class="bb-btn-close" onclick="document.getElementById('risk-profile-drawer').remove()">×</button>
+    </div>
+  {% if profile %}
+    <form class="bb-risk-form"
+          hx-post="/board/partials/risk-profile/save"
+          hx-swap="none"
+          hx-on::after-request="htmx.trigger('#status-bar', 'load')">
+        <label>
+            Max daily loss (R$)
+            {% with tip="Session loss cap before kill / block confirm.", pt="Perda máxima diária" %}
+            {% include "partials/help_tip.html" %}
+            {% endwith %}
+            <input type="number" name="max_daily_loss_brl" step="50" value="{{ profile.max_daily_loss_brl }}">
+        </label>
+        <label>
+            Max open positions
+            <input type="number" name="max_open_positions" min="1" max="20" value="{{ profile.max_open_positions }}">
+        </label>
+        <label>
+            Cost per trade (R$)
+            {% with tip="Commission + slippage budget per structure.", pt="Custo por trade" %}
+            {% include "partials/help_tip.html" %}
+            {% endwith %}
+            <input type="number" name="cost_per_trade_brl" step="5" value="{{ profile.cost_per_trade_brl }}">
+        </label>
+        <label>
+            Max net delta
+            <input type="number" name="max_net_delta" step="0.05" value="{{ profile.max_net_delta }}">
+        </label>
+        <button type="submit" class="bb-btn-confirm">Save limits</button>
+    </form>
+    {% if profile.updated_at %}
+    <p class="bb-muted" style="font-size:0.7rem;margin-top:0.75rem">Updated {{ profile.updated_at }}</p>
+    {% endif %}
+  {% else %}
+    <p class="bb-muted">Loading profile…</p>
+  {% endif %}
+</div>

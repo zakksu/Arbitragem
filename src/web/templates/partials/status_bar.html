@@ -39,12 +39,15 @@
     </div>
     <div class="bb-status-kpi">
         <span class="bb-cockpit-label">Day P&amp;L</span>
-        {% with tip="Session profit and loss from Profit bridge when connected.", pt="Resultado do dia" %}
+        {% with tip="Session P&L: journal fills first, then Profit bridge, else paper stub.", pt="Resultado do dia" %}
         {% include "partials/help_tip.html" %}
         {% endwith %}
         <strong class="{% if cockpit.day_pnl >= 0 %}bb-pnl-pos{% else %}bb-pnl-neg{% endif %}">
             R$ {{ "%.2f"|format(cockpit.day_pnl) }}
         </strong>
+        {% if cockpit.pnl_source %}
+        <em class="bb-pnl-source" title="P&L source">{{ cockpit.pnl_source }}</em>
+        {% endif %}
     </div>
     {% if cockpit.top_sector %}
     <div class="bb-status-kpi">
@@ -86,6 +89,16 @@
     {% endif %}
 
     <div class="bb-clock" id="bb-clock"></div>
+    <div id="world-clocks" class="bb-clocks-slot"
+         hx-get="/board/partials/world-clocks"
+         hx-trigger="load, every 60s"
+         hx-swap="innerHTML"></div>
+    <div id="kpi-filters" class="bb-kpi-filters">
+        <button type="button" class="bb-kpi-chip is-active" data-range="today">Today</button>
+        <button type="button" class="bb-kpi-chip" data-range="5d">5D</button>
+        <button type="button" class="bb-kpi-chip" data-range="20d">20D</button>
+        <button type="button" class="bb-kpi-chip" data-range="3mo">3mo</button>
+    </div>
     <div id="layout-presets" class="bb-layout-slot"
          hx-get="/board/partials/layout-presets"
          hx-trigger="load"
@@ -109,6 +122,15 @@
                 hx-on::after-request="htmx.trigger('#status-bar', 'load'); htmx.trigger('#idea-stack', 'load')">
             {% if risk and risk.kill_switch_active %}KILL ON{% else %}KILL{% endif %}
             {% with tip="Pause all strategies and block new confirms.", pt="Parar tudo" %}
+            {% include "partials/help_tip.html" %}
+            {% endwith %}
+        </button>
+        <button type="button" class="bb-btn-toolbar"
+                hx-get="/board/partials/risk-profile"
+                hx-target="body"
+                hx-swap="beforeend">
+            Risk
+            {% with tip="Max daily loss R$500, position caps, cost per trade.", pt="Perfil de risco" %}
             {% include "partials/help_tip.html" %}
             {% endwith %}
         </button>

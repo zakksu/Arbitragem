@@ -1,0 +1,13 @@
+{% if clocks and clocks.markets %}
+<div class="bb-world-clocks">
+    {% for m in clocks.markets %}
+    <span class="bb-clock-chip bb-clock-{{ m.status }}" title="{{ m.label }} — {{ m.status }}">
+        <span class="bb-clock-dot"></span>
+        <strong>{{ m.label }}</strong> {{ m.local_time }}
+        {% with tip="Market session status — green open, yellow pre, red closed.", pt="Relógio de mercado" %}
+        {% include "partials/help_tip.html" %}
+        {% endwith %}
+    </span>
+    {% endfor %}
+</div>
+{% endif %}

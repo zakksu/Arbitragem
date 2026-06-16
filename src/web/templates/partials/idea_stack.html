@@ -1,3 +1,9 @@
+{% if filter_symbol %}
+<p class="bb-stack-filter">Filtered: <strong>{{ filter_symbol }}</strong>
+    <button type="button" class="bb-btn-toolbar" style="font-size:0.65rem"
+            hx-get="/board/partials/ideas" hx-target="#idea-stack" hx-swap="innerHTML">Show all</button>
+</p>
+{% endif %}
 {% if ideas %}
 <span data-count="{{ ideas|length }}" hidden></span>
 <ul class="bb-ideas">
@@ -19,6 +25,14 @@
             <span class="bb-idea-rel">
                 rel <strong>{{ "%.0f"|format(idea.reliability) }}%</strong>
                 {% with tip="Scanner reliability score for this pattern.", pt="Confiabilidade" %}
+                {% include "partials/help_tip.html" %}
+                {% endwith %}
+            </span>
+            {% endif %}
+            {% if idea.idea_score is defined %}
+            <span class="bb-idea-score" title="Idea score 0–100">
+                <strong>{{ idea.idea_score }}</strong>
+                {% with tip="Ranked score — reliability × gates × walk-forward.", pt="Pontuação" %}
                 {% include "partials/help_tip.html" %}
                 {% endwith %}
             </span>
