@@ -18,6 +18,7 @@ import httpx
 from src.config import get_settings
 from src.integrations.profit_parser import parse_profit_backtest_csv
 from src.logging_config import get_logger
+from src.services.metrics_utils import metrics_with_drawdown_pct
 
 logger = get_logger(__name__)
 
@@ -229,6 +230,27 @@ class ProfitBridgeClient:
             logger.error("profit_positions_failed", error=str(exc))
             return []
 
+    def get_account_summary(self) -> dict[str, Any] | None:
+        """Session P&L from Profit bridge when /account is exposed."""
+        if not self._should_use_bridge():
+            return None
+        try:
+            with self._client(timeout=3.0) as client:
+                r = client.get("/account")
+                if r.status_code == 404:
+                    return None
+                r.raise_for_status()
+                data = r.json()
+                return {
+                    "day_pnl": float(data.get("day_pnl", 0) or 0),
+                    "balance_brl": data.get("balance_brl"),
+                    "source": data.get("source", "profit"),
+                    "mock": data.get("mock", False),
+                }
+        except Exception as exc:
+            logger.debug("profit_account_unavailable", error=str(exc))
+            return None
+
     def get_trades_today(self) -> list[ProfitTrade]:
         """Optional bridge endpoint for ProfitChart fills."""
         if not self._should_use_bridge():
@@ -303,10 +325,50 @@ class ProfitBridgeClient:
                     if r.status_code == 200:
                         data = r.json()
                         data["symbol"] = sym
-                        return data
+                        return metrics_with_drawdown_pct(data)
             except Exception as exc:
                 logger.warning("profit_backtest_failed", symbol=sym, error=str(exc))
-        return self._synthetic_backtest(sym, strategy=strategy, period=period)
+        return metrics_with_drawdown_pct(
+            self._synthetic_backtest(sym, strategy=strategy, period=period)
+        )
+
+    def get_session_candles(self, symbol: str, bars: int = 31) -> list[dict[str, Any]]:
+        """Session OHLC for LW Charts — bridge stub or synthetic per-symbol series."""
+        sym = symbol.upper()
+        if self._should_use_bridge():
+            try:
+                with self._client(timeout=3.0) as client:
+                    r = client.get(f"/candles/{sym}", params={"bars": bars})
+                    if r.status_code == 200:
+                        payload = r.json()
+                        rows = payload if isinstance(payload, list) else payload.get("candles", [])
+                        if rows:
+                            return rows
+            except Exception as exc:
+                logger.warning("session_candles_failed", symbol=sym, error=str(exc))
+        return self._synthetic_session_candles(sym, bars=bars)
+
+    @staticmethod
+    def _synthetic_session_candles(symbol: str, *, bars: int = 31) -> list[dict[str, Any]]:
+        import time
+
+        seed = _symbol_seed(symbol)
+        quote = ProfitBridgeClient._synthetic_quote(symbol)
+        last = float(quote.last)
+        now = int(time.time())
+        tick = 0.01 if last < 50 else 0.05
+        candles: list[dict[str, Any]] = []
+        price = last * (1 - (seed % 40) / 2000.0)
+        for i in range(bars):
+            t = now - (bars - i) * 60
+            wobble = ((seed + i * 13) % 100) / 800.0
+            o = round(price, 2)
+            c = round(o + (wobble - 0.002) * o, 2)
+            h = round(max(o, c) + tick * (1 + (seed + i) % 3), 2)
+            l = round(min(o, c) - tick * (1 + (seed + i) % 2), 2)
+            price = c
+            candles.append({"time": t, "open": o, "high": h, "low": l, "close": c})
+        return candles
 
     def get_stock_option_chain(self, underlying: str) -> dict:
         return self.get_option_chain(underlying)

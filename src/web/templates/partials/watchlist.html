@@ -3,10 +3,30 @@
 <table class="bb-watchlist">
     <thead>
         <tr>
-            <th>Symbol</th>
-            <th style="text-align:right">Last</th>
-            <th style="text-align:right">Bid</th>
-            <th style="text-align:right">Ask</th>
+            <th>
+                Symbol
+                {% with tip="Core14 ticker — click row to open blackboard.", pt="Papel" %}
+                {% include "partials/help_tip.html" %}
+                {% endwith %}
+            </th>
+            <th style="text-align:right">
+                Last
+                {% with tip="Last traded price from Profit bridge.", pt="Último preço" %}
+                {% include "partials/help_tip.html" %}
+                {% endwith %}
+            </th>
+            <th style="text-align:right">
+                Bid
+                {% with tip="Best bid in the book.", pt="Compra" %}
+                {% include "partials/help_tip.html" %}
+                {% endwith %}
+            </th>
+            <th style="text-align:right">
+                Ask
+                {% with tip="Best ask in the book.", pt="Venda" %}
+                {% include "partials/help_tip.html" %}
+                {% endwith %}
+            </th>
         </tr>
     </thead>
     <tbody>

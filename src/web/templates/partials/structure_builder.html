@@ -1,6 +1,9 @@
 <div class="bb-structure-builder" id="structure-builder-{{ symbol }}">
     <div class="bb-builder-head">
         <span>Structure builder</span>
+        {% with tip="Build multi-leg options structures from templates.", pt="Montador de estruturas" %}
+        {% include "partials/help_tip.html" %}
+        {% endwith %}
         <em>{{ symbol }}</em>
     </div>
     <form class="bb-builder-form"
@@ -28,7 +31,7 @@
                     hx-target="#idea-stack"
                     hx-swap="innerHTML"
                     title="Create trade idea from selected template">
-                New idea
+                Create Idea
             </button>
         </div>
     </form>

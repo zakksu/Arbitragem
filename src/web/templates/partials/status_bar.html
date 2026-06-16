@@ -2,7 +2,7 @@
         hx-get="/board/partials/status"
         hx-trigger="every 30s"
         hx-swap="outerHTML">
-        <div class="bb-logo">Arbitragem <span>Structure Deck</span></div>
+    <div class="bb-logo">Arbitragem Scalper <span>Structure Deck</span></div>
 
     {% if bootstrap %}
     <div class="bb-status-item">
@@ -24,6 +24,51 @@
     </div>
     {% else %}
     <div class="bb-status-item bb-muted">Status loading…</div>
+    {% endif %}
+
+    {% if cockpit %}
+    <div class="bb-status-kpi">
+        <span class="bb-cockpit-label">Net Δ</span>
+        {% with tip="Portfolio net delta vs limit — options + cash exposure.", pt="Delta líquido" %}
+        {% include "partials/help_tip.html" %}
+        {% endwith %}
+        <strong class="{% if (cockpit.net_delta | abs) > cockpit.max_net_delta * 0.8 %}bb-pnl-neg{% endif %}">
+            {{ "%+.2f"|format(cockpit.net_delta) }}
+        </strong>
+        <em>/ ±{{ cockpit.max_net_delta }}</em>
+    </div>
+    <div class="bb-status-kpi">
+        <span class="bb-cockpit-label">Day P&amp;L</span>
+        {% with tip="Session profit and loss from Profit bridge when connected.", pt="Resultado do dia" %}
+        {% include "partials/help_tip.html" %}
+        {% endwith %}
+        <strong class="{% if cockpit.day_pnl >= 0 %}bb-pnl-pos{% else %}bb-pnl-neg{% endif %}">
+            R$ {{ "%.2f"|format(cockpit.day_pnl) }}
+        </strong>
+    </div>
+    {% if cockpit.top_sector %}
+    <div class="bb-status-kpi">
+        <span class="bb-cockpit-label">Sector</span>
+        <strong>{{ cockpit.top_sector }}</strong>
+        <em>{{ "%.0f"|format(cockpit.top_sector_pct) }}%</em>
+    </div>
+    {% endif %}
+    <div class="bb-status-kpi">
+        <span class="bb-cockpit-label">Margin est.</span>
+        {% with tip="Estimated margin for open structures from bridge stub.", pt="Margem estimada" %}
+        {% include "partials/help_tip.html" %}
+        {% endwith %}
+        <strong>R$ {{ "%.0f"|format(cockpit.margin_estimate_brl) }}</strong>
+    </div>
+    <div class="bb-cockpit-gate">
+        {% if cockpit.gate_status == 'blocked' %}
+        <span class="bb-gate-blocked">GATE BLOCKED</span>
+        {% elif cockpit.gate_status == 'warning' %}
+        <span class="bb-gate-warn">WARNING</span>
+        {% else %}
+        <span class="bb-gate-ok">OK</span>
+        {% endif %}
+    </div>
     {% endif %}
 
     {% if risk %}
@@ -49,9 +94,11 @@
         <button type="button" class="bb-btn-toolbar"
                 hx-post="/board/scan"
                 hx-target="#idea-stack"
-                hx-swap="innerHTML"
-                title="Run Core14 scanner and refresh ideas">
+                hx-swap="innerHTML">
             Scan
+            {% with tip="Run Core14 scanner and refresh ranked ideas.", pt="Varredura do scanner" %}
+            {% include "partials/help_tip.html" %}
+            {% endwith %}
         </button>
         <button type="button"
                 class="bb-btn-toolbar bb-btn-danger{% if risk and risk.kill_switch_active %} is-active{% endif %}"
@@ -59,16 +106,20 @@
                 hx-post="/api/v1/risk/kill-switch"
                 hx-vals='js:{"active": true, "reason": "board stop"}'
                 hx-swap="none"
-                hx-on::after-request="htmx.trigger('#status-bar', 'load'); htmx.trigger('#idea-stack', 'load')"
-                title="Pause all strategies and block new confirms">
+                hx-on::after-request="htmx.trigger('#status-bar', 'load'); htmx.trigger('#idea-stack', 'load')">
             {% if risk and risk.kill_switch_active %}KILL ON{% else %}KILL{% endif %}
+            {% with tip="Pause all strategies and block new confirms.", pt="Parar tudo" %}
+            {% include "partials/help_tip.html" %}
+            {% endwith %}
         </button>
         <button type="button" class="bb-btn-toolbar"
                 hx-get="/board/partials/setup"
                 hx-target="#setup-panel"
-                hx-swap="innerHTML"
-                title="Profit bridge, gates, and integration checks">
+                hx-swap="innerHTML">
             Setup
+            {% with tip="Profit bridge, gates, and integration checks.", pt="Configuração" %}
+            {% include "partials/help_tip.html" %}
+            {% endwith %}
         </button>
     </div>
 </header>

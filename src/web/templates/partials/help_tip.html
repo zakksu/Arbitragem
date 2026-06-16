@@ -1,5 +1,12 @@
-{# HelpTip skeleton — EN label + optional PT hint in title attribute #}
+{# HelpTip — EN explanation + optional PT-BR hint (premium hover bubble) #}
 <span class="bb-help-tip"
-      title="{{ tip }}{% if pt %} — {{ pt }}{% endif %}"
+      role="button"
+      tabindex="0"
       aria-label="{{ tip }}{% if pt %} ({{ pt }}){% endif %}"
-      tabindex="0">?</span>
+      title="{{ tip }}{% if pt %} — {{ pt }}{% endif %}">
+    <span class="bb-help-tip-icon" aria-hidden="true">?</span>
+    <span class="bb-help-tip-bubble" role="tooltip">
+        <span class="bb-help-tip-en">{{ tip }}</span>
+        {% if pt %}<span class="bb-help-tip-pt">{{ pt }}</span>{% endif %}
+    </span>
+</span>

@@ -3,7 +3,7 @@
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>Arbitragem — Structure Deck</title>
+    <title>Arbitragem Scalper — Structure Deck</title>
     <link rel="stylesheet" href="/static/blackboard.css">
     <script src="https://unpkg.com/htmx.org@2.0.4"></script>
 </head>
@@ -12,17 +12,10 @@
             hx-get="/board/partials/status"
             hx-trigger="load, every 30s"
             hx-swap="outerHTML">
-        <div class="bb-logo">Arbitragem <span>Structure Deck</span></div>
+        <div class="bb-logo">Arbitragem Scalper <span>Structure Deck</span></div>
         <div class="bb-status-item"><span class="bb-loading"></span> loading…</div>
     </header>
     <div id="setup-panel" class="bb-setup-drawer" aria-live="polite"></div>
-
-    <div id="risk-cockpit-wrap"
-         hx-get="/board/partials/risk-cockpit"
-         hx-trigger="load, every 20s"
-         hx-swap="innerHTML">
-        <div class="bb-risk-cockpit bb-risk-ok"><span class="bb-loading"></span></div>
-    </div>
 
     <main class="bb-main">
         <section class="bb-col bb-col-watch" aria-label="Watchlist">
@@ -87,6 +80,85 @@
 
     <script src="https://unpkg.com/lightweight-charts@4.2.0/dist/lightweight-charts.standalone.production.js"></script>
     <script>
+        window.bbMountSymbolChart = function (panel) {
+            if (!panel) return;
+            var wrap = panel.querySelector(".bb-chart-wrap");
+            var el = panel.querySelector(".bb-chart-canvas");
+            if (!wrap || !el || el.dataset.mounted === "1") return;
+
+            function mount() {
+                if (typeof LightweightCharts === "undefined") {
+                    setTimeout(mount, 50);
+                    return;
+                }
+                var w = el.clientWidth || wrap.clientWidth || 480;
+                if (w < 24) {
+                    requestAnimationFrame(mount);
+                    return;
+                }
+                el.dataset.mounted = "1";
+                el.textContent = "";
+                var last = parseFloat(wrap.dataset.last || "0") || 100;
+                var candles = [];
+                try {
+                    candles = JSON.parse(wrap.dataset.candles || "[]");
+                } catch (err) { /* ignore */ }
+
+                var chart = LightweightCharts.createChart(el, {
+                    width: w,
+                    height: 160,
+                    layout: { background: { color: "#121212" }, textColor: "#8a8a8a" },
+                    grid: { vertLines: { color: "#1f1f1f" }, horzLines: { color: "#1f1f1f" } },
+                    rightPriceScale: { borderColor: "#2a2a2a" },
+                    timeScale: { borderColor: "#2a2a2a" },
+                });
+
+                var series;
+                if (candles.length) {
+                    series = chart.addCandlestickSeries({
+                        upColor: "#22c55e",
+                        downColor: "#ef4444",
+                        borderVisible: false,
+                        wickUpColor: "#22c55e",
+                        wickDownColor: "#ef4444",
+                    });
+                    series.setData(candles);
+                } else {
+                    series = chart.addAreaSeries({
+                        lineColor: "#f59e0b",
+                        topColor: "rgba(245,158,11,0.35)",
+                        bottomColor: "rgba(245,158,11,0)",
+                    });
+                    var now = Math.floor(Date.now() / 1000);
+                    var data = [];
+                    for (var i = 30; i >= 0; i--) {
+                        var t = now - i * 60;
+                        var jitter = Math.sin(i / 3) * 0.08;
+                        data.push({ time: t, value: +(last * (1 + jitter)).toFixed(2) });
+                    }
+                    series.setData(data);
+                }
+
+                var mp = parseFloat(wrap.dataset.maxPain || "");
+                if (!isNaN(mp) && mp > 0) {
+                    series.createPriceLine({
+                        price: mp,
+                        color: "#3b82f6",
+                        lineWidth: 1,
+                        lineStyle: 2,
+                        axisLabelVisible: true,
+                        title: "Max pain",
+                    });
+                }
+
+                new ResizeObserver(function () {
+                    var next = el.clientWidth || w;
+                    if (next > 0) chart.applyOptions({ width: next });
+                }).observe(el);
+            }
+            requestAnimationFrame(mount);
+        };
+
         document.body.addEventListener("htmx:afterRequest", function (evt) {
             var preset = evt.detail.elt && evt.detail.elt.dataset && evt.detail.elt.dataset.preset;
             if (!preset) return;
@@ -128,6 +200,15 @@
                     label.textContent = sym.dataset.symbol;
                     label.classList.remove("bb-loading", "htmx-indicator");
                 }
+                var panel = evt.detail.target.querySelector(".bb-symbol-panel");
+                if (panel) window.bbMountSymbolChart(panel);
+            }
+        });
+
+        document.body.addEventListener("htmx:afterSettle", function (evt) {
+            if (evt.detail.target.id === "symbol-panel") {
+                var panel = evt.detail.target.querySelector(".bb-symbol-panel");
+                if (panel) window.bbMountSymbolChart(panel);
             }
         });
 

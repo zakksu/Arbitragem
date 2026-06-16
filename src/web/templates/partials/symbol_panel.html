@@ -64,7 +64,7 @@
     {% if quote.timestamp %}
     <div class="bb-spread-bar">
         Quote time <strong>{{ quote.timestamp.strftime("%H:%M:%S") if quote.timestamp else "—" }}</strong>
-        · Structure Deck 3.0
+        · Arbitragem Scalper 3.0
     </div>
     {% endif %}
     {% else %}
@@ -74,9 +74,15 @@
     </div>
     {% endif %}
 
-    <div class="bb-chart-wrap" id="chart-{{ symbol }}" data-last="{{ quote.last if quote else 0 }}">
+    <div class="bb-chart-wrap" id="chart-{{ symbol }}"
+         data-last="{{ quote.last if quote else 0 }}"
+         data-candles='{{ candles|tojson if candles else "[]" }}'
+         data-max-pain="{{ max_pain.max_pain_strike if max_pain else '' }}">
         <div class="bb-chart-head">
             <span>Session chart</span>
+            {% with tip="Intraday path from Profit bridge; blue line is max pain when options data exists.", pt="Gráfico da sessão" %}
+            {% include "partials/help_tip.html" %}
+            {% endwith %}
             <em>Lightweight Charts</em>
         </div>
         <div class="bb-chart-canvas" id="lw-chart-{{ symbol }}"></div>
@@ -173,63 +179,6 @@
     </div>
 </div>
 <script>
-(function () {
-    var sym = "{{ symbol }}";
-    var wrap = document.getElementById("chart-" + sym);
-    var el = document.getElementById("lw-chart-" + sym);
-    if (!el) return;
-
-    function mountChart() {
-        if (typeof LightweightCharts === "undefined") {
-            setTimeout(mountChart, 50);
-            return;
-        }
-        var w = el.clientWidth || (wrap && wrap.clientWidth) || 480;
-        if (w < 24) {
-            requestAnimationFrame(mountChart);
-            return;
-        }
-        el.textContent = "";
-        var last = parseFloat((wrap && wrap.dataset.last) || "0") || 100;
-        var chart = LightweightCharts.createChart(el, {
-            width: w,
-            height: 160,
-            layout: { background: { color: "#121212" }, textColor: "#8a8a8a" },
-            grid: { vertLines: { color: "#1f1f1f" }, horzLines: { color: "#1f1f1f" } },
-            rightPriceScale: { borderColor: "#2a2a2a" },
-            timeScale: { borderColor: "#2a2a2a" },
-        });
-        var series = chart.addAreaSeries({
-            lineColor: "#f59e0b",
-            topColor: "rgba(245,158,11,0.35)",
-            bottomColor: "rgba(245,158,11,0)",
-        });
-        var now = Math.floor(Date.now() / 1000);
-        var data = [];
-        for (var i = 30; i >= 0; i--) {
-            var t = now - i * 60;
-            var jitter = (Math.sin(i / 3) + Math.random() * 0.4 - 0.2) * 0.15;
-            data.push({ time: t, value: +(last * (1 + jitter)).toFixed(2) });
-        }
-        series.setData(data);
-        {% if max_pain %}
-        series.createPriceLine({
-            price: {{ max_pain.max_pain_strike }},
-            color: "#3b82f6",
-            lineWidth: 1,
-            lineStyle: 2,
-            axisLabelVisible: true,
-            title: "Max pain",
-        });
-        {% endif %}
-        new ResizeObserver(function () {
-            var next = el.clientWidth || w;
-            if (next > 0) chart.applyOptions({ width: next });
-        }).observe(el);
-    }
-    requestAnimationFrame(mountChart);
-})();
-
 function bbSwitchTab(sym, tab) {
     var panel = document.querySelector('.bb-symbol-panel[data-symbol="' + sym + '"]');
     if (!panel) return;

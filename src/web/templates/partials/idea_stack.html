@@ -16,7 +16,12 @@
             </span>
             {% endif %}
             {% if idea.reliability is not none %}
-            <span class="bb-idea-rel">rel <strong>{{ "%.0f"|format(idea.reliability) }}%</strong></span>
+            <span class="bb-idea-rel">
+                rel <strong>{{ "%.0f"|format(idea.reliability) }}%</strong>
+                {% with tip="Scanner reliability score for this pattern.", pt="Confiabilidade" %}
+                {% include "partials/help_tip.html" %}
+                {% endwith %}
+            </span>
             {% endif %}
         </div>
         <div class="bb-idea-type">
@@ -60,12 +65,18 @@
         {% endif %}
         {% if idea.backtest_proof %}
         {% set pf = idea.backtest_proof.profit_factor|default(0)|float %}
-        {% set dd_raw = idea.backtest_proof.max_drawdown_pct|default(none, true) %}
+        {% set dd_raw = idea.dd_pct if idea.dd_pct is defined else idea.backtest_proof.max_drawdown_pct|default(none, true) %}
         {% set trades = idea.backtest_proof.trades|default(none) %}
         {% set dd_ok = dd_raw is not none and (dd_raw|float) <= 8.0 %}
         <div class="bb-proof {% if pf >= 1.3 and dd_ok %}bb-proof-pass{% else %}bb-proof-warn{% endif %}">
             PF <strong>{{ "%.2f"|format(pf) }}</strong>
+            {% with tip="Profit factor from backtest — gross wins / gross losses.", pt="Fator de lucro" %}
+            {% include "partials/help_tip.html" %}
+            {% endwith %}
             · DD <strong>{% if dd_raw is not none %}{{ "%.1f"|format(dd_raw|float) }}%{% else %}—{% endif %}</strong>
+            {% with tip="Maximum drawdown (rebaixamento) — peak-to-trough loss in backtest.", pt="Rebaixamento máximo" %}
+            {% include "partials/help_tip.html" %}
+            {% endwith %}
             {% if trades is not none %} · <strong>{{ trades }}</strong> trades{% endif %}
         </div>
         {% elif idea.status == 'detected' %}

@@ -367,6 +367,37 @@ class TradeIdeaService:
         return idea
 
     @staticmethod
+    def normalize_drawdown_pct(metrics: dict | None) -> float | None:
+        """Display-safe DD % — only from explicit max_drawdown_pct (never infer 1.0 → 100%)."""
+        if not metrics:
+            return None
+        pct = metrics.get("max_drawdown_pct")
+        if pct is None:
+            return None
+        try:
+            return round(abs(float(pct)), 2)
+        except (TypeError, ValueError):
+            return None
+
+    @staticmethod
+    def _gate_drawdown_pct(metrics: dict) -> float | None:
+        from src.services.metrics_utils import backtest_proof_drawdown_pct
+
+        return backtest_proof_drawdown_pct(metrics)
+
+    @staticmethod
+    def normalize_backtest_proof(proof: dict | None) -> dict | None:
+        if not proof:
+            return proof
+        out = dict(proof)
+        dd_pct = TradeIdeaService.normalize_drawdown_pct(out)
+        if dd_pct is not None:
+            out["max_drawdown_pct"] = dd_pct
+        else:
+            out.pop("max_drawdown_pct", None)
+        return out
+
+    @staticmethod
     def passes_backtest_gate(metrics: dict | None) -> bool:
         if not metrics:
             return False
@@ -376,12 +407,9 @@ class TradeIdeaService:
         pf = float(metrics.get("profit_factor") or metrics.get("profitFactor") or 0)
         if pf < s.backtest_min_profit_factor:
             return False
-        dd_raw = metrics.get("max_drawdown_pct") or metrics.get("max_drawdown") or metrics.get("maxDrawdown")
-        if dd_raw is None:
+        dd = TradeIdeaService._gate_drawdown_pct(metrics)
+        if dd is None:
             return True
-        dd = float(dd_raw)
-        if dd <= 1.0:
-            dd *= 100.0
         if dd > s.backtest_max_drawdown_pct:
             return False
         return True
@@ -574,6 +602,8 @@ class TradeIdeaService:
 
     def to_dict(self, idea: TradeIdea) -> dict:
         proof = idea.backtest_proof or {}
+        proof_out = self.normalize_backtest_proof(proof)
+        dd_pct = self.normalize_drawdown_pct(proof)
         wf_passed = proof.get("walk_forward_folds_passed")
         wf_total = proof.get("walk_forward_folds_total")
         tags = idea.rationale_tags or []
@@ -594,7 +624,8 @@ class TradeIdeaService:
             "rationale_tags": tags,
             "tags": tags,
             "legs": idea.legs or [],
-            "backtest_proof": idea.backtest_proof,
+            "backtest_proof": proof_out,
+            "dd_pct": dd_pct,
             "walk_forward_pass": "walk_forward_pass" in tags,
             "walk_forward_folds": (
                 f"{wf_passed}/{wf_total}" if wf_passed is not None and wf_total else None

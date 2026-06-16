@@ -18,13 +18,12 @@ def client(monkeypatch):
     return TestClient(create_app())
 
 
-def test_status_bar_no_duplicate_day_pnl(client):
+def test_status_bar_single_kpi_strip(client):
     r = client.get("/board/partials/status")
     assert r.status_code == 200
     text = r.text
-    assert "Balance" not in text
-    assert "P&amp;L" not in text
-    assert "Profit" in text
+    assert text.count("Day P&amp;L") == 1
+    assert "Arbitragem Scalper" in text
     assert "Clear" not in text
 
 
@@ -61,6 +60,16 @@ def test_idea_stack_dd_missing_not_100(client, monkeypatch):
 
 def test_backtest_gate_without_drawdown_pct():
     assert TradeIdeaService.passes_backtest_gate({"profit_factor": 1.5})
+
+
+def test_normalize_drawdown_pct_missing():
+    assert TradeIdeaService.normalize_drawdown_pct({"profit_factor": 1.5}) is None
+
+
+def test_version_is_3_0_1_alpha():
+    from src import __version__
+
+    assert __version__ == "3.0.1-alpha"
 
 
 def test_bootstrap_includes_profit_bridge_flag(client):

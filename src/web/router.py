@@ -222,10 +222,11 @@ async def board_page(request: Request):
 async def status_partial(request: Request):
     bootstrap = await _fetch_bootstrap(request)
     risk = await _fetch_risk_summary(request)
+    cockpit = await _to_thread(_risk_cockpit)
     return TEMPLATES.TemplateResponse(
         request,
         "partials/status_bar.html",
-        {"bootstrap": bootstrap, "risk": risk},
+        {"bootstrap": bootstrap, "risk": risk, "cockpit": cockpit},
     )
 
 
@@ -258,6 +259,7 @@ async def symbol_partial(request: Request, symbol: str):
 
     note = await _to_thread(_with_db, _load_note)
     quote = await _to_thread(_fast_quote, sym)
+    candles = await _to_thread(get_profit_client().get_session_candles, sym)
 
     option_chain = None
     max_pain = None
@@ -283,6 +285,7 @@ async def symbol_partial(request: Request, symbol: str):
             "max_pain": max_pain,
             "iv_rank": iv_rank_val,
             "preview_legs": None,
+            "candles": candles,
         },
     )
 
