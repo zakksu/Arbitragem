@@ -1,0 +1,5 @@
+{# HelpTip skeleton — EN label + optional PT hint in title attribute #}
+<span class="bb-help-tip"
+      title="{{ tip }}{% if pt %} — {{ pt }}{% endif %}"
+      aria-label="{{ tip }}{% if pt %} ({{ pt }}){% endif %}"
+      tabindex="0">?</span>

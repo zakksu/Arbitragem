@@ -11,6 +11,9 @@
     </div>
     <div class="bb-cockpit-metric">
         <span class="bb-cockpit-label">Day P&amp;L</span>
+        {% with tip="Session profit and loss from Profit bridge when connected.", pt="Resultado do dia" %}
+        {% include "partials/help_tip.html" %}
+        {% endwith %}
         <strong class="{% if cockpit.day_pnl >= 0 %}bb-pnl-pos{% else %}bb-pnl-neg{% endif %}">
             R$ {{ "%.2f"|format(cockpit.day_pnl) }}
         </strong>

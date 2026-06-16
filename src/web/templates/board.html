@@ -85,6 +85,7 @@
         <span class="bb-footer-hint"><kbd>R</kbd> refresh watchlist</span>
     </footer>
 
+    <script src="https://unpkg.com/lightweight-charts@4.2.0/dist/lightweight-charts.standalone.production.js"></script>
     <script>
         document.body.addEventListener("htmx:afterRequest", function (evt) {
             var preset = evt.detail.elt && evt.detail.elt.dataset && evt.detail.elt.dataset.preset;

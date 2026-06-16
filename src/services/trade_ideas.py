@@ -374,16 +374,14 @@ class TradeIdeaService:
 
         s = get_settings()
         pf = float(metrics.get("profit_factor") or metrics.get("profitFactor") or 0)
-        dd = float(
-            metrics.get("max_drawdown_pct")
-            or metrics.get("max_drawdown")
-            or metrics.get("maxDrawdown")
-            or 100
-        )
-        if dd <= 1.0:
-            dd *= 100.0
         if pf < s.backtest_min_profit_factor:
             return False
+        dd_raw = metrics.get("max_drawdown_pct") or metrics.get("max_drawdown") or metrics.get("maxDrawdown")
+        if dd_raw is None:
+            return True
+        dd = float(dd_raw)
+        if dd <= 1.0:
+            dd *= 100.0
         if dd > s.backtest_max_drawdown_pct:
             return False
         return True

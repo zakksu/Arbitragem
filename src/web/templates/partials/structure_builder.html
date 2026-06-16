@@ -22,12 +22,13 @@
         </select>
         <div class="bb-builder-actions">
             <button type="submit" class="bb-btn-secondary">Preview legs</button>
-            <button type="button" class="bb-btn-confirm"
+            <button type="button" class="bb-btn-confirm bb-btn-new-idea"
                     hx-post="/board/partials/symbol/{{ symbol }}/structure-create"
                     hx-include="#struct-type-{{ symbol }}, #struct-side-{{ symbol }}"
                     hx-target="#idea-stack"
-                    hx-swap="innerHTML">
-                Create idea
+                    hx-swap="innerHTML"
+                    title="Create trade idea from selected template">
+                New idea
             </button>
         </div>
     </form>

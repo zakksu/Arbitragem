@@ -9,22 +9,9 @@
         <span class="bb-pill {% if bootstrap.paper_trading_mode %}bb-pill-paper{% else %}bb-pill-live{% endif %}">
             {% if bootstrap.paper_trading_mode %}Paper{% else %}Live{% endif %}
         </span>
-    </div>
-    <div class="bb-status-item">
-        P&amp;L
-        <strong class="{% if bootstrap.account and bootstrap.account.day_pnl and bootstrap.account.day_pnl >= 0 %}bb-pnl-pos{% else %}bb-pnl-neg{% endif %}">
-            {% if bootstrap.account and bootstrap.account.day_pnl is not none %}
-            R$ {{ "%.2f"|format(bootstrap.account.day_pnl) }}
-            {% else %}—{% endif %}
-        </strong>
-    </div>
-    <div class="bb-status-item">
-        Balance
-        <strong>
-            {% if bootstrap.account and bootstrap.account.balance_brl is not none %}
-            R$ {{ "%.0f"|format(bootstrap.account.balance_brl) }}
-            {% else %}—{% endif %}
-        </strong>
+        {% with tip="Paper simulates fills without broker risk. Live sends real orders after confirm.", pt="Simulado vs real" %}
+        {% include "partials/help_tip.html" %}
+        {% endwith %}
     </div>
     <div class="bb-status-item">
         Scanner
@@ -32,8 +19,8 @@
         <span>({{ bootstrap.scanner_symbol_count or 0 }})</span>
     </div>
     <div class="bb-status-item">
-        Clear
-        <strong>{% if bootstrap.clear_api %}OK{% else %}mock{% endif %}</strong>
+        Profit
+        <strong>{% if bootstrap.profit_bridge %}OK{% else %}offline{% endif %}</strong>
     </div>
     {% else %}
     <div class="bb-status-item bb-muted">Status loading…</div>
@@ -62,19 +49,26 @@
         <button type="button" class="bb-btn-toolbar"
                 hx-post="/board/scan"
                 hx-target="#idea-stack"
-                hx-swap="innerHTML">Scan</button>
+                hx-swap="innerHTML"
+                title="Run Core14 scanner and refresh ideas">
+            Scan
+        </button>
         <button type="button"
                 class="bb-btn-toolbar bb-btn-danger{% if risk and risk.kill_switch_active %} is-active{% endif %}"
                 id="kill-switch-btn"
                 hx-post="/api/v1/risk/kill-switch"
                 hx-vals='js:{"active": true, "reason": "board stop"}'
                 hx-swap="none"
-                hx-on::after-request="htmx.trigger('#status-bar', 'load'); htmx.trigger('#idea-stack', 'load')">
+                hx-on::after-request="htmx.trigger('#status-bar', 'load'); htmx.trigger('#idea-stack', 'load')"
+                title="Pause all strategies and block new confirms">
             {% if risk and risk.kill_switch_active %}KILL ON{% else %}KILL{% endif %}
         </button>
         <button type="button" class="bb-btn-toolbar"
                 hx-get="/board/partials/setup"
                 hx-target="#setup-panel"
-                hx-swap="innerHTML">Setup</button>
+                hx-swap="innerHTML"
+                title="Profit bridge, gates, and integration checks">
+            Setup
+        </button>
     </div>
 </header>

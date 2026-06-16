@@ -1276,6 +1276,44 @@ body {
     margin-top: 0.35rem;
 }
 
+.bb-builder-actions .bb-btn-confirm,
+.bb-builder-actions .bb-btn-secondary {
+    width: auto;
+    margin-top: 0;
+    flex: 1 1 0;
+    white-space: nowrap;
+    min-width: 5rem;
+}
+
+.bb-help-tip {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 0.95rem;
+    height: 0.95rem;
+    margin-left: 0.2rem;
+    border-radius: 50%;
+    font-size: 0.62rem;
+    font-weight: 700;
+    line-height: 1;
+    color: var(--arb-muted);
+    border: 1px solid var(--arb-border-bright);
+    background: var(--arb-panel-2);
+    cursor: help;
+    vertical-align: middle;
+}
+
+.bb-help-tip:hover,
+.bb-help-tip:focus {
+    color: var(--arb-accent);
+    border-color: var(--arb-accent-dim);
+}
+
+.bb-cockpit-metric .bb-help-tip {
+    margin-left: 0;
+    margin-right: 0.15rem;
+}
+
 .bb-structure-preview {
     padding: 0.45rem 0.55rem 0.65rem;
     border-top: 1px solid var(--arb-border);

@@ -8,12 +8,14 @@ from sqlalchemy.orm import Session
 from src import __version__
 from src.config import get_settings
 from src.integrations.clear_api import get_clear_client
+from src.integrations.profit_bridge import get_profit_client
 from src.models import ScanResult, Strategy
 
 
 def build_bootstrap(session: Session) -> dict:
     settings = get_settings()
     clear = get_clear_client()
+    profit = get_profit_client()
     account = clear.get_account_summary()
 
     alerts: list[dict[str, str]] = []
@@ -59,6 +61,7 @@ def build_bootstrap(session: Session) -> dict:
         "scanner_mode": settings.scanner_mode,
         "scanner_symbol_count": len(settings.scanner_symbol_list),
         "clear_api": clear.is_configured(),
+        "profit_bridge": profit.is_available(),
         "account": account,
         "alerts": alerts,
         "strategies_count": len(strategies),

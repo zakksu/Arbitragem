@@ -150,9 +150,9 @@ def test_confirm_logs_system_event():
     assert any(e.get("component") == "trade_ideas" for e in events)
 
 
-def test_version_is_3_0_0():
+def test_version_is_3_0_1_alpha():
     from src import __version__
 
-    assert __version__ == "3.0.0"
+    assert __version__ == "3.0.1-alpha"
     r = _client().get("/api/v1/health/live")
-    assert r.json()["version"] == "3.0.0"
+    assert r.json()["version"] == "3.0.1-alpha"

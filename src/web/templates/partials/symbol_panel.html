@@ -172,47 +172,62 @@
         </div>
     </div>
 </div>
-<script src="https://unpkg.com/lightweight-charts@4.2.0/dist/lightweight-charts.standalone.production.js"></script>
 <script>
 (function () {
     var sym = "{{ symbol }}";
+    var wrap = document.getElementById("chart-" + sym);
     var el = document.getElementById("lw-chart-" + sym);
-    if (!el || typeof LightweightCharts === "undefined") return;
-    var last = parseFloat(el.closest("[data-last]")?.dataset?.last || "0") || 100;
-    var chart = LightweightCharts.createChart(el, {
-        width: el.clientWidth || 480,
-        height: 160,
-        layout: { background: { color: "#121212" }, textColor: "#8a8a8a" },
-        grid: { vertLines: { color: "#1f1f1f" }, horzLines: { color: "#1f1f1f" } },
-        rightPriceScale: { borderColor: "#2a2a2a" },
-        timeScale: { borderColor: "#2a2a2a" },
-    });
-    var series = chart.addAreaSeries({
-        lineColor: "#f59e0b",
-        topColor: "rgba(245,158,11,0.35)",
-        bottomColor: "rgba(245,158,11,0)",
-    });
-    var now = Math.floor(Date.now() / 1000);
-    var data = [];
-    for (var i = 30; i >= 0; i--) {
-        var t = now - i * 60;
-        var jitter = (Math.sin(i / 3) + Math.random() * 0.4 - 0.2) * 0.15;
-        data.push({ time: t, value: +(last * (1 + jitter)).toFixed(2) });
+    if (!el) return;
+
+    function mountChart() {
+        if (typeof LightweightCharts === "undefined") {
+            setTimeout(mountChart, 50);
+            return;
+        }
+        var w = el.clientWidth || (wrap && wrap.clientWidth) || 480;
+        if (w < 24) {
+            requestAnimationFrame(mountChart);
+            return;
+        }
+        el.textContent = "";
+        var last = parseFloat((wrap && wrap.dataset.last) || "0") || 100;
+        var chart = LightweightCharts.createChart(el, {
+            width: w,
+            height: 160,
+            layout: { background: { color: "#121212" }, textColor: "#8a8a8a" },
+            grid: { vertLines: { color: "#1f1f1f" }, horzLines: { color: "#1f1f1f" } },
+            rightPriceScale: { borderColor: "#2a2a2a" },
+            timeScale: { borderColor: "#2a2a2a" },
+        });
+        var series = chart.addAreaSeries({
+            lineColor: "#f59e0b",
+            topColor: "rgba(245,158,11,0.35)",
+            bottomColor: "rgba(245,158,11,0)",
+        });
+        var now = Math.floor(Date.now() / 1000);
+        var data = [];
+        for (var i = 30; i >= 0; i--) {
+            var t = now - i * 60;
+            var jitter = (Math.sin(i / 3) + Math.random() * 0.4 - 0.2) * 0.15;
+            data.push({ time: t, value: +(last * (1 + jitter)).toFixed(2) });
+        }
+        series.setData(data);
+        {% if max_pain %}
+        series.createPriceLine({
+            price: {{ max_pain.max_pain_strike }},
+            color: "#3b82f6",
+            lineWidth: 1,
+            lineStyle: 2,
+            axisLabelVisible: true,
+            title: "Max pain",
+        });
+        {% endif %}
+        new ResizeObserver(function () {
+            var next = el.clientWidth || w;
+            if (next > 0) chart.applyOptions({ width: next });
+        }).observe(el);
     }
-    series.setData(data);
-    {% if max_pain %}
-    series.createPriceLine({
-        price: {{ max_pain.max_pain_strike }},
-        color: "#3b82f6",
-        lineWidth: 1,
-        lineStyle: 2,
-        axisLabelVisible: true,
-        title: "Max pain",
-    });
-    {% endif %}
-    new ResizeObserver(function () {
-        chart.applyOptions({ width: el.clientWidth });
-    }).observe(el);
+    requestAnimationFrame(mountChart);
 })();
 
 function bbSwitchTab(sym, tab) {
