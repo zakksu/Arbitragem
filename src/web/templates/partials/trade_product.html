@@ -1,0 +1,90 @@
+{% if product %}
+<div class="bb-trade-product" data-symbol="{{ product.symbol }}">
+    <div class="bb-tp-head">
+        <span class="bb-tp-score" title="Idea score 0–100">{{ product.score }}</span>
+        <strong>{{ product.symbol }}</strong>
+        <span class="bb-structure-badge">{{ product.structure_type|replace("_", " ") }}</span>
+        <span class="bb-side-{{ product.side }}">{{ product.side|upper }}</span>
+    </div>
+    <div class="bb-tp-tabs" role="tablist">
+        <button type="button" class="bb-tp-tab is-active" data-tp-tab="thesis">Thesis</button>
+        <button type="button" class="bb-tp-tab" data-tp-tab="chart">Chart</button>
+        <button type="button" class="bb-tp-tab" data-tp-tab="legs">Legs</button>
+        <button type="button" class="bb-tp-tab" data-tp-tab="notes">Notes</button>
+    </div>
+    <div class="bb-tp-panel is-active" data-tp-panel="thesis">
+        <p>{{ product.thesis }}</p>
+        {% if product.economics_tags %}
+        <div class="bb-tags">
+            {% for tag in product.economics_tags %}
+            <span class="bb-tag">{{ tag|replace("_", " ") }}</span>
+            {% endfor %}
+        </div>
+        {% endif %}
+        {% if product.odds %}
+        <div class="bb-tp-odds">
+            {% if product.odds.profit_factor %}
+            PF <strong>{{ "%.2f"|format(product.odds.profit_factor) }}</strong>
+            {% endif %}
+            {% if product.odds.max_drawdown_pct is not none %}
+            · DD <strong>{{ "%.1f"|format(product.odds.max_drawdown_pct) }}%</strong>
+            {% endif %}
+        </div>
+        {% endif %}
+        <ul class="bb-tp-alt">
+            {% for line in product.why_not_alternatives %}
+            <li>{{ line }}</li>
+            {% endfor %}
+        </ul>
+    </div>
+    <div class="bb-tp-panel" data-tp-panel="chart" hidden>
+        <p class="bb-muted">Entry / stop / target on session chart (E/S/T lines).</p>
+        {% set lv = product.chart_levels %}
+        {% if lv %}
+        <div class="bb-idea-levels">
+            {% if lv.entry %}<span>E <strong>{{ "%.2f"|format(lv.entry) }}</strong></span>{% endif %}
+            {% if lv.stop %}<span>S <strong>{{ "%.2f"|format(lv.stop) }}</strong></span>{% endif %}
+            {% if lv.target %}<span>T <strong>{{ "%.2f"|format(lv.target) }}</strong></span>{% endif %}
+        </div>
+        {% endif %}
+    </div>
+    <div class="bb-tp-panel" data-tp-panel="legs" hidden>
+        {% for leg in product.legs %}
+        <span class="bb-leg-chip">{{ leg.side }} {{ leg.quantity }} {{ leg.symbol }}</span>
+        {% else %}
+        <p class="bb-muted">No legs — create from structure builder.</p>
+        {% endfor %}
+    </div>
+    <div class="bb-tp-panel" data-tp-panel="notes" hidden>
+        <p>{{ product.notes or product.ai_why or "—" }}</p>
+    </div>
+    <div class="bb-tp-actions">
+        <button type="button" class="bb-btn-confirm"
+                hx-post="/api/v1/ntsl/arm"
+                hx-vals='{"symbol": "{{ product.symbol }}", "structure_type": "{{ product.structure_type }}", "side": "{{ product.side }}"}'
+                hx-swap="none"
+                hx-on::after-request="alert(event.detail.xhr.responseText)">
+            Arm NTSL
+            {% with tip="Export one-click NTSL to exports/ntsl/", pt="Armar no Profit" %}
+            {% include "partials/help_tip.html" %}
+            {% endwith %}
+        </button>
+    </div>
+</div>
+<script>
+(function () {
+    document.querySelectorAll(".bb-tp-tab").forEach(function (btn) {
+        btn.addEventListener("click", function () {
+            var root = btn.closest(".bb-trade-product");
+            var tab = btn.dataset.tpTab;
+            root.querySelectorAll(".bb-tp-tab").forEach(function (b) { b.classList.toggle("is-active", b === btn); });
+            root.querySelectorAll(".bb-tp-panel").forEach(function (p) {
+                var on = p.dataset.tpPanel === tab;
+                p.hidden = !on;
+                p.classList.toggle("is-active", on);
+            });
+        });
+    });
+})();
+</script>
+{% endif %}

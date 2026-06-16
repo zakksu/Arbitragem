@@ -1,0 +1,196 @@
+
+/* ── 4.0 Scalper Cockpit ───────────────────────────────────── */
+
+.bb-world-clocks,
+.bb-clocks-slot {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.35rem;
+    align-items: center;
+}
+
+.bb-clock-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.25rem;
+    font-size: 0.68rem;
+    padding: 0.15rem 0.4rem;
+    border-radius: var(--arb-radius);
+    background: var(--arb-panel);
+    border: 1px solid var(--arb-border);
+}
+
+.bb-clock-dot {
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: var(--arb-muted);
+}
+
+.bb-clock-open .bb-clock-dot { background: var(--arb-green); }
+.bb-clock-pre .bb-clock-dot { background: var(--arb-accent); }
+.bb-clock-closed .bb-clock-dot { background: var(--arb-red); }
+
+.bb-kpi-filters {
+    display: flex;
+    gap: 0.25rem;
+}
+
+.bb-kpi-chip {
+    font-size: 0.65rem;
+    padding: 0.15rem 0.45rem;
+    border: 1px solid var(--arb-border);
+    background: var(--arb-panel);
+    color: var(--arb-muted);
+    border-radius: var(--arb-radius);
+    cursor: pointer;
+}
+
+.bb-kpi-chip.is-active {
+    border-color: var(--arb-accent);
+    color: var(--arb-accent);
+}
+
+.bb-pnl-source,
+.bb-pnl-src {
+    font-size: 0.62rem;
+    color: var(--arb-muted);
+    text-transform: uppercase;
+}
+
+.bb-bias-long { border-left: 3px solid var(--arb-green); }
+.bb-bias-short { border-left: 3px solid var(--arb-red); }
+.bb-bias-neutral { border-left: 3px solid transparent; }
+
+.bb-score-high { color: var(--arb-green); }
+.bb-score-mid { color: var(--arb-accent); }
+.bb-score-low { color: var(--arb-muted); }
+
+.bb-risk-drawer {
+    position: fixed;
+    top: 3rem;
+    right: 1rem;
+    width: min(320px, 92vw);
+    background: var(--arb-panel);
+    border: 1px solid var(--arb-border-bright);
+    border-radius: var(--arb-radius);
+    padding: 1rem;
+    z-index: 1000;
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5);
+}
+
+.bb-risk-form label {
+    display: block;
+    margin-bottom: 0.65rem;
+    font-size: 0.72rem;
+    color: var(--arb-muted);
+}
+
+.bb-risk-form input {
+    display: block;
+    width: 100%;
+    margin-top: 0.2rem;
+    padding: 0.35rem;
+    background: var(--arb-bg);
+    border: 1px solid var(--arb-border);
+    color: var(--arb-text);
+    border-radius: var(--arb-radius);
+}
+
+.bb-pulse-rail {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 0.75rem;
+    width: 100%;
+}
+
+.bb-pulse-third {
+    padding: 0.5rem 0.65rem;
+    background: var(--arb-panel);
+    border: 1px solid var(--arb-border);
+    border-radius: var(--arb-radius);
+    min-height: 4.5rem;
+}
+
+.bb-pulse-head {
+    font-size: 0.62rem;
+    text-transform: uppercase;
+    color: var(--arb-accent);
+    margin-bottom: 0.35rem;
+}
+
+.bb-pulse-title {
+    font-weight: 600;
+    font-size: 0.78rem;
+    margin: 0 0 0.25rem;
+}
+
+.bb-pulse-body,
+.bb-pulse-events {
+    font-size: 0.72rem;
+    color: var(--arb-muted);
+    margin: 0;
+    padding-left: 1rem;
+}
+
+.bb-trade-product {
+    margin: 0.75rem 0;
+    padding: 0.65rem;
+    border: 1px solid var(--arb-border);
+    border-radius: var(--arb-radius);
+    background: var(--arb-panel-2);
+}
+
+.bb-tp-score {
+    display: inline-block;
+    min-width: 2rem;
+    text-align: center;
+    background: var(--arb-accent);
+    color: #000;
+    font-weight: 700;
+    border-radius: var(--arb-radius);
+    margin-right: 0.35rem;
+}
+
+.bb-tp-tabs {
+    display: flex;
+    gap: 0.25rem;
+    margin: 0.5rem 0;
+}
+
+.bb-tp-tab {
+    font-size: 0.68rem;
+    padding: 0.2rem 0.5rem;
+    border: 1px solid var(--arb-border);
+    background: transparent;
+    color: var(--arb-muted);
+    cursor: pointer;
+}
+
+.bb-tp-tab.is-active {
+    border-color: var(--arb-accent);
+    color: var(--arb-accent);
+}
+
+.bb-stack-filter {
+    font-size: 0.72rem;
+    padding: 0.35rem 0.5rem;
+    margin-bottom: 0.35rem;
+    background: var(--arb-panel);
+    border-bottom: 1px solid var(--arb-border);
+}
+
+.bb-footer-pulse {
+    flex: 1;
+    min-width: 0;
+}
+
+@media (max-width: 768px) {
+    .bb-pulse-rail {
+        grid-template-columns: 1fr;
+    }
+    .bb-world-clocks {
+        overflow-x: auto;
+        flex-wrap: nowrap;
+    }
+}
