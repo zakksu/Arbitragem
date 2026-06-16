@@ -22,6 +22,9 @@ from src.services.metrics_utils import metrics_with_drawdown_pct
 
 logger = get_logger(__name__)
 
+_QUOTES_CACHE: dict[frozenset[str], tuple[float, dict[str, ProfitQuote]]] = {}
+QUOTE_CACHE_TTL_SEC = 1.0
+
 
 @dataclass
 class ProfitQuote:
@@ -105,11 +108,21 @@ class ProfitBridgeClient:
 
     def get_quotes_batch(self, symbols: list[str]) -> dict[str, ProfitQuote]:
         """Fetch many quotes — one HTTP call when bridge exposes GET /quotes."""
-        wanted = {s.upper() for s in symbols if s}
+        import time
+
+        wanted_set = frozenset(s.upper() for s in symbols if s)
+        if not wanted_set:
+            return {}
+        now = time.time()
+        cached = _QUOTES_CACHE.get(wanted_set)
+        if cached and now - cached[0] < QUOTE_CACHE_TTL_SEC:
+            return dict(cached[1])
+
+        wanted = set(wanted_set)
         out: dict[str, ProfitQuote] = {}
         batch_ok = False
 
-        if self._should_use_bridge():
+        if self._should_use_bridge() and self._bridge_reachable():
             try:
                 with self._client(timeout=3.0) as client:
                     r = client.get("/quotes")
@@ -139,11 +152,15 @@ class ProfitBridgeClient:
                 out[sym] = self._get_quote_http(sym)
             else:
                 out[sym] = self._synthetic_quote(sym)
+        _QUOTES_CACHE[wanted_set] = (now, dict(out))
+        if len(_QUOTES_CACHE) > 8:
+            oldest = min(_QUOTES_CACHE.items(), key=lambda kv: kv[1][0])[0]
+            _QUOTES_CACHE.pop(oldest, None)
         return out
 
     def _get_quote_http(self, symbol: str) -> ProfitQuote:
         sym = symbol.upper()
-        if self._should_use_bridge():
+        if self._should_use_bridge() and self._bridge_reachable():
             try:
                 with self._client(timeout=1.5) as client:
                     r = client.get(f"/quotes/{sym}")
@@ -163,7 +180,7 @@ class ProfitBridgeClient:
 
     def get_bova_option_chain(self) -> dict:
         """Near-term BOVA11 option chain — from bridge or synthetic stub."""
-        if self._should_use_bridge():
+        if self._should_use_bridge() and self._bridge_reachable():
             try:
                 with self._client() as client:
                     r = client.get("/options/bova")
@@ -315,7 +332,7 @@ class ProfitBridgeClient:
     ) -> dict[str, Any]:
         """Trigger backtest on Profit bridge (stub returns synthetic metrics)."""
         sym = symbol.upper()
-        if self._should_use_bridge():
+        if self._should_use_bridge() and self._bridge_reachable():
             try:
                 with self._client(timeout=30.0) as client:
                     r = client.post(
@@ -335,7 +352,7 @@ class ProfitBridgeClient:
     def get_session_candles(self, symbol: str, bars: int = 31) -> list[dict[str, Any]]:
         """Session OHLC for LW Charts — bridge stub or synthetic per-symbol series."""
         sym = symbol.upper()
-        if self._should_use_bridge():
+        if self._should_use_bridge() and self._bridge_reachable():
             try:
                 with self._client(timeout=3.0) as client:
                     r = client.get(f"/candles/{sym}", params={"bars": bars})
@@ -357,17 +374,27 @@ class ProfitBridgeClient:
         last = float(quote.last)
         now = int(time.time())
         tick = 0.01 if last < 50 else 0.05
+        band = last * 0.015
+        lo_band = last - band
+        hi_band = last + band
         candles: list[dict[str, Any]] = []
-        price = last * (1 - (seed % 40) / 2000.0)
+        price = last * (1 - (seed % 20) / 2000.0)
         for i in range(bars):
             t = now - (bars - i) * 60
-            wobble = ((seed + i * 13) % 100) / 800.0
-            o = round(price, 2)
-            c = round(o + (wobble - 0.002) * o, 2)
-            h = round(max(o, c) + tick * (1 + (seed + i) % 3), 2)
-            l = round(min(o, c) - tick * (1 + (seed + i) % 2), 2)
+            wobble = ((seed + i * 13) % 100) / 10000.0
+            o = round(max(lo_band, min(hi_band, price)), 2)
+            c = round(max(lo_band, min(hi_band, o + wobble * last)), 2)
+            h = round(min(hi_band, max(o, c) + tick * (1 + (seed + i) % 3)), 2)
+            l = round(max(lo_band, min(o, c) - tick * (1 + (seed + i) % 2)), 2)
+            h = max(h, o, c)
+            l = min(l, o, c)
             price = c
             candles.append({"time": t, "open": o, "high": h, "low": l, "close": c})
+        if candles:
+            tail = candles[-1]
+            tail["close"] = round(last, 2)
+            tail["high"] = round(min(hi_band, max(tail["high"], tail["open"], tail["close"])), 2)
+            tail["low"] = round(max(lo_band, min(tail["low"], tail["open"], tail["close"])), 2)
         return candles
 
     def get_stock_option_chain(self, underlying: str) -> dict:
@@ -382,7 +409,7 @@ class ProfitBridgeClient:
             if sym == "BOVA11":
                 return self._synthetic_bova_chain()
             return self._synthetic_stock_options(sym)
-        if self._should_use_bridge():
+        if self._should_use_bridge() and self._bridge_reachable():
             try:
                 with self._client() as client:
                     r = client.get(f"/options/chain/{sym}")
@@ -403,7 +430,7 @@ class ProfitBridgeClient:
 
     def get_greeks(self, symbol: str) -> dict:
         sym = symbol.upper()
-        if self._should_use_bridge():
+        if self._should_use_bridge() and self._bridge_reachable():
             try:
                 with self._client() as client:
                     r = client.get(f"/greeks/{sym}")
@@ -436,7 +463,7 @@ class ProfitBridgeClient:
                 "term_structure": "contango",
                 "source": "synthetic",
             }
-        if self._should_use_bridge():
+        if self._should_use_bridge() and self._bridge_reachable():
             try:
                 with self._client() as client:
                     r = client.get(f"/iv-rank/{sym}")
@@ -523,6 +550,46 @@ class ProfitBridgeClient:
             volume=volume,
             timestamp=datetime.utcnow(),
         )
+
+
+    def get_pending_orders(self) -> list[dict[str, Any]]:
+        if not self._should_use_bridge():
+            return []
+        try:
+            with self._client(timeout=3.0) as client:
+                r = client.get("/orders/pending")
+                if r.status_code == 200:
+                    data = r.json()
+                    return data if isinstance(data, list) else data.get("orders", [])
+        except Exception as exc:
+            logger.debug("profit_pending_orders_failed", error=str(exc))
+        return []
+
+    def place_order(self, payload: dict[str, Any]) -> dict[str, Any]:
+        """Submit market/limit order via Profit bridge (sim or ticket outbox)."""
+        if self._should_use_bridge() and self._bridge_reachable():
+            try:
+                with self._client(timeout=8.0) as client:
+                    r = client.post("/orders", json=payload)
+                    if r.status_code < 400:
+                        return r.json()
+            except Exception as exc:
+                logger.warning("profit_place_order_failed", error=str(exc))
+        sym = str(payload.get("symbol", "PETR4")).upper()
+        side = str(payload.get("side", "buy"))
+        qty = int(payload.get("quantity", 100))
+        quote = self.get_quote(sym)
+        price = quote.ask if side == "buy" else quote.bid
+        return {
+            "ticket_id": f"local-{sym}-{int(datetime.utcnow().timestamp())}",
+            "status": "filled",
+            "symbol": sym,
+            "side": side,
+            "quantity": qty,
+            "fill_price": price,
+            "source": "bridge_offline_stub",
+            "mock": True,
+        }
 
 
 def get_profit_client() -> ProfitBridgeClient:

@@ -6,7 +6,7 @@ from pathlib import Path
 from pydantic import Field
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
-PROJECT_ROOT = Path(__file__).resolve().parents[2]
+PROJECT_ROOT = Path(__file__).resolve().parents[1]
 
 
 class Settings(BaseSettings):
@@ -46,6 +46,14 @@ class Settings(BaseSettings):
     profit_bridge_url: str = "http://localhost:9100"
     profit_dll_path: str = ""
     profit_export_dir: str = str(PROJECT_ROOT / "exports" / "profit")
+    # ProfitChart accounts (same password in Profit UI — stored in .env only)
+    profit_password: str = ""
+    profit_account_sim_id: str = "3368"
+    profit_account_sim_name: str = "Filipe"
+    profit_account_day_id: str = "14852883"
+    profit_account_swing_id: str = "14852883"
+    profit_account_live_name: str = "Filipe G. Monteiro"
+    profit_live_style: str = "day"  # day | swing when PAPER_TRADING_MODE=false
 
     default_daily_loss_limit_brl: float = 500.0
     default_max_contracts: int = 10
@@ -63,7 +71,7 @@ class Settings(BaseSettings):
     # 2.0 — backtest gate before promoting ideas
     backtest_min_profit_factor: float = 1.3
     backtest_max_drawdown_pct: float = 8.0
-    execution_backend: str = "ntsl"  # ntsl (Profit) | clear
+    execution_backend: str = "profit"  # profit | paper | ntsl | clear
 
     enable_scheduler: bool = True
     optimization_max_workers: int = 2
@@ -91,6 +99,12 @@ class Settings(BaseSettings):
     walk_forward_auto_promote: bool = True
     walk_forward_interval_hours: int = 6
     walk_forward_promote_folds: int = 4
+    walk_forward_use_bridge_candles: bool = False
+
+    # 4.3 — Autonomous Engine + Strategy Lab
+    autonomous_engine_enabled: bool = True
+    autonomous_rankings_sync: bool = True
+    rankings_sync_interval_hours: int = 6
 
     # 3.0 GA — board auth + VPS
     board_auth_enabled: bool = False
@@ -100,8 +114,44 @@ class Settings(BaseSettings):
     journal_auto_analyze: bool = True
     journal_analyze_limit: int = 5
 
+    # 4.0-rc — optional ProfitChart co-start with dev.py
+    profitchart_exe: str = ""
+    profitchart_co_start: bool = True
+
+    # 4.0 GA — autonomy engine (auto confirm/execute per sleeve)
+    autonomy_enabled: bool = False
+    autonomy_max_trades_per_day: int = 3
+    auto_trading_on_sleeves: bool = True
+    orchestrator_interval_sec: int = 45
+    paper_orchestrator_interval_sec: int = 20
+    paper_motor_ignore_b3_hours: bool = True
+    paper_motor_auto_seed_ideas: bool = True
+    paper_capital_brl: float = 30_000.0
+    max_risk_per_trade_pct: float = 1.0
+    max_position_pct: float = 15.0
+
+    # 4.1 — futures watchlist + read-only social signals
+    futures_watchlist_enabled: bool = True
+    social_signals_enabled: bool = True
+
+    # 4.2 — crypto watchlist + trade archaeology
+    crypto_watchlist_enabled: bool = True
+    binance_quotes_enabled: bool = True
+    binance_api_base: str = "https://api.binance.com"
+    archaeology_import_dir: str = str(PROJECT_ROOT / "exports" / "archaeology")
+    crypto_paper_enabled: bool = True
+
+    # 7.0 — Golden path (PETR4-only local perfection)
+    golden_path_mode: bool = False
+
+    @property
+    def golden_path_symbol(self) -> str:
+        return "PETR4"
+
     @property
     def scanner_symbol_list(self) -> list[str]:
+        if self.golden_path_mode:
+            return [self.golden_path_symbol]
         if self.scanner_mode == "filipe_core14":
             from src.services.filipe_universe import symbol_list
 
@@ -128,6 +178,10 @@ class Settings(BaseSettings):
     @property
     def profit_export_path(self) -> Path:
         return Path(self.profit_export_dir)
+
+    @property
+    def archaeology_import_path(self) -> Path:
+        return Path(self.archaeology_import_dir)
 
 
 @lru_cache
