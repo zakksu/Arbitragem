@@ -101,7 +101,7 @@ def evaluate_golden_path(session: Session) -> dict[str, Any]:
     petr_ideas = (
         session.query(TradeIdea)
         .filter(TradeIdea.symbol == symbol)
-        .order_by(desc(TradeIdea.updated_at))
+        .order_by(desc(TradeIdea.created_at))
         .limit(30)
         .all()
     )

@@ -8,14 +8,14 @@
         </div>
         <div class="bb-gp-summary">
             <span class="{% if gp.all_green %}bb-gp-all-green{% else %}bb-gp-pending{% endif %}">
-                {{ gp.items|selectattr('ok')|list|length }} / {{ gp.items|length }}
+                {{ gp['items']|selectattr('ok')|list|length }} / {{ gp['items']|length }}
                 {% if gp.all_green %}ALL GREEN{% else %}IN PROGRESS{% endif %}
             </span>
             <em class="bb-muted">Sessions green: {{ gp.sessions_green_count }}</em>
         </div>
     </header>
     <ol class="bb-gp-checklist">
-        {% for item in gp.items %}
+        {% for item in gp['items'] %}
         <li class="bb-gp-item{% if item.ok %} is-ok{% else %} is-pending{% endif %}">
             <span class="bb-gp-num">{{ '%02d'|format(item.num) }}</span>
             <span class="bb-gp-label">{{ item.label }}</span>
