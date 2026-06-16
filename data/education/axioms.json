@@ -1,0 +1,19 @@
+{
+  "axioms": [
+    {
+      "title": "Mean reversion",
+      "body": "Extreme moves toward VWAP often fade in liquid Core14 names during B3 hours.",
+      "pt": "Reversão à média"
+    },
+    {
+      "title": "Risk first",
+      "body": "Size from stop distance — never from hope. R$500 daily cap is a feature.",
+      "pt": "Risco primeiro"
+    },
+    {
+      "title": "Structure over direction",
+      "body": "Prefer defined-risk spreads when IV rank is elevated.",
+      "pt": "Estrutura sobre direção"
+    }
+  ]
+}

@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>Arbitragem Scalper — Structure Deck</title>
     <link rel="stylesheet" href="/static/blackboard.css">
+    <link rel="stylesheet" href="/static/blackboard_4_0.css">
     <script src="https://unpkg.com/htmx.org@2.0.4"></script>
 </head>
 <body class="bb-app">
@@ -63,19 +64,13 @@
     </main>
 
     <footer class="bb-footer">
-        <div id="opportunity-rail" class="bb-footer-opportunity"
-             hx-get="/board/partials/opportunity-rail"
-             hx-trigger="load, every 30s"
+        <div id="pulse-rail" class="bb-footer-pulse"
+             hx-get="/board/partials/pulse-rail"
+             hx-trigger="load, every 60s"
              hx-swap="innerHTML">
-            <span class="bb-muted">Loading opportunity rail…</span>
+            <span class="bb-muted">Loading pulse rail…</span>
         </div>
-        <div id="sector-strip" class="bb-footer-sectors"
-             hx-get="/board/partials/sector-strip"
-             hx-trigger="load"
-             hx-swap="innerHTML">
-            <span class="bb-muted">Loading sector baskets…</span>
-        </div>
-        <span class="bb-footer-hint"><kbd>R</kbd> refresh watchlist</span>
+        <span class="bb-footer-hint"><kbd>S</kbd> scan · <kbd>K</kbd> kill · <kbd>1-9</kbd> watchlist · <kbd>R</kbd> refresh</span>
     </footer>
 
     <script src="https://unpkg.com/lightweight-charts@4.2.0/dist/lightweight-charts.standalone.production.js"></script>
@@ -150,6 +145,23 @@
                         title: "Max pain",
                     });
                 }
+
+                function addLevel(attr, color, title) {
+                    var v = parseFloat(wrap.dataset[attr] || "");
+                    if (!isNaN(v) && v > 0) {
+                        series.createPriceLine({
+                            price: v,
+                            color: color,
+                            lineWidth: 2,
+                            lineStyle: 0,
+                            axisLabelVisible: true,
+                            title: title,
+                        });
+                    }
+                }
+                addLevel("entry", "#f59e0b", "Entry");
+                addLevel("stop", "#ef4444", "Stop");
+                addLevel("target", "#22c55e", "Target");
 
                 new ResizeObserver(function () {
                     var next = el.clientWidth || w;
@@ -228,6 +240,11 @@
                 swap: "innerHTML",
                 indicator: "#active-symbol-label",
             });
+            htmx.ajax("GET", "/board/partials/ideas?symbol=" + encodeURIComponent(sym), {
+                target: "#idea-stack",
+                swap: "innerHTML",
+            });
+            window.bbActiveSymbol = sym;
         }
 
         document.body.addEventListener("click", function (evt) {
@@ -249,8 +266,25 @@
         });
 
         document.addEventListener("keydown", function (evt) {
-            if (evt.key === "r" && !evt.ctrlKey && !evt.metaKey && evt.target.tagName !== "TEXTAREA") {
+            if (evt.target.tagName === "TEXTAREA" || evt.target.tagName === "INPUT") return;
+            if (evt.key === "r" && !evt.ctrlKey && !evt.metaKey) {
                 htmx.trigger("#watchlist", "load");
+            }
+            if (evt.key === "s" || evt.key === "S") {
+                htmx.ajax("POST", "/board/scan", { target: "#idea-stack", swap: "innerHTML" });
+            }
+            if (evt.key === "k" || evt.key === "K") {
+                var btn = document.getElementById("kill-switch-btn");
+                if (btn) btn.click();
+            }
+            if (evt.key >= "1" && evt.key <= "9") {
+                var rows = document.querySelectorAll(".bb-watch-row");
+                var idx = parseInt(evt.key, 10) - 1;
+                if (rows[idx]) rows[idx].click();
+            }
+            if (evt.key === "Enter" && !evt.target.closest(".bb-watch-row")) {
+                var top = document.querySelector(".bb-idea .bb-btn-confirm");
+                if (top) top.click();
             }
         });
 
