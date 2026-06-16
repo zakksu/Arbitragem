@@ -16,7 +16,20 @@
         <div class="bb-logo">Arbitragem Scalper <span>Structure Deck</span></div>
         <div class="bb-status-item"><span class="bb-loading"></span> loading…</div>
     </header>
+    <div id="mobile-banner" class="bb-mobile-banner-slot"
+         hx-get="/board/partials/mobile-banner"
+         hx-trigger="load, every 30s"
+         hx-swap="innerHTML"></div>
     <div id="setup-panel" class="bb-setup-drawer" aria-live="polite"></div>
+
+    {% if golden_path_mode %}
+    <div class="bb-golden-path-slot"
+         hx-get="/board/partials/golden-path"
+         hx-trigger="load, every 30s"
+         hx-swap="innerHTML">
+        <div class="bb-golden-path bb-gp-loading"><span class="bb-loading"></span> Golden path…</div>
+    </div>
+    {% endif %}
 
     <main class="bb-main">
         <section class="bb-col bb-col-watch" aria-label="Watchlist">
@@ -33,6 +46,8 @@
             </div>
         </section>
 
+        <div class="bb-col-resizer" data-resize="watch" role="separator" aria-orientation="vertical" aria-label="Resize watchlist"></div>
+
         <section class="bb-col bb-col-board" aria-label="Symbol blackboard">
             <div class="bb-col-head">
                 <span>Blackboard</span>
@@ -47,6 +62,8 @@
                 </div>
             </div>
         </section>
+
+        <div class="bb-col-resizer" data-resize="ideas" role="separator" aria-orientation="vertical" aria-label="Resize idea stack"></div>
 
         <section class="bb-col bb-col-ideas" aria-label="Idea stack">
             <div class="bb-col-head">
@@ -64,13 +81,26 @@
     </main>
 
     <footer class="bb-footer">
-        <div id="pulse-rail" class="bb-footer-pulse"
-             hx-get="/board/partials/pulse-rail"
-             hx-trigger="load, every 120s"
+        {% if golden_path_mode %}
+        <div id="ops-panel-strip" class="bb-ops-slot"
+             hx-get="/board/partials/ops-panel"
+             hx-trigger="load, every 15s"
              hx-swap="innerHTML">
-            <span class="bb-muted">Loading pulse rail…</span>
+            <span class="bb-muted">Ops…</span>
         </div>
-        <span class="bb-footer-hint"><kbd>S</kbd> scan · <kbd>K</kbd> kill toggle · <kbd>1-9</kbd> watchlist · <kbd>R</kbd> refresh</span>
+        {% endif %}
+        <div id="trader-desk-slot" class="bb-footer-pulse"
+             hx-get="/board/partials/trader-desk"
+             hx-trigger="load"
+             hx-swap="innerHTML">
+            <span class="bb-muted">Loading trader desk…</span>
+        </div>
+        <span class="bb-footer-hint">
+            <kbd>S</kbd> scan · <kbd>C</kbd> cash sleeve · <kbd>1-9</kbd> watchlist · <kbd>R</kbd> refresh · <kbd>Enter</kbd> top idea
+            {% with key="toolbar.shortcuts" %}
+            {% include "partials/help_tip.html" %}
+            {% endwith %}
+        </span>
     </footer>
 
     <script src="https://unpkg.com/lightweight-charts@4.2.0/dist/lightweight-charts.standalone.production.js"></script>
@@ -110,14 +140,15 @@
 
                 var series;
                 if (candles.length) {
-                    series = chart.addCandlestickSeries({
-                        upColor: "#22c55e",
-                        downColor: "#ef4444",
-                        borderVisible: false,
-                        wickUpColor: "#22c55e",
-                        wickDownColor: "#ef4444",
+                    var areaData = candles.map(function (c) {
+                        return { time: c.time, value: c.close };
                     });
-                    series.setData(candles);
+                    series = chart.addAreaSeries({
+                        lineColor: "#f59e0b",
+                        topColor: "rgba(245,158,11,0.35)",
+                        bottomColor: "rgba(245,158,11,0)",
+                    });
+                    series.setData(areaData);
                 } else {
                     series = chart.addAreaSeries({
                         lineColor: "#f59e0b",
@@ -151,15 +182,18 @@
 
                 function addLevel(attr, color, title) {
                     var v = parseFloat(wrap.dataset[attr] || "");
-                    if (!isNaN(v) && v > 0) {
-                        series.createPriceLine({
-                            price: v,
-                            color: color,
-                            lineWidth: 2,
-                            lineStyle: 0,
-                            axisLabelVisible: true,
-                            title: title,
-                        });
+                    if (!isNaN(v) && v > 0 && last > 0) {
+                        var dist = Math.abs(v - last) / last;
+                        if (dist < 0.35) {
+                            series.createPriceLine({
+                                price: v,
+                                color: color,
+                                lineWidth: 2,
+                                lineStyle: 0,
+                                axisLabelVisible: true,
+                                title: title,
+                            });
+                        }
                     }
                 }
                 addLevel("entry", "#f59e0b", "Entry");
@@ -172,6 +206,28 @@
                 }).observe(el);
             }
             requestAnimationFrame(mount);
+        };
+
+        window.bbShowToast = function (msg, isError) {
+            var toast = document.createElement("div");
+            toast.className = "bb-toast" + (isError ? " bb-toast-error" : "");
+            toast.textContent = msg;
+            document.body.appendChild(toast);
+            setTimeout(function () { toast.remove(); }, 4000);
+        };
+
+        window.bbReplayAfterRequest = function (evt) {
+            var xhr = evt.detail.xhr;
+            if (!xhr) return;
+            var ok = xhr.status < 400;
+            var msg = ok ? "Replay job queued" : "Replay failed (" + xhr.status + ")";
+            if (ok && xhr.responseText) {
+                var tmp = document.createElement("div");
+                tmp.innerHTML = xhr.responseText;
+                var strong = tmp.querySelector("strong");
+                if (strong) msg = "Replay " + strong.textContent.trim().toLowerCase();
+            }
+            window.bbShowToast(msg, !ok);
         };
 
         window.bbNtslArmDone = function (evt) {
@@ -190,18 +246,106 @@
 
         document.body.addEventListener("htmx:afterRequest", function (evt) {
             var preset = evt.detail.elt && evt.detail.elt.dataset && evt.detail.elt.dataset.preset;
-            if (!preset) return;
-            var cols = {
-                scalp: { watch: "220px", ideas: "300px" },
-                options_hedge: { watch: "200px", ideas: "340px" },
-                pairs: { watch: "240px", ideas: "280px" }
-            };
-            var c = cols[preset] || cols.scalp;
-            document.documentElement.style.setProperty("--arb-watch-w", c.watch);
-            document.documentElement.style.setProperty("--arb-ideas-w", c.ideas);
+            if (preset) window.bbApplyLayout(preset);
+        });
+
+        window.bbLayoutPresets = {
+            scalp: { watch: "220px", ideas: "300px", hideIdeas: false },
+            structure: { watch: "200px", ideas: "340px", hideIdeas: false },
+            learn: { watch: "240px", ideas: "0px", hideIdeas: true },
+            options_hedge: { watch: "200px", ideas: "340px", hideIdeas: false },
+            pairs: { watch: "240px", ideas: "280px", hideIdeas: false },
+        };
+
+        window.bbApplyLayout = function (preset) {
+            var cols = window.bbLayoutPresets[preset] || window.bbLayoutPresets.scalp;
+            document.documentElement.style.setProperty("--arb-watch-w", cols.watch);
+            document.documentElement.style.setProperty("--arb-ideas-w", cols.ideas);
+            document.body.classList.toggle("bb-layout-learn", !!cols.hideIdeas);
+            try { sessionStorage.setItem("bb_layout_preset", preset); } catch (e) { /* ignore */ }
             document.querySelectorAll(".bb-btn-layout").forEach(function (b) {
                 b.classList.toggle("is-active", b.dataset.preset === preset);
             });
+        };
+
+        try {
+            var savedLayout = sessionStorage.getItem("bb_layout_preset");
+            if (savedLayout) window.bbApplyLayout(savedLayout);
+        } catch (e) { /* ignore */ }
+
+        var kpiRangeLabels = {
+            today: "Day P&L",
+            "5d": "5D P&L",
+            "20d": "20D P&L",
+            ytd: "YTD P&L",
+        };
+
+        window.bbKpiRange = "today";
+
+        window.bbApplyKpiHistory = function (data) {
+            if (!data) return;
+            var pnlEl = document.getElementById("kpi-pnl-value");
+            var labelEl = document.getElementById("kpi-range-label");
+            var winWrap = document.getElementById("kpi-win-wrap");
+            var winEl = document.getElementById("kpi-win-value");
+            var pfWrap = document.getElementById("kpi-pf-wrap");
+            var pfEl = document.getElementById("kpi-pf-value");
+            var range = data.range || window.bbKpiRange || "today";
+            if (labelEl) labelEl.textContent = kpiRangeLabels[range] || "P&L";
+            if (pnlEl && data.pnl_brl != null) {
+                var pnl = Number(data.pnl_brl);
+                pnlEl.textContent = "R$ " + pnl.toFixed(2);
+                pnlEl.classList.toggle("bb-pnl-pos", pnl >= 0);
+                pnlEl.classList.toggle("bb-pnl-neg", pnl < 0);
+            }
+            var showRange = range !== "today";
+            if (winWrap) winWrap.hidden = !showRange;
+            if (pfWrap) pfWrap.hidden = !showRange;
+            if (winEl && data.win_rate_pct != null) {
+                winEl.textContent = Number(data.win_rate_pct).toFixed(1) + "%";
+            }
+            if (pfEl) {
+                pfEl.textContent = data.profit_factor_20 != null ? Number(data.profit_factor_20).toFixed(2) : "—";
+            }
+        };
+
+        window.bbFetchKpiHistory = function (range) {
+            window.bbKpiRange = range || window.bbKpiRange || "today";
+            try { sessionStorage.setItem("bb_kpi_range", window.bbKpiRange); } catch (e) { /* ignore */ }
+            if (window.bbKpiRange === "today") {
+                document.querySelectorAll("#kpi-win-wrap, #kpi-pf-wrap").forEach(function (el) {
+                    if (el) el.hidden = true;
+                });
+                var labelEl = document.getElementById("kpi-range-label");
+                if (labelEl) labelEl.textContent = kpiRangeLabels.today;
+                return;
+            }
+            fetch("/api/v1/kpi/history?range=" + encodeURIComponent(window.bbKpiRange))
+                .then(function (r) { return r.ok ? r.json() : null; })
+                .then(function (data) { if (data) window.bbApplyKpiHistory(data); })
+                .catch(function () { /* ignore */ });
+        };
+
+        window.bbSyncKpiChips = function () {
+            var range = window.bbKpiRange || "today";
+            document.querySelectorAll(".bb-kpi-chip").forEach(function (chip) {
+                chip.classList.toggle("is-active", chip.dataset.range === range);
+            });
+            window.bbFetchKpiHistory(range);
+        };
+
+        try {
+            var savedRange = sessionStorage.getItem("bb_kpi_range");
+            if (savedRange) window.bbKpiRange = savedRange;
+        } catch (e) { /* ignore */ }
+
+        document.body.addEventListener("click", function (evt) {
+            var chip = evt.target.closest(".bb-kpi-chip");
+            if (!chip) return;
+            document.querySelectorAll(".bb-kpi-chip").forEach(function (c) {
+                c.classList.toggle("is-active", c === chip);
+            });
+            window.bbFetchKpiHistory(chip.dataset.range || "today");
         });
 
         function bbInitWatchlistSort(root) {
@@ -256,6 +400,9 @@
         }
 
         document.body.addEventListener("htmx:afterSwap", function (evt) {
+            if (evt.detail.target.id === "status-bar") {
+                window.bbSyncKpiChips();
+            }
             if (evt.detail.target.id === "watchlist") {
                 var count = evt.detail.target.querySelector("[data-count]");
                 if (count) {
@@ -283,6 +430,9 @@
                 }
                 var panel = evt.detail.target.querySelector(".bb-symbol-panel");
                 if (panel) window.bbMountSymbolChart(panel);
+            }
+            if (evt.detail.target.id === "replay-lab-slot" && window.htmx) {
+                htmx.process(evt.detail.target);
             }
         });
 
@@ -337,20 +487,35 @@
         document.addEventListener("keydown", function (evt) {
             if (evt.target.tagName === "TEXTAREA" || evt.target.tagName === "INPUT") return;
             if (evt.key === "r" && !evt.ctrlKey && !evt.metaKey) {
+                evt.preventDefault();
                 htmx.trigger("#watchlist", "load");
+                htmx.trigger("#status-bar", "load");
+                htmx.trigger("#idea-stack", "load");
+                htmx.trigger("#trader-desk-slot", "load");
+                if (window.bbActiveSymbol) {
+                    htmx.ajax("GET", "/board/partials/ideas?symbol=" + encodeURIComponent(window.bbActiveSymbol), {
+                        target: "#idea-stack",
+                        swap: "innerHTML",
+                    });
+                }
+                window.bbFetchKpiHistory(window.bbKpiRange || "today");
             }
             if (evt.key === "s" || evt.key === "S") {
+                evt.preventDefault();
                 htmx.ajax("POST", "/board/scan", { target: "#idea-stack", swap: "innerHTML" });
             }
-            if (evt.key === "k" || evt.key === "K") {
-                var btn = document.getElementById("kill-switch-btn");
+            if (evt.key === "c" || evt.key === "C") {
+                evt.preventDefault();
+                var btn = document.getElementById("sleeve-cash");
                 if (btn) {
-                    var on = btn.dataset.killActive === "true";
-                    htmx.ajax("POST", "/api/v1/risk/kill-switch", {
-                        values: { active: !on, reason: on ? "keyboard resume" : "keyboard stop" },
+                    var on = btn.dataset.open === "true";
+                    htmx.ajax("POST", "/api/v1/risk/sleeves", {
+                        values: { sleeve: "cash", open: !on, reason: on ? "keyboard pause" : "keyboard resume" },
                         swap: "none"
                     }).then(function () {
-                        btn.dataset.killActive = on ? "false" : "true";
+                        btn.dataset.open = on ? "false" : "true";
+                        btn.classList.toggle("is-open", !on);
+                        btn.classList.toggle("is-paused", on);
                         htmx.trigger("#status-bar", "load");
                         htmx.trigger("#idea-stack", "load");
                     });
@@ -359,11 +524,17 @@
             if (evt.key >= "1" && evt.key <= "9") {
                 var rows = document.querySelectorAll(".bb-watch-row");
                 var idx = parseInt(evt.key, 10) - 1;
-                if (rows[idx]) rows[idx].click();
+                if (rows[idx]) {
+                    evt.preventDefault();
+                    rows[idx].click();
+                }
             }
-            if (evt.key === "Enter" && !evt.target.closest(".bb-watch-row")) {
+            if (evt.key === "Enter" && !evt.target.closest(".bb-watch-row") && !evt.target.closest(".bb-modal")) {
                 var top = document.querySelector(".bb-idea .bb-btn-confirm");
-                if (top) top.click();
+                if (top) {
+                    evt.preventDefault();
+                    top.click();
+                }
             }
         });
 
@@ -428,6 +599,179 @@
                 close: function () { es.close(); },
             };
         })();
+
+        (function bbFirstRunTour() {
+            try {
+                if (localStorage.getItem("bb_tour_done") === "1") return;
+            } catch (e) { return; }
+            var steps = [
+                { sel: ".bb-col-watch", title: "Watchlist", body: "Sorted Core14 symbols — click a row or press 1-9 to focus." },
+                { sel: ".bb-col-board", title: "Trade Product", body: "Blackboard blends thesis, chart E/S/T, odds, and legs." },
+                { sel: ".bb-col-ideas", title: "Idea Stack", body: "Ranked ideas for the active symbol — Confirm starts two-step flow." },
+                { sel: "#kpi-filters", title: "KPI history", body: "Today · 5D · 20D · YTD filters P&L, win%, and PF₂₀." },
+                { sel: ".bb-toolbar", title: "Toolbar", body: "Scan, strategies, risk drawer, setup — shortcuts in footer." },
+            ];
+            var idx = 0;
+            var overlay = document.createElement("div");
+            overlay.className = "bb-tour-overlay";
+            overlay.innerHTML =
+                '<div class="bb-tour-card">' +
+                '<p class="bb-tour-step"></p>' +
+                '<h4 class="bb-tour-title"></h4>' +
+                '<p class="bb-tour-body"></p>' +
+                '<div class="bb-tour-actions">' +
+                '<button type="button" class="bb-btn-secondary bb-tour-skip">Skip</button>' +
+                '<button type="button" class="bb-btn-confirm bb-tour-next">Next</button>' +
+                "</div></div>";
+            document.body.appendChild(overlay);
+            var highlight = document.createElement("div");
+            highlight.className = "bb-tour-highlight";
+            document.body.appendChild(highlight);
+
+            function endTour() {
+                overlay.remove();
+                highlight.remove();
+                try { localStorage.setItem("bb_tour_done", "1"); } catch (e) { /* ignore */ }
+            }
+
+            function showStep() {
+                document.querySelectorAll(".bb-tour-target").forEach(function (el) {
+                    el.classList.remove("bb-tour-target");
+                });
+                if (idx >= steps.length) {
+                    endTour();
+                    return;
+                }
+                var step = steps[idx];
+                var target = document.querySelector(step.sel);
+                overlay.querySelector(".bb-tour-step").textContent = "Step " + (idx + 1) + " of " + steps.length;
+                overlay.querySelector(".bb-tour-title").textContent = step.title;
+                overlay.querySelector(".bb-tour-body").textContent = step.body;
+                overlay.querySelector(".bb-tour-next").textContent = idx === steps.length - 1 ? "Done" : "Next";
+                if (target) {
+                    target.classList.add("bb-tour-target");
+                    var rect = target.getBoundingClientRect();
+                    highlight.style.top = rect.top + "px";
+                    highlight.style.left = rect.left + "px";
+                    highlight.style.width = rect.width + "px";
+                    highlight.style.height = rect.height + "px";
+                    highlight.hidden = false;
+                } else {
+                    highlight.hidden = true;
+                }
+            }
+
+            overlay.querySelector(".bb-tour-skip").addEventListener("click", endTour);
+            overlay.querySelector(".bb-tour-next").addEventListener("click", function () {
+                idx += 1;
+                showStep();
+            });
+            setTimeout(showStep, 800);
+        })();
+
+        (function bbInitColResize() {
+            var MIN_WATCH = 160;
+            var MIN_IDEAS = 200;
+            var MIN_BOARD = 280;
+            var drag = null;
+
+            function parsePx(val, fallback) {
+                var n = parseFloat(String(val).replace("px", ""));
+                return isNaN(n) ? fallback : n;
+            }
+
+            function rootStyle() {
+                return getComputedStyle(document.documentElement);
+            }
+
+            function saveWidths() {
+                try {
+                    sessionStorage.setItem(
+                        "bb_col_widths",
+                        JSON.stringify({
+                            watch: rootStyle().getPropertyValue("--arb-watch-w").trim(),
+                            ideas: rootStyle().getPropertyValue("--arb-ideas-w").trim(),
+                        })
+                    );
+                } catch (e) { /* ignore */ }
+            }
+
+            function loadWidths() {
+                try {
+                    var raw = sessionStorage.getItem("bb_col_widths");
+                    if (!raw) return;
+                    var w = JSON.parse(raw);
+                    if (w.watch) document.documentElement.style.setProperty("--arb-watch-w", w.watch);
+                    if (w.ideas) document.documentElement.style.setProperty("--arb-ideas-w", w.ideas);
+                } catch (e) { /* ignore */ }
+            }
+
+            loadWidths();
+
+            document.querySelectorAll(".bb-col-resizer").forEach(function (handle) {
+                handle.addEventListener("mousedown", function (e) {
+                    if (e.button !== 0) return;
+                    e.preventDefault();
+                    var side = handle.dataset.resize;
+                    var main = document.querySelector(".bb-main");
+                    if (!main) return;
+                    var rect = main.getBoundingClientRect();
+                    drag = {
+                        side: side,
+                        startX: e.clientX,
+                        mainW: rect.width,
+                        watch: parsePx(rootStyle().getPropertyValue("--arb-watch-w"), 220),
+                        ideas: parsePx(rootStyle().getPropertyValue("--arb-ideas-w"), 300),
+                        handle: handle,
+                    };
+                    handle.classList.add("is-dragging");
+                    document.body.classList.add("bb-col-dragging");
+                });
+            });
+
+            document.addEventListener("mousemove", function (e) {
+                if (!drag) return;
+                var dx = e.clientX - drag.startX;
+                var resizerTotal = 10;
+                var board = drag.mainW - drag.watch - drag.ideas - resizerTotal;
+                if (drag.side === "watch") {
+                    var nextWatch = Math.max(MIN_WATCH, drag.watch + dx);
+                    board = drag.mainW - nextWatch - drag.ideas - resizerTotal;
+                    if (board < MIN_BOARD) nextWatch = drag.mainW - drag.ideas - resizerTotal - MIN_BOARD;
+                    document.documentElement.style.setProperty("--arb-watch-w", Math.round(nextWatch) + "px");
+                } else {
+                    var nextIdeas = Math.max(MIN_IDEAS, drag.ideas - dx);
+                    board = drag.mainW - drag.watch - nextIdeas - resizerTotal;
+                    if (board < MIN_BOARD) nextIdeas = drag.mainW - drag.watch - resizerTotal - MIN_BOARD;
+                    document.documentElement.style.setProperty("--arb-ideas-w", Math.round(nextIdeas) + "px");
+                }
+            });
+
+            document.addEventListener("mouseup", function () {
+                if (!drag) return;
+                drag.handle.classList.remove("is-dragging");
+                document.body.classList.remove("bb-col-dragging");
+                drag = null;
+                saveWidths();
+            });
+        })();
+
+        document.addEventListener("DOMContentLoaded", function () {
+            window.bbSyncKpiChips();
+            var slot = document.getElementById("trader-desk-slot");
+            if (slot && typeof EventSource !== "undefined") {
+                try {
+                    var es = new EventSource("/board/stream/trader-desk");
+                    es.addEventListener("desk", function (ev) {
+                        try {
+                            var data = JSON.parse(ev.data);
+                            if (data.html) slot.innerHTML = data.html;
+                        } catch (e) { /* keep HTMX fallback */ }
+                    });
+                    es.onerror = function () { /* polling via manual R key */ };
+                } catch (e) { /* SSE optional */ }
+            }
+        });
     </script>
 </body>
 </html>

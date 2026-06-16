@@ -10,6 +10,10 @@ Agents and beginners: run one command, everything else is automatic.
   python scripts/dev.py stop           # stop background services
   python scripts/dev.py restart --wait
   python scripts/dev.py open           # open dashboard in default browser
+  python scripts/dev.py go-live          # fastest public URLs (trycloudflare)
+  python scripts/dev.py tunnel quick     # instant HTTPS, no DNS setup
+  python scripts/dev.py tunnel start   # expose trading/dashboard hostnames
+  python scripts/dev.py tunnel status  # tunnel process + config status
 
 Exit codes: 0 = success, 1 = error, 2 = services unhealthy after timeout.
 """
@@ -217,7 +221,13 @@ def _maybe_start_profitchart() -> None:
     """Optional ProfitChart co-start when PROFITCHART_EXE is set (4.0-rc)."""
     if sys.platform != "win32":
         return
-    exe = os.getenv("PROFITCHART_EXE", "").strip()
+    sys.path.insert(0, str(ROOT))
+    from src.config import get_settings
+
+    settings = get_settings()
+    if not settings.profitchart_co_start:
+        return
+    exe = settings.profitchart_exe.strip() or os.getenv("PROFITCHART_EXE", "").strip()
     env_path = ROOT / ".env"
     if not exe and env_path.exists():
         for line in env_path.read_text(encoding="utf-8").splitlines():
@@ -299,6 +309,18 @@ def _start_profit_bridge_if_needed() -> int | None:
             print("[dev] Profit bridge healthy.")
             return proc.pid
         time.sleep(0.5)
+    return proc.pid
+
+
+def _start_test_worker() -> int | None:
+    if os.getenv("ARBITRAGEM_BG_TESTS", "1") == "0":
+        return None
+    worker = ROOT / "scripts" / "test_worker.py"
+    if not worker.exists():
+        return None
+    py = str(_python())
+    print("[dev] Starting background test worker (non-blocking)...")
+    proc = _start_process("test_worker", [py, str(worker)], "test_worker.log")
     return proc.pid
 
 
@@ -385,6 +407,7 @@ def cmd_start(args: argparse.Namespace) -> int:
         "api_pid": api_proc.pid,
         "dashboard_pid": ui_proc.pid,
         "profit_bridge_pid": bridge_pid or 0,
+        "test_worker_pid": _start_test_worker() or 0,
         "started_at": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
     }
     _save_state(state)
@@ -442,6 +465,7 @@ def get_status_dict() -> dict[str, Any]:
             "api": api_pid,
             "dashboard": dash_pid,
             "profit_bridge": state.get("profit_bridge_pid", 0),
+            "test_worker": state.get("test_worker_pid", 0),
         },
         "started_at": state.get("started_at"),
         "logs": {"api": str(LOG_DIR / "api.log"), "dashboard": str(LOG_DIR / "dashboard.log")},
@@ -469,7 +493,7 @@ def cmd_status(args: argparse.Namespace) -> int:
 def cmd_stop(_: argparse.Namespace) -> int:
     state = _load_state()
     stopped = False
-    for key in ("api_pid", "dashboard_pid", "profit_bridge_pid"):
+    for key in ("api_pid", "dashboard_pid", "profit_bridge_pid", "test_worker_pid"):
         pid = int(state.get(key, 0) or 0)
         if pid and _pid_alive(pid):
             print(f"[dev] Stopping PID {pid} ({key})...")
@@ -500,6 +524,53 @@ def cmd_open(_: argparse.Namespace) -> int:
     return 0
 
 
+def cmd_tunnel(args: argparse.Namespace) -> int:
+    """Delegate to scripts/tunnel.py (Cloudflare Tunnel)."""
+    tunnel_script = ROOT / "scripts" / "tunnel.py"
+    if not tunnel_script.exists():
+        print("[dev] tunnel.py missing", file=sys.stderr)
+        return 1
+    cmd = [sys.executable, str(tunnel_script), args.tunnel_command]
+    if args.tunnel_command == "setup":
+        if getattr(args, "tunnel_run", False):
+            cmd.append("--run")
+        if getattr(args, "tunnel_skip_login", False):
+            cmd.append("--skip-login")
+        if getattr(args, "tunnel_skip_create", False):
+            cmd.append("--skip-create")
+    elif args.tunnel_command == "start" and getattr(args, "tunnel_no_wait", False):
+        cmd.append("--no-wait-healthy")
+    elif args.tunnel_command == "quick" and getattr(args, "tunnel_no_wait", False):
+        cmd.append("--no-wait-healthy")
+    elif args.tunnel_command == "hostname":
+        cmd.append(getattr(args, "tunnel_hostname", ""))
+        if getattr(args, "tunnel_dashboard", None):
+            cmd.extend(["--dashboard", args.tunnel_dashboard])
+        if getattr(args, "tunnel_run", False):
+            cmd.append("--run")
+    elif args.tunnel_command == "status" and getattr(args, "json", False):
+        cmd.append("--json")
+    result = subprocess.run(cmd, cwd=ROOT)
+    return int(result.returncode)
+
+
+def cmd_go_live(args: argparse.Namespace) -> int:
+    """Start stack + instant trycloudflare tunnel — fastest public access."""
+    ns = argparse.Namespace(wait=True, timeout=DEFAULT_TIMEOUT, json=False, open=getattr(args, "open", False))
+    if cmd_start(ns) != 0:
+        return 1
+    time.sleep(2)
+    tunnel_ns = argparse.Namespace(tunnel_command="quick", tunnel_no_wait=False)
+    rc = cmd_tunnel(tunnel_ns)
+    if rc == 0 and getattr(args, "open", False):
+        q = json.loads(
+            (ROOT / "data" / ".dev" / "quick_tunnel.json").read_text(encoding="utf-8")
+        ) if (ROOT / "data" / ".dev" / "quick_tunnel.json").exists() else {}
+        if q.get("dashboard_url"):
+            webbrowser.open(q["dashboard_url"])
+    return rc
+
+
 def cmd_paper_today(_: argparse.Namespace) -> int:
     if not _http_ok(API_URL):
         print("[dev] API not running. Starting stack...")
@@ -512,6 +583,25 @@ def cmd_paper_today(_: argparse.Namespace) -> int:
     print("[dev] Running paper_trade_today...")
     result = subprocess.run([str(py), str(ROOT / "scripts" / "paper_trade_today.py")], env=env, cwd=ROOT)
     return result.returncode
+
+
+def cmd_test_worker(args: argparse.Namespace) -> int:
+    worker = ROOT / "scripts" / "test_worker.py"
+    py = str(_python())
+    cmd = [py, str(worker)]
+    if getattr(args, "once", False):
+        cmd.append("--once")
+    if getattr(args, "interval", None):
+        cmd.extend(["--interval", str(args.interval)])
+    result = subprocess.run(cmd, cwd=ROOT, env=_env())
+    return int(result.returncode)
+
+
+def cmd_launch(_: argparse.Namespace) -> int:
+    """One-shot local launcher (setup + start + sleeves)."""
+    py = _python()
+    result = subprocess.run([str(py), str(ROOT / "scripts" / "launch.py")], cwd=ROOT)
+    return int(result.returncode)
 
 
 def main() -> int:
@@ -541,6 +631,57 @@ def main() -> int:
 
     p_paper = sub.add_parser("paper-today", help="Scan + paper confirm/execute top ideas")
     p_paper.set_defaults(func=cmd_paper_today)
+
+    p_launch = sub.add_parser("launch", help="Local launcher — setup, start, open sleeves")
+    p_launch.set_defaults(func=cmd_launch)
+
+    p_tw = sub.add_parser("test-worker", help="Run background pytest worker")
+    p_tw.add_argument("--once", action="store_true", help="Run pytest once and exit")
+    p_tw.add_argument("--interval", type=int, default=300, help="Loop interval when not --once")
+    p_tw.set_defaults(func=cmd_test_worker)
+
+    p_tunnel = sub.add_parser(
+        "tunnel",
+        help="Cloudflare Tunnel — public HTTPS from this PC (see docs/cloudflare_tunnel.md)",
+    )
+    tunnel_sub = p_tunnel.add_subparsers(dest="tunnel_command", required=True)
+
+    p_tsetup = tunnel_sub.add_parser("setup", help="Login, create tunnel, write config/cloudflared/config.yml")
+    p_tsetup.add_argument("--run", dest="tunnel_run", action="store_true", help="Run cloudflared login/create/route")
+    p_tsetup.add_argument("--skip-login", dest="tunnel_skip_login", action="store_true")
+    p_tsetup.add_argument("--skip-create", dest="tunnel_skip_create", action="store_true")
+    p_tsetup.set_defaults(func=cmd_tunnel, tunnel_command="setup")
+
+    p_tstart = tunnel_sub.add_parser("start", help="Start cloudflared (stack should be healthy)")
+    p_tstart.add_argument("--no-wait-healthy", dest="tunnel_no_wait", action="store_true")
+    p_tstart.set_defaults(func=cmd_tunnel, tunnel_command="start")
+
+    p_tstop = tunnel_sub.add_parser("stop", help="Stop cloudflared process")
+    p_tstop.set_defaults(func=cmd_tunnel, tunnel_command="stop")
+
+    p_tstatus = tunnel_sub.add_parser("status", help="Tunnel install, config, and process status")
+    p_tstatus.add_argument("--json", action="store_true")
+    p_tstatus.set_defaults(func=cmd_tunnel, tunnel_command="status")
+
+    p_tinstall = tunnel_sub.add_parser("install", help="Download cloudflared into tools/ (no winget)")
+    p_tinstall.set_defaults(func=cmd_tunnel, tunnel_command="install")
+
+    p_tdns = tunnel_sub.add_parser("dns-fix", help="Print GoDaddy/Cloudflare DNS fix steps")
+    p_tdns.set_defaults(func=cmd_tunnel, tunnel_command="dns-fix")
+
+    p_tquick = tunnel_sub.add_parser("quick", help="Instant trycloudflare.com URLs (no DNS)")
+    p_tquick.add_argument("--no-wait-healthy", dest="tunnel_no_wait", action="store_true")
+    p_tquick.set_defaults(func=cmd_tunnel, tunnel_command="quick")
+
+    p_thost = tunnel_sub.add_parser("hostname", help="Set FreeDomain/custom hostnames in .env")
+    p_thost.add_argument("tunnel_hostname", help="e.g. arbitragem.work.gd")
+    p_thost.add_argument("--dashboard", dest="tunnel_dashboard", help="dashboard subdomain hostname")
+    p_thost.add_argument("--run", dest="tunnel_run", action="store_true")
+    p_thost.set_defaults(func=cmd_tunnel, tunnel_command="hostname")
+
+    p_live = sub.add_parser("go-live", help="Start stack + instant public URLs (trycloudflare)")
+    p_live.add_argument("--open", action="store_true", help="Open dashboard in browser")
+    p_live.set_defaults(func=cmd_go_live)
 
     args = parser.parse_args()
     try:

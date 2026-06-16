@@ -39,6 +39,63 @@ _CORE14_FALLBACK: list[dict[str, str]] = [
     {"symbol": "WEGE3", "name": "WEG ON", "sector": "Industrial"},
 ]
 
+def _enriched_watchlist_sync() -> list[dict[str, Any]]:
+    """Board watchlist rows — same pipeline as GET /api/v1/watchlist/enriched."""
+    from src.config import get_settings
+    from src.services.futures_quotes import build_futures_watchlist_rows
+    from src.services.risk_profile import get_or_create_profile
+    from src.services.trade_ideas import TradeIdeaService
+    from src.services.watchlist_enrich import enrich_watchlist_rows
+
+    settings = get_settings()
+    if settings.golden_path_mode:
+        sym = settings.golden_path_symbol
+        rows: list[dict[str, Any]] = [
+            {"symbol": sym, "name": "Petrobras PN", "sector": "Energia", "asset_class": "equity"}
+        ]
+    else:
+        symbols = load_filipe_core14()
+        rows = (
+            [s.to_dict() for s in symbols] if symbols else [dict(s) for s in _CORE14_FALLBACK]
+        )
+        for row in rows:
+            row.setdefault("asset_class", "equity")
+        if settings.futures_watchlist_enabled:
+            rows.extend(build_futures_watchlist_rows())
+    eq_syms = [r["symbol"] for r in rows if r.get("asset_class") != "future" and r.get("symbol")]
+    batch = get_profit_client().get_quotes_batch(eq_syms)
+    for row in rows:
+        if row.get("asset_class") == "future":
+            continue
+        q = batch.get(row["symbol"])
+        if q:
+            row["last"] = q.last
+            row["bid"] = q.bid
+            row["ask"] = q.ask
+
+    def _ideas(session):
+        svc = TradeIdeaService(session)
+        return [svc.to_dict(i) for i in svc.list_ideas(limit=50)]
+
+    ideas = _with_db(_ideas)
+    profile = _with_db(get_or_create_profile)
+    return enrich_watchlist_rows(rows, ideas, cost_per_trade_brl=profile.cost_per_trade_brl)
+
+
+def _pulse_rail_with_social_sync() -> dict[str, Any]:
+    from src.config import get_settings
+    from src.services.pulse_rail import get_pulse_rail
+    from src.services.social_signals import get_social_signals
+
+    pulse = get_pulse_rail()
+    if not get_settings().social_signals_enabled:
+        return pulse
+    social = get_social_signals(limit=8)
+    out = dict(pulse)
+    out["social_signals"] = social.get("signals") or []
+    out["social_disclaimer"] = social.get("disclaimer")
+    return out
+
 
 def _api_base(request: Request) -> str:
     return str(request.base_url).rstrip("/")
@@ -230,7 +287,12 @@ def _api_error_detail(resp: httpx.Response) -> str:
 
 @router.get("/board", response_class=HTMLResponse)
 async def board_page(request: Request):
-    return TEMPLATES.TemplateResponse(request, "board.html", {})
+    settings = get_settings()
+    return TEMPLATES.TemplateResponse(
+        request,
+        "board.html",
+        {"golden_path_mode": settings.golden_path_mode},
+    )
 
 
 @router.get("/board/partials/status", response_class=HTMLResponse)
@@ -238,18 +300,23 @@ async def status_partial(request: Request):
     bootstrap = await _fetch_bootstrap(request)
     risk = await _fetch_risk_summary(request)
     cockpit = await _to_thread(_risk_cockpit)
+
+    def _validation(session):
+        from src.services.paper_validation import build_paper_validation
+
+        return build_paper_validation(session)
+
+    validation = await _to_thread(_with_db, _validation)
     return TEMPLATES.TemplateResponse(
         request,
         "partials/status_bar.html",
-        {"bootstrap": bootstrap, "risk": risk, "cockpit": cockpit},
+        {"bootstrap": bootstrap, "risk": risk, "cockpit": cockpit, "validation": validation},
     )
 
 
 @router.get("/board/partials/watchlist", response_class=HTMLResponse)
 async def watchlist_partial(request: Request):
-    symbols = await _fetch_universe(request)
-    sym_list = [s["symbol"] for s in symbols if s.get("symbol")]
-    rows = await _to_thread(_watchlist_rows_sync, list(symbols), list(sym_list))
+    rows = await _to_thread(_enriched_watchlist_sync)
     active = request.query_params.get("active")
     return TEMPLATES.TemplateResponse(
         request,
@@ -341,13 +408,95 @@ async def symbol_report_partial(request: Request, symbol: str):
     )
 
 
+@router.get("/board/strategies", response_class=HTMLResponse)
+async def strategies_page(request: Request):
+    from src.services.strategy_report import build_strategy_report
+
+    report = await _to_thread(_with_db, build_strategy_report)
+    return TEMPLATES.TemplateResponse(request, "strategies.html", {"report": report})
+
+
+@router.get("/board/strategy-lab", response_class=HTMLResponse)
+async def strategy_lab_page(request: Request):
+    return TEMPLATES.TemplateResponse(request, "strategy_lab.html", {})
+
+
+@router.get("/board/partials/rankings-table", response_class=HTMLResponse)
+async def rankings_table_partial(request: Request):
+    from src.autonomous.backtest_rankings import BacktestRankingsService
+
+    params = dict(request.query_params)
+    symbol = params.get("symbol") or None
+    sector = params.get("sector") or None
+    structure_type = params.get("type") or None
+    period_raw = params.get("period")
+    period_days = int(period_raw) if period_raw else None
+    sort_by = params.get("sort_by") or "idea_score"
+
+    def _load(session):
+        return BacktestRankingsService(session).list_rankings(
+            symbol=symbol,
+            sector=sector,
+            structure_type=structure_type,
+            period_days=period_days,
+            sort_by=sort_by,
+        )
+
+    rankings = await _to_thread(_with_db, _load)
+    return TEMPLATES.TemplateResponse(
+        request,
+        "partials/rankings_table.html",
+        {"rankings": rankings},
+    )
+
+
+@router.get("/board/strategy-lab/{ranking_id}", response_class=HTMLResponse)
+async def strategy_lab_detail(request: Request, ranking_id: int):
+    from src.autonomous.backtest_rankings import BacktestRankingsService
+
+    commentary = request.query_params.get("commentary") == "1"
+
+    def _load(session):
+        return BacktestRankingsService(session).get_detail(
+            ranking_id, refresh_commentary=commentary
+        )
+
+    detail = await _to_thread(_with_db, _load)
+    if not detail:
+        return HTMLResponse("<p class='bb-muted'>Ranking not found.</p>", status_code=404)
+    return TEMPLATES.TemplateResponse(
+        request,
+        "partials/rankings_detail.html",
+        {"detail": detail},
+    )
+
+
+@router.post("/board/strategy-lab/{ranking_id}/promote", response_class=HTMLResponse)
+async def strategy_lab_promote(request: Request, ranking_id: int):
+    from src.autonomous.backtest_rankings import BacktestRankingsService
+
+    def _promote(session):
+        return BacktestRankingsService(session).promote_to_idea_stack(ranking_id)
+
+    try:
+        idea = await _to_thread(_with_db, _promote)
+    except ValueError as exc:
+        return HTMLResponse(f"<p class='bb-pnl-neg'>{exc}</p>", status_code=404)
+    return HTMLResponse(
+        f"<p class='bb-pnl-pos'>Promoted <strong>{idea.get('symbol')}</strong> "
+        f"→ Idea #{idea.get('id')}. <a href='/board'>Open board</a></p>"
+    )
+
+
 @router.get("/board/partials/risk-cockpit", response_class=HTMLResponse)
 async def risk_cockpit_partial(request: Request):
     cockpit = await _to_thread(_risk_cockpit)
+    risk = await _fetch_risk_summary(request)
+    sleeves = (risk or {}).get("sleeves")
     return TEMPLATES.TemplateResponse(
         request,
         "partials/risk_cockpit.html",
-        {"cockpit": cockpit},
+        {"cockpit": cockpit, "sleeves": sleeves},
     )
 
 
@@ -507,13 +656,17 @@ async def execute_idea_partial(request: Request, idea_id: int):
 
 @router.get("/board/partials/ideas/{idea_id}/review", response_class=HTMLResponse)
 async def idea_review_partial(request: Request, idea_id: int):
-    data = await _fetch_json(request, f"/api/v1/ideas/{idea_id}")
-    if not isinstance(data, dict):
+    idea = await _fetch_idea(request, idea_id)
+    if not idea:
         return HTMLResponse("<p>Idea not found</p>", status_code=404)
+    from src.services.idea_levels import enrich_idea_levels, idea_risk_summary
+
+    idea = enrich_idea_levels(idea)
+    risk_box = idea_risk_summary(idea)
     return TEMPLATES.TemplateResponse(
         request,
         "partials/idea_review.html",
-        {"idea": data},
+        {"idea": idea, "risk_box": risk_box},
     )
 
 
@@ -522,11 +675,18 @@ async def idea_confirm_step_partial(request: Request, idea_id: int):
     idea = await _fetch_idea(request, idea_id)
     if not idea:
         return HTMLResponse("<p>Idea not found</p>", status_code=404)
+    from src.services.idea_levels import enrich_idea_levels, idea_risk_summary
+    from src.services.paper_execution import estimate_paper_fills
+
+    idea = enrich_idea_levels(dict(idea))
+    idea["fill_preview"] = estimate_paper_fills(idea)
+    risk_box = idea_risk_summary(idea)
     return TEMPLATES.TemplateResponse(
         request,
         "partials/idea_confirm_step.html",
         {
             "idea": idea,
+            "risk_box": risk_box,
             "cockpit": _risk_cockpit(),
             "risk": await _fetch_risk_summary(request),
             "error": None,
@@ -736,15 +896,117 @@ async def risk_profile_save(request: Request):
     return HTMLResponse('<span class="bb-muted">Saved</span>')
 
 
+@router.get("/board/partials/mobile-banner", response_class=HTMLResponse)
+async def mobile_banner_partial(request: Request):
+    bootstrap = await _fetch_bootstrap(request)
+    risk = await _fetch_risk_summary(request)
+    cockpit = await _to_thread(_risk_cockpit)
+    return TEMPLATES.TemplateResponse(
+        request,
+        "partials/mobile_banner.html",
+        {"bootstrap": bootstrap, "risk": risk, "cockpit": cockpit},
+    )
+
+
 @router.get("/board/partials/pulse-rail", response_class=HTMLResponse)
 async def pulse_rail_partial(request: Request):
-    from src.services.pulse_rail import get_pulse_rail
+    """Legacy alias — redirects to trader desk."""
+    return await trader_desk_partial(request)
 
-    pulse = await _to_thread(get_pulse_rail)
+
+@router.get("/board/partials/trader-desk", response_class=HTMLResponse)
+async def trader_desk_partial(request: Request):
+    from src.services.trader_desk import build_trader_desk
+
+    data = await _to_thread(_with_db, build_trader_desk)
+    return TEMPLATES.TemplateResponse(
+        request,
+        "partials/trader_desk.html",
+        data,
+    )
+
+
+@router.get("/board/partials/golden-path", response_class=HTMLResponse)
+async def golden_path_partial(request: Request):
+    from src.services.golden_path import evaluate_golden_path
+
+    data = await _to_thread(_with_db, evaluate_golden_path)
+    return TEMPLATES.TemplateResponse(
+        request,
+        "partials/golden_path.html",
+        {"golden_path": data},
+    )
+
+
+@router.get("/board/partials/ops-panel", response_class=HTMLResponse)
+async def ops_panel_partial(request: Request):
+    from src.services.ops_panel import build_ops_panel
+
+    data = await _to_thread(build_ops_panel)
+    return TEMPLATES.TemplateResponse(
+        request,
+        "partials/ops_panel.html",
+        {"ops": data},
+    )
+
+
+@router.get("/board/partials/market-context", response_class=HTMLResponse)
+async def market_context_partial(request: Request):
+    pulse = await _to_thread(_pulse_rail_with_social_sync)
+    return TEMPLATES.TemplateResponse(
+        request,
+        "partials/market_context.html",
+        {"pulse": pulse},
+    )
+
+
+@router.get("/board/stream/trader-desk")
+async def trader_desk_stream(request: Request):
+    """SSE — push trader desk HTML every 10s (Phase A)."""
+    import asyncio
+    import json
+
+    from starlette.responses import StreamingResponse
+
+    async def event_generator():
+        settings = get_settings()
+        interval = 30 if settings.golden_path_mode else 10
+        while True:
+            if await request.is_disconnected():
+                break
+            from src.services.trader_desk import build_trader_desk
+
+            data = await _to_thread(_with_db, build_trader_desk)
+            template = TEMPLATES.env.get_template("partials/trader_desk.html")
+            html = template.render(request=request, **data)
+            payload = json.dumps({"html": html})
+            yield f"event: desk\ndata: {payload}\n\n"
+            await asyncio.sleep(interval)
+
+    return StreamingResponse(event_generator(), media_type="text/event-stream")
+
+
+@router.get("/board/partials/pulse-rail-legacy", response_class=HTMLResponse)
+async def pulse_rail_legacy_partial(request: Request):
+    from src.services.trading_desk import build_trading_desk
+    from src.services.trading_orchestrator import orchestrator_status
+
+    pulse = await _to_thread(_pulse_rail_with_social_sync)
+    cockpit = await _to_thread(_risk_cockpit)
+    risk = await _fetch_risk_summary(request)
+    desk = await _to_thread(_with_db, build_trading_desk)
+    orchestrator = await _to_thread(orchestrator_status)
     return TEMPLATES.TemplateResponse(
         request,
         "partials/pulse_rail.html",
-        {"pulse": pulse},
+        {
+            "pulse": pulse,
+            "cockpit": cockpit,
+            "desk": desk,
+            "orchestrator": orchestrator,
+            "sleeves": (risk or {}).get("sleeves"),
+            "autonomy_enabled": (risk or {}).get("autonomy_enabled", False),
+        },
     )
 
 

@@ -1,0 +1,29 @@
+{# Release 7.0 — Ops footer strip #}
+{% set mem = ops.memory %}
+{% set tests = ops.test_status %}
+<div class="bb-ops-strip" aria-label="Operations panel">
+    <span class="bb-ops-chip" title="Last motor cycle duration">
+        Motor
+        {% if ops.motor_cycle_ms is not none %}
+        <strong>{{ ops.motor_cycle_ms|int }}ms</strong>
+        {% else %}
+        <strong>—</strong>
+        {% endif %}
+    </span>
+    <span class="bb-ops-chip" title="Process RSS (API worker)">
+        RAM
+        {% if mem.available %}
+        <strong>{{ mem.rss_mb|int }} MB</strong>
+        {% else %}
+        <strong>stub</strong>
+        {% endif %}
+        <em>/ {{ ops.ram_budget_mb }} MB</em>
+    </span>
+    <span class="bb-ops-chip bb-ops-tests bb-ops-{{ tests.state|default('yellow') }}" title="{{ tests.message|default('Background pytest') }}">
+        Tests
+        <strong>{{ tests.state|default('yellow')|upper }}</strong>
+        {% if tests.count is defined and tests.count %}
+        <em>({{ tests.count }})</em>
+        {% endif %}
+    </span>
+</div>
