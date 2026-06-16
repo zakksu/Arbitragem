@@ -19,6 +19,7 @@ from sqlalchemy.orm import Session
 from src.integrations.profit_bridge import get_profit_client
 from src.logging_config import get_logger
 from src.models import BacktestRun, Strategy
+from src.services.metrics_utils import equity_drawdown, metrics_with_drawdown_pct
 
 logger = get_logger(__name__)
 
@@ -29,11 +30,12 @@ class BacktestMetrics:
     net_pnl: float
     win_rate: float
     max_drawdown: float
+    max_drawdown_pct: float | None
     sharpe: float
     profit_factor: float
 
     def to_dict(self) -> dict[str, Any]:
-        return {
+        payload: dict[str, Any] = {
             "total_trades": self.total_trades,
             "net_pnl": self.net_pnl,
             "win_rate": self.win_rate,
@@ -41,6 +43,9 @@ class BacktestMetrics:
             "sharpe": self.sharpe,
             "profit_factor": self.profit_factor,
         }
+        if self.max_drawdown_pct is not None:
+            payload["max_drawdown_pct"] = self.max_drawdown_pct
+        return payload
 
 
 class BacktestService:
@@ -57,7 +62,7 @@ class BacktestService:
         """Record backtest from ProfitChart CSV export."""
         metrics: dict[str, Any]
         if profit_csv_path and profit_csv_path.exists():
-            metrics = self.profit.import_backtest_results(profit_csv_path)
+            metrics = metrics_with_drawdown_pct(self.profit.import_backtest_results(profit_csv_path))
         else:
             metrics = {
                 "source": "profit_chart",
@@ -141,9 +146,7 @@ class BacktestService:
 
     @staticmethod
     def _compute_metrics(returns: np.ndarray) -> BacktestMetrics:
-        equity = np.cumsum(returns)
-        peak = np.maximum.accumulate(equity)
-        drawdown = peak - equity
+        max_dd, dd_pct = equity_drawdown(returns)
         wins = returns[returns > 0]
         losses = returns[returns < 0]
         win_rate = len(wins) / len(returns) if len(returns) else 0.0
@@ -155,7 +158,8 @@ class BacktestService:
             total_trades=int(len(returns)),
             net_pnl=float(returns.sum()),
             win_rate=float(win_rate),
-            max_drawdown=float(drawdown.max() if len(drawdown) else 0.0),
+            max_drawdown=max_dd,
+            max_drawdown_pct=dd_pct,
             sharpe=float(sharpe),
             profit_factor=float(gross_profit / gross_loss),
         )

@@ -166,8 +166,80 @@ def cmd_setup(_: argparse.Namespace) -> int:
         check=True,
     )
 
+    _auto_detect_profit_dll(env_file)
+
     print("[dev] Setup complete.")
     return 0
+
+
+def _auto_detect_profit_dll(env_path: Path) -> None:
+    """On Windows, write PROFIT_DLL_PATH when a single unambiguous DLL is found."""
+    if sys.platform != "win32":
+        return
+    sys.path.insert(0, str(ROOT))
+    from src.integrations.profit_dll_detect import detect_profit_dll
+
+    if env_path.exists():
+        for line in env_path.read_text(encoding="utf-8").splitlines():
+            key = line.split("=", 1)[0].strip()
+            if key == "PROFIT_DLL_PATH":
+                val = line.split("=", 1)[1].strip().strip('"')
+                if val and Path(val).exists():
+                    return
+
+    result = detect_profit_dll()
+    if not result.get("recommended"):
+        print("[dev] ProfitDLL not auto-detected — run scripts/detect_profit_dll.py")
+        return
+
+    line = f"PROFIT_DLL_PATH={result['recommended']}"
+    text = env_path.read_text(encoding="utf-8") if env_path.exists() else ""
+    if "PROFIT_DLL_PATH=" in text:
+        lines = []
+        for row in text.splitlines():
+            if row.startswith("PROFIT_DLL_PATH="):
+                lines.append(line)
+            else:
+                lines.append(row)
+        text = "\n".join(lines)
+        if not text.endswith("\n"):
+            text += "\n"
+    else:
+        if text and not text.endswith("\n"):
+            text += "\n"
+        text += f"{line}\n"
+    env_path.write_text(text, encoding="utf-8")
+    os.environ["PROFIT_DLL_PATH"] = result["recommended"]
+    print(f"[dev] Auto-detected ProfitDLL → {result['recommended']}")
+
+
+def _maybe_start_profitchart() -> None:
+    """Optional ProfitChart co-start when PROFITCHART_EXE is set (4.0-rc)."""
+    if sys.platform != "win32":
+        return
+    exe = os.getenv("PROFITCHART_EXE", "").strip()
+    env_path = ROOT / ".env"
+    if not exe and env_path.exists():
+        for line in env_path.read_text(encoding="utf-8").splitlines():
+            if line.startswith("PROFITCHART_EXE="):
+                exe = line.split("=", 1)[1].strip().strip('"')
+                break
+    if not exe:
+        return
+    path = Path(exe)
+    if not path.is_file():
+        print(f"[dev] PROFITCHART_EXE not found: {exe}")
+        return
+    try:
+        subprocess.Popen(
+            [str(path)],
+            cwd=str(path.parent),
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.DEVNULL,
+        )
+        print(f"[dev] Launched ProfitChart: {path.name}")
+    except OSError as exc:
+        print(f"[dev] ProfitChart launch failed: {exc}")
 
 
 def _ensure_env_profit_bridge() -> None:
@@ -199,6 +271,9 @@ def _start_profit_bridge_if_needed() -> int | None:
         return None
     _ensure_env_profit_bridge()
     py = str(_python())
+    env_path = ROOT / ".env"
+    if env_path.exists():
+        _auto_detect_profit_dll(env_path)
     dll_path = os.getenv("PROFIT_DLL_PATH", "").strip()
     if not dll_path and (ROOT / ".env").exists():
         for line in (ROOT / ".env").read_text(encoding="utf-8").splitlines():
@@ -274,6 +349,7 @@ def cmd_start(args: argparse.Namespace) -> int:
     py = str(_python())
 
     bridge_pid = _start_profit_bridge_if_needed()
+    _maybe_start_profitchart()
 
     print("[dev] Starting API on port 8000...")
     api_proc = _start_process(

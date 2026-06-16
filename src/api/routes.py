@@ -16,6 +16,11 @@ from src.api.schemas import (
     OptimizationRunResponse,
     OptimizeRequest,
     ProfitBacktestRunRequest,
+    ProfitPnlResponse,
+    ReplayRunRequest,
+    NtslArmRequest,
+    RiskProfileResponse,
+    RiskProfileUpdate,
     RiskSummaryResponse,
     ScanResultResponse,
     StrategyCreate,
@@ -37,6 +42,8 @@ from src.services.journal import JournalService
 from src.services.alerting import get_alert_service
 from src.services.optimizer import OptimizerService
 from src.services.risk_summary import build_risk_summary
+from src.services.risk_profile import get_or_create_profile, profile_to_dict, update_profile
+from src.services.pnl_truth import resolve_day_pnl
 from src.services.risk_cockpit import build_risk_cockpit
 from src.services.scanner import PatternScanner
 from src.services.strategy_manager import StrategyService
@@ -299,11 +306,13 @@ def filipe_core14():
 def list_trade_ideas(
     limit: int = 20,
     status: str | None = None,
+    symbol: str | None = None,
     db: Session = Depends(get_db),
 ):
     svc = TradeIdeaService(db)
-    ideas = svc.list_ideas(limit=min(limit, 50), status=status)
-    return {"ideas": [svc.to_dict(i) for i in ideas], "count": len(ideas)}
+    ideas = svc.list_ideas(limit=min(limit, 50), status=status, symbol=symbol)
+    out = [svc.to_dict(i) for i in ideas]
+    return {"ideas": out, "count": len(out), "symbol": symbol}
 
 
 @router.post("/ideas/generate")
@@ -861,3 +870,106 @@ def risk_cockpit(db: Session = Depends(get_db)):
 @router.get("/risk/summary", response_model=RiskSummaryResponse)
 def risk_summary(db: Session = Depends(get_db)):
     return build_risk_summary(db)
+
+
+@router.get("/risk/profile", response_model=RiskProfileResponse)
+def get_risk_profile(db: Session = Depends(get_db)):
+    profile = get_or_create_profile(db)
+    return profile_to_dict(profile)
+
+
+@router.put("/risk/profile", response_model=RiskProfileResponse)
+def put_risk_profile(payload: RiskProfileUpdate, db: Session = Depends(get_db)):
+    profile = update_profile(db, payload.model_dump(exclude_unset=True))
+    return profile_to_dict(profile)
+
+
+@router.get("/profit/pnl", response_model=ProfitPnlResponse)
+def profit_pnl(db: Session = Depends(get_db)):
+    return resolve_day_pnl(db)
+
+
+@router.get("/market/clocks")
+def market_clocks():
+    from src.services.market_clocks import get_market_clocks
+
+    return get_market_clocks()
+
+
+@router.get("/watchlist/enriched")
+def watchlist_enriched(db: Session = Depends(get_db)):
+    from src.services.filipe_universe import load_filipe_core14
+    from src.services.risk_profile import get_or_create_profile
+    from src.services.watchlist_enrich import enrich_watchlist_rows
+
+    symbols = load_filipe_core14()
+    rows = [s.to_dict() for s in symbols] if symbols else []
+    sym_list = [r["symbol"] for r in rows if r.get("symbol")]
+    client = get_profit_client()
+    batch = client.get_quotes_batch(sym_list)
+    for row in rows:
+        q = batch.get(row["symbol"])
+        if q:
+            row["last"] = q.last
+            row["bid"] = q.bid
+            row["ask"] = q.ask
+    svc = TradeIdeaService(db)
+    ideas = [svc.to_dict(i) for i in svc.list_ideas(limit=50)]
+    profile = get_or_create_profile(db)
+    enriched = enrich_watchlist_rows(rows, ideas, cost_per_trade_brl=profile.cost_per_trade_brl)
+    return {"symbols": enriched, "count": len(enriched)}
+
+
+@router.get("/symbols/{symbol}/trade-product")
+def symbol_trade_product(symbol: str, db: Session = Depends(get_db)):
+    from src.services.board_notes import BoardNotesService
+    from src.services.trade_product import build_trade_product
+
+    sym = symbol.strip().upper()
+    svc = TradeIdeaService(db)
+    ideas = svc.list_ideas(limit=5, symbol=sym)
+    if not ideas:
+        raise HTTPException(404, f"No ideas for {sym}")
+    note_row = BoardNotesService(db).get(sym)
+    note = note_row.content if note_row else None
+    return build_trade_product(svc.to_dict(ideas[0]), note=note)
+
+
+@router.get("/pulse")
+def pulse_rail():
+    from src.services.pulse_rail import get_pulse_rail
+
+    return get_pulse_rail()
+
+
+@router.post("/replay/run")
+def replay_run(payload: ReplayRunRequest):
+    from src.services.replay_lab import start_replay
+
+    return start_replay(
+        strategy=payload.strategy,
+        symbol=payload.symbol,
+        speed=payload.speed,
+        mode=payload.mode,
+    )
+
+
+@router.get("/kpi/history")
+def kpi_history(range: str = "today", db: Session = Depends(get_db)):
+    from src.services.kpi_history import build_kpi_history
+
+    allowed = {"today", "5d", "20d", "3mo", "ytd"}
+    key = range if range in allowed else "today"
+    return build_kpi_history(db, key)
+
+
+@router.post("/ntsl/arm")
+def ntsl_arm(payload: NtslArmRequest):
+    from src.services.ntsl_arm import arm_ntsl
+
+    return arm_ntsl(
+        symbol=payload.symbol,
+        structure_type=payload.structure_type,
+        side=payload.side,
+        ntsl_code=payload.ntsl_code,
+    )

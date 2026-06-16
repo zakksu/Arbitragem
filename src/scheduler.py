@@ -7,6 +7,7 @@ from src.logging_config import get_logger
 from src.models import get_session_factory
 from src.services.journal import JournalService
 from src.services.profit_export_watcher import scan_profit_exports
+from src.services.profit_pnl_sync import sync_profit_pnl
 from src.services.scanner import PatternScanner
 from src.services.trade_ideas import TradeIdeaService
 from src.services.walk_forward_promotion import run_walk_forward_promotion
@@ -83,6 +84,16 @@ def _run_walk_forward_promotion() -> None:
         session.close()
 
 
+def _run_profit_pnl_sync() -> None:
+    session = get_session_factory()()
+    try:
+        sync_profit_pnl(session)
+    except Exception as exc:
+        logger.error("profit_pnl_sync_failed", error=str(exc))
+    finally:
+        session.close()
+
+
 def start_scheduler() -> None:
     global _scheduler
     settings = get_settings()
@@ -105,6 +116,12 @@ def start_scheduler() -> None:
         "interval",
         minutes=5,
         id="journal_sync",
+    )
+    _scheduler.add_job(
+        _run_profit_pnl_sync,
+        "interval",
+        minutes=2,
+        id="profit_pnl_sync",
     )
     _scheduler.add_job(
         _run_export_watcher,

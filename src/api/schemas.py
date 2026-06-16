@@ -175,6 +175,8 @@ class RiskSummaryResponse(BaseModel):
     day_pnl: float
     broker_day_pnl: float
     journal_pnl: float
+    profit_day_pnl: float | None = None
+    pnl_source: str = "clear"
     trades_today: int
     active_strategies: int
     total_strategies: int
@@ -188,6 +190,46 @@ class RiskSummaryResponse(BaseModel):
     kill_switch_reason: str | None = None
     can_confirm_ideas: bool = True
     can_execute_ideas: bool = True
+
+
+class RiskProfileResponse(BaseModel):
+    max_daily_loss_brl: float
+    max_open_positions: int
+    cost_per_trade_brl: float
+    max_net_delta: float
+    sector_caps: dict[str, float]
+    updated_at: str | None = None
+
+
+class RiskProfileUpdate(BaseModel):
+    max_daily_loss_brl: float | None = None
+    max_open_positions: int | None = None
+    cost_per_trade_brl: float | None = None
+    max_net_delta: float | None = None
+    sector_caps: dict[str, float] | None = None
+
+
+class ProfitPnlResponse(BaseModel):
+    day_pnl: float
+    journal_pnl: float
+    profit_day_pnl: float | None = None
+    broker_day_pnl: float
+    pnl_source: str
+    trades_today: int
+
+
+class ReplayRunRequest(BaseModel):
+    strategy: str = "scalp_default"
+    symbol: str = "PETR4"
+    speed: float = 10.0
+    mode: str = "sandbox"
+
+
+class NtslArmRequest(BaseModel):
+    symbol: str
+    structure_type: str = "scalp"
+    side: str = "long"
+    ntsl_code: str | None = None
 
 
 class TradeIdeaResponse(BaseModel):

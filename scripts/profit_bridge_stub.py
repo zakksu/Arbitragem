@@ -271,6 +271,18 @@ def positions():
     return []
 
 
+@app.get("/account")
+def account():
+    trades = trades_today()["trades"]
+    day_pnl = round(sum(float(t.get("pnl") or 0) for t in trades), 2)
+    return {
+        "day_pnl": day_pnl,
+        "balance_brl": 50_000.0,
+        "source": "profit_stub",
+        "mock": True,
+    }
+
+
 @app.get("/trades/today")
 def trades_today():
     now = datetime.utcnow().isoformat()

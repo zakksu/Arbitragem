@@ -1,4 +1,4 @@
-"""Integration setup wizard — auto-detect connectors for 2.0."""
+"""Integration setup wizard — auto-detect connectors for 2.0 / 3.0.1."""
 
 from __future__ import annotations
 
@@ -9,14 +9,28 @@ from src.config import get_settings
 from src.integrations.clear_api import get_clear_client
 from src.integrations.ollama_client import get_ollama_client
 from src.integrations.profit_bridge import get_profit_client
+from src.integrations.profit_dll_detect import detect_profit_dll
+
+
+def _resolve_dll_path() -> tuple[str, bool, dict]:
+    settings = get_settings()
+    configured = settings.profit_dll_path.strip()
+    if configured and Path(configured).exists():
+        return configured, True, {"source": "env", "candidates": [configured]}
+
+    detection = detect_profit_dll()
+    recommended = detection.get("recommended")
+    if recommended and Path(recommended).exists():
+        return recommended, True, detection
+
+    return configured, False, detection
 
 
 def build_setup_status() -> dict:
     settings = get_settings()
     profit = get_profit_client()
     clear = get_clear_client()
-    dll_path = settings.profit_dll_path.strip()
-    dll_exists = bool(dll_path and Path(dll_path).exists())
+    dll_path, dll_exists, dll_detect = _resolve_dll_path()
 
     steps = [
         {
@@ -30,8 +44,10 @@ def build_setup_status() -> dict:
             "id": "profit_dll",
             "label": "ProfitDLL file",
             "ok": dll_exists,
-            "detail": dll_path or "PROFIT_DLL_PATH not set",
-            "action": "Install ProfitChart; set PROFIT_DLL_PATH in .env",
+            "detail": dll_path or dll_detect.get("recommended") or "PROFIT_DLL_PATH not set",
+            "action": "Run python scripts/detect_profit_dll.py or set PROFIT_DLL_PATH in .env",
+            "candidates": dll_detect.get("candidates", []),
+            "auto_detected": dll_detect.get("source") != "env" and dll_exists,
         },
         {
             "id": "clear_api",
@@ -58,6 +74,7 @@ def build_setup_status() -> dict:
         "scanner_mode": settings.scanner_mode,
         "execution_backend": settings.execution_backend,
         "steps": steps,
+        "profit_dll_detect": dll_detect,
         "ready_for_paper": steps[0]["ok"] or True,
         "ready_for_live": ready_live,
         "backtest_gates": {
@@ -77,10 +94,12 @@ def run_setup_tests() -> dict:
     clear = get_clear_client()
     sample = profit.get_quote("PETR4")
     chain = profit.get_bova_option_chain()
+    account = profit.get_account_summary()
     return {
         "profit": {
             "available": profit.is_available(),
             "sample": {"symbol": sample.symbol, "last": sample.last} if sample else None,
+            "account": account,
         },
         "clear": {
             "configured": clear.is_configured(),

@@ -217,6 +217,22 @@ class TradeIdea(Base):
     executed_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
 
 
+class RiskProfile(Base):
+    """Persisted risk limits — one row per env (4.0-alpha)."""
+
+    __tablename__ = "risk_profiles"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    max_daily_loss_brl: Mapped[float] = mapped_column(Float, default=500.0)
+    max_open_positions: Mapped[int] = mapped_column(Integer, default=5)
+    cost_per_trade_brl: Mapped[float] = mapped_column(Float, default=50.0)
+    max_net_delta: Mapped[float] = mapped_column(Float, default=0.5)
+    sector_caps: Mapped[dict | None] = mapped_column(JSON, nullable=True)
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime, default=datetime.utcnow, onupdate=datetime.utcnow
+    )
+
+
 class BoardLayout(Base):
     """Saved blackboard column layout presets (3.0-rc)."""
 
@@ -275,9 +291,11 @@ def init_db() -> None:
                 conn.commit()
 
     from src.services.board_layout import BoardLayoutService
+    from src.services.risk_profile import get_or_create_profile
 
     session = get_session_factory()()
     try:
         BoardLayoutService(session).seed_defaults()
+        get_or_create_profile(session)
     finally:
         session.close()

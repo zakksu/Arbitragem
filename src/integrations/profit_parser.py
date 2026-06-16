@@ -26,6 +26,7 @@ from typing import Any
 import pandas as pd
 
 from src.logging_config import get_logger
+from src.services.metrics_utils import equity_drawdown, normalize_drawdown_pct
 
 logger = get_logger(__name__)
 
@@ -147,8 +148,15 @@ class ProfitBacktestResult:
     raw_columns: list[str] = field(default_factory=list)
     parse_warnings: list[str] = field(default_factory=list)
 
+    def drawdown_pct(self) -> float | None:
+        if self.max_drawdown <= 0:
+            return 0.0 if self.total_trades else None
+        peak_hint = max(10_000.0, 10_000.0 + self.net_pnl) if self.net_pnl else 10_000.0
+        return normalize_drawdown_pct(self.max_drawdown, equity_peak=peak_hint)
+
     def to_dict(self) -> dict[str, Any]:
-        return {
+        dd_pct = self.drawdown_pct()
+        payload: dict[str, Any] = {
             "source": self.source,
             "path": self.path,
             "format": self.format,
@@ -158,10 +166,6 @@ class ProfitBacktestResult:
             "net_pnl": round(self.net_pnl, 4),
             "win_rate": round(self.win_rate, 4),
             "max_drawdown": round(self.max_drawdown, 4),
-            "max_drawdown_pct": round(
-                self.max_drawdown * 100.0 if 0 < self.max_drawdown <= 1.0 else self.max_drawdown,
-                4,
-            ),
             "profit_factor": round(self.profit_factor, 4),
             "sharpe": round(self.sharpe, 4),
             "gross_profit": round(self.gross_profit, 4),
@@ -175,6 +179,9 @@ class ProfitBacktestResult:
             "raw_columns": self.raw_columns,
             "parse_warnings": self.parse_warnings,
         }
+        if dd_pct is not None:
+            payload["max_drawdown_pct"] = dd_pct
+        return payload
 
 
 def _normalize_header(name: str) -> str:
@@ -372,10 +379,8 @@ def _compute_from_trades(df: pd.DataFrame) -> ProfitBacktestResult:
     )
     result.avg_trade = float(pnls.mean())
 
-    equity = pnls.cumsum()
-    peak = equity.cummax()
-    drawdown = peak - equity
-    result.max_drawdown = float(drawdown.max()) if len(drawdown) else 0.0
+    max_dd, _ = equity_drawdown(pnls.to_numpy())
+    result.max_drawdown = max_dd
 
     if len(pnls) > 1 and pnls.std() > 0:
         result.sharpe = float((pnls.mean() / pnls.std()) * (252**0.5))
