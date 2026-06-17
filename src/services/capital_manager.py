@@ -19,10 +19,13 @@ def size_quantity_for_idea(idea: dict[str, Any], *, capital_brl: float | None = 
     """
     Size cash leg quantity from motor capital and stop distance.
 
-    risk_brl = capital × max_risk_per_trade_pct
-    qty = risk_brl / |entry - stop|, capped by max_position_pct of capital.
+    When motor_fixed_lot_shares > 0 (default 100), returns that lot size for B3 cash scalps.
     """
     settings = get_settings()
+    fixed = int(settings.motor_fixed_lot_shares or 0)
+    if fixed > 0:
+        return fixed
+
     capital = capital_brl if capital_brl is not None else settings.paper_capital_brl
     enriched = enrich_idea_levels(idea)
     entry = enriched.get("entry_price")

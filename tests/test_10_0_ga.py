@@ -26,7 +26,7 @@ def client(monkeypatch, tmp_path):
 
 
 def test_version_10_0_0():
-    assert __version__ == "10.0.0"
+    assert __version__ == "12.0.0-alpha"
 
 
 def test_theory_cards_from_knowledge(client, tmp_path, monkeypatch):

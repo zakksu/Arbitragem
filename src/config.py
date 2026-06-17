@@ -58,6 +58,8 @@ class Settings(BaseSettings):
     default_daily_loss_limit_brl: float = 500.0
     default_max_contracts: int = 10
     default_max_open_positions: int = 3
+    motor_fixed_lot_shares: int = 100  # 12.0 — B3 standard lot; 0 = risk-based sizing
+    stock_day_leverage_assumed: float = 50.0  # for margin/cost display (Clear up to 200x)
 
     scanner_cron_hour: int = 8
     scanner_cron_minute: int = 30

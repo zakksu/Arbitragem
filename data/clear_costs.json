@@ -1,0 +1,38 @@
+{
+  "source": "https://corretora.clear.com.br/custos/",
+  "as_of": "2026-06-17",
+  "broker": "Clear Corretora",
+  "notes": [
+    "Corretagem R$0 on electronic orders with RLP active",
+    "B3 emoluments apply on reference notional — rates below are day trade ações",
+    "Margin coverage fee 0.50%/day if deficit — min R$11 if deficit < R$2199.99",
+    "Crypto spot (Binance) NOT covered — no Clear margin policy in repo; defer live crypto"
+  ],
+  "day_trade_stocks": {
+    "corretagem_pct": 0.0,
+    "emolumentos_pct": 0.00005,
+    "liquidacao_pct": 0.00018,
+    "total_b3_pct_per_leg": 0.00023,
+    "round_trip_b3_pct": 0.00046,
+    "zeragem_compulsoria_min_brl": 50.0
+  },
+  "day_trade_options": {
+    "emolumentos_pct": 0.00037,
+    "liquidacao_pct": 0.000275,
+    "registro_pct": 0.000695
+  },
+  "futures_day_margin_brl": {
+    "WIN": 155,
+    "WDO": 140,
+    "MBR": 65,
+    "BIT": 45,
+    "ETR": 70,
+    "SOL": 85
+  },
+  "leverage_examples": {
+    "stocks_day_max_clear_advertised": 200,
+    "petr4_example_leverage": 125,
+    "note": "Pré-margem = price * 100 / leverage; verify in Clear home broker"
+  },
+  "default_lot_shares": 100
+}

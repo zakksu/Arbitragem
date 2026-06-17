@@ -1,3 +1,3 @@
 """Arbitragem — B3 options scalping dashboard for ProfitChart."""
 
-__version__ = "10.0.0"
+__version__ = "12.0.0-alpha"

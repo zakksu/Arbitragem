@@ -26,6 +26,7 @@ data/*
 !data/filipe_core14.csv
 !data/filipe_core17.csv
 !data/core17_options.csv
+!data/clear_costs.json
 !data/futures_margins.csv
 !data/ibov_top20.csv
 data/.dev/

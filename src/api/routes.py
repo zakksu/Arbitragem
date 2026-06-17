@@ -414,6 +414,14 @@ def execution_clear_status():
     return clear_router_status()
 
 
+@router.get("/costs/scalp/{symbol}")
+def scalp_cost_estimate(symbol: str, price: float, quantity: int = 100, leverage: float = 50.0):
+    """B3/Clear fee + breakeven estimate for stock day-trade scalp."""
+    from src.services.clear_cost_model import cost_summary_for_symbol
+
+    return cost_summary_for_symbol(symbol, price, quantity=quantity, leverage=leverage)
+
+
 @router.get("/board/{symbol}/notes")
 def get_board_notes(symbol: str, db: Session = Depends(get_db)):
     from src.services.board_notes import BoardNotesService
