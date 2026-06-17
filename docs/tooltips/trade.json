@@ -1,0 +1,34 @@
+{
+  "trade.builder": {
+    "en": "Build multi-leg options structures from templates — preview before arming.",
+    "pt": "Montador de estruturas"
+  },
+  "trade.product": {
+    "en": "Trade Product — blended thesis, odds, chart levels, and legs for one symbol.",
+    "pt": "Produto de trade"
+  },
+  "trade.thesis": {
+    "en": "Why take this trade — economics tags and catalyst context.",
+    "pt": "Tese do trade"
+  },
+  "trade.odds": {
+    "en": "Historical win rate, PF, and DD from journal or backtest sample.",
+    "pt": "Probabilidades"
+  },
+  "trade.chart_levels": {
+    "en": "Entry, stop, and target lines on the session chart (E/S/T).",
+    "pt": "Níveis no gráfico"
+  },
+  "trade.notes": {
+    "en": "Merged notes and AI summary — journal context for this setup.",
+    "pt": "Notas"
+  },
+  "trade.fill_preview": {
+    "en": "Expected fill vs ideal price — paper uses spread + 1 tick per leg.",
+    "pt": "Preço esperado vs ideal"
+  },
+  "trade.ntsl_arm": {
+    "en": "Export NTSL strategy to Profit imports folder — confirm before write.",
+    "pt": "Armar NTSL no Profit"
+  }
+}

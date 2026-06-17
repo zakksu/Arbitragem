@@ -475,6 +475,106 @@ def parse_profit_backtest_csv(path: Path | str) -> ProfitBacktestResult:
     )
 
 
+def parse_profit_trade_rows(path: Path | str) -> list[dict[str, Any]]:
+    """Parse Profit trade-list CSV into rows for archaeology import."""
+    csv_path = Path(path)
+    if not csv_path.exists():
+        raise FileNotFoundError(f"CSV not found: {csv_path}")
+
+    df, _ = _read_csv_flexible(csv_path)
+    trade_df = _rename_trade_columns(df)
+    if "pnl" not in trade_df.columns:
+        raise ValueError("Trade list CSV missing result/PnL column")
+
+    rows: list[dict[str, Any]] = []
+    for _, raw in trade_df.iterrows():
+        pnl = _parse_br_number(raw.get("pnl"))
+        if pnl is None:
+            continue
+        symbol = str(raw.get("symbol") or "UNKNOWN").strip().upper()
+        side = str(raw.get("side") or "buy")
+        qty = raw.get("quantity")
+        try:
+            quantity = int(float(qty)) if qty is not None and str(qty).strip() else 0
+        except (TypeError, ValueError):
+            quantity = 0
+        price_val = _parse_br_number(raw.get("price"))
+        price = float(price_val) if price_val is not None else 0.0
+        fees_val = _parse_br_number(raw.get("fees")) if "fees" in trade_df.columns else None
+        fees = float(fees_val) if fees_val is not None else 0.0
+
+        executed_at: datetime | None = None
+        if "datetime" in trade_df.columns:
+            dt = pd.to_datetime(raw.get("datetime"), dayfirst=True, errors="coerce")
+            if pd.notna(dt):
+                executed_at = dt.to_pydatetime()
+
+        if executed_at is None:
+            executed_at = datetime.utcnow()
+
+        rows.append(
+            {
+                "symbol": symbol,
+                "side": side,
+                "quantity": quantity,
+                "price": price,
+                "fees": fees,
+                "pnl": float(pnl),
+                "executed_at": executed_at,
+            }
+        )
+    if not rows:
+        raise ValueError("No parseable trade rows in CSV")
+    return rows
+
+
+def iter_profit_trade_rows(path: Path | str):
+    """Yield trade rows one at a time — same parse rules as parse_profit_trade_rows."""
+    csv_path = Path(path)
+    if not csv_path.exists():
+        raise FileNotFoundError(f"CSV not found: {csv_path}")
+
+    df, _ = _read_csv_flexible(csv_path)
+    trade_df = _rename_trade_columns(df)
+    if "pnl" not in trade_df.columns:
+        raise ValueError("Trade list CSV missing result/PnL column")
+
+    for _, raw in trade_df.iterrows():
+        pnl = _parse_br_number(raw.get("pnl"))
+        if pnl is None:
+            continue
+        symbol = str(raw.get("symbol") or "UNKNOWN").strip().upper()
+        side = str(raw.get("side") or "buy")
+        qty = raw.get("quantity")
+        try:
+            quantity = int(float(qty)) if qty is not None and str(qty).strip() else 0
+        except (TypeError, ValueError):
+            quantity = 0
+        price_val = _parse_br_number(raw.get("price"))
+        price = float(price_val) if price_val is not None else 0.0
+        fees_val = _parse_br_number(raw.get("fees")) if "fees" in trade_df.columns else None
+        fees = float(fees_val) if fees_val is not None else 0.0
+
+        executed_at: datetime | None = None
+        if "datetime" in trade_df.columns:
+            dt = pd.to_datetime(raw.get("datetime"), dayfirst=True, errors="coerce")
+            if pd.notna(dt):
+                executed_at = dt.to_pydatetime()
+
+        if executed_at is None:
+            executed_at = datetime.utcnow()
+
+        yield {
+            "symbol": symbol,
+            "side": side,
+            "quantity": quantity,
+            "price": price,
+            "fees": fees,
+            "pnl": float(pnl),
+            "executed_at": executed_at,
+        }
+
+
 def save_uploaded_csv(content: bytes, filename: str, export_dir: Path) -> Path:
     """Save uploaded CSV bytes to exports/profit and return path."""
     export_dir.mkdir(parents=True, exist_ok=True)

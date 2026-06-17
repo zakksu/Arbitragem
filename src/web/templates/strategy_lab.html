@@ -1,0 +1,85 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Strategy Lab — Arbitragem Scalper</title>
+    <link rel="stylesheet" href="/static/blackboard.css">
+    <link rel="stylesheet" href="/static/blackboard_4_0.css">
+    <script src="https://unpkg.com/htmx.org@2.0.4"></script>
+    <script src="https://unpkg.com/lightweight-charts@4.2.0/dist/lightweight-charts.standalone.production.js"></script>
+</head>
+<body class="bb-app bb-strategy-lab-page">
+    <header class="bb-status">
+        <div class="bb-logo">Arbitragem Scalper <span>Strategy Lab</span></div>
+        <div class="bb-toolbar">
+            <a class="bb-btn-toolbar bb-btn-link" href="/board">← Board</a>
+            <a class="bb-btn-toolbar bb-btn-link" href="/board/strategies">Strategies</a>
+            <button type="button" class="bb-btn-toolbar"
+                    hx-post="/api/v1/backtest/rankings/sync"
+                    hx-swap="none"
+                    hx-on::after-request="htmx.trigger('#rankings-panel','refresh')">
+                Sync rankings
+            </button>
+        </div>
+    </header>
+
+    <main class="bb-strategy-lab-main">
+        <aside class="bb-lab-filters">
+            <form id="lab-filters"
+                  hx-get="/board/partials/rankings-table"
+                  hx-target="#rankings-panel"
+                  hx-trigger="change, submit"
+                  hx-swap="innerHTML">
+                <label>Symbol <input type="text" name="symbol" placeholder="PETR4"></label>
+                <label>Sector
+                    <select name="sector">
+                        <option value="">All</option>
+                        <option value="energy">Energy</option>
+                        <option value="financials">Financials</option>
+                        <option value="materials">Materials</option>
+                        <option value="utilities">Utilities</option>
+                    </select>
+                </label>
+                <label>Type
+                    <select name="type">
+                        <option value="">All</option>
+                        <option value="scalp_long">Scalp long</option>
+                        <option value="pair_relative">Pair</option>
+                    </select>
+                </label>
+                <label>Period
+                    <select name="period">
+                        <option value="">All</option>
+                        <option value="7">7d</option>
+                        <option value="30">30d</option>
+                        <option value="90">90d</option>
+                    </select>
+                </label>
+                <label>Sort
+                    <select name="sort_by">
+                        <option value="idea_score">Idea Score</option>
+                        <option value="wf_score">WF Score</option>
+                        <option value="profit_factor">PF</option>
+                        <option value="max_drawdown_pct">DD</option>
+                        <option value="win_rate">Win Rate</option>
+                    </select>
+                </label>
+            </form>
+        </aside>
+
+        <section class="bb-lab-rankings">
+            <div id="rankings-panel"
+                 hx-get="/board/partials/rankings-table"
+                 hx-trigger="load, refresh"
+                 hx-swap="innerHTML">
+                <span class="bb-loading"></span>
+            </div>
+        </section>
+
+        <section class="bb-lab-detail-panel" id="lab-detail">
+            <p class="bb-muted">Click a row for equity curve, folds, and promote.</p>
+        </section>
+    </main>
+</body>
+</html>

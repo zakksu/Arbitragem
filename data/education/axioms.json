@@ -1,19 +1,34 @@
 {
   "axioms": [
     {
+      "id": "mean_reversion",
       "title": "Mean reversion",
-      "body": "Extreme moves toward VWAP often fade in liquid Core14 names during B3 hours.",
-      "pt": "Reversão à média"
+      "body": "Extreme intraday moves toward VWAP often fade in liquid Core14 names — size smaller when vol expands.",
+      "pt": "Reversão à média — afastamentos extremos tendem a voltar ao VWAP"
     },
     {
+      "id": "risk_first",
       "title": "Risk first",
-      "body": "Size from stop distance — never from hope. R$500 daily cap is a feature.",
-      "pt": "Risco primeiro"
+      "body": "Size from stop distance and daily loss budget — never from hope or last trade P&L.",
+      "pt": "Risco primeiro — tamanho pela distância do stop"
     },
     {
+      "id": "structure_edge",
       "title": "Structure over direction",
-      "body": "Prefer defined-risk spreads when IV rank is elevated.",
-      "pt": "Estrutura sobre direção"
+      "body": "A defined options structure caps max loss; naked delta scalps need tighter time stops.",
+      "pt": "Estrutura define o risco máximo"
+    },
+    {
+      "id": "session_edge",
+      "title": "Session timing",
+      "body": "First 30 min and last hour carry spread noise — prefer mid-session for pair mean reversion.",
+      "pt": "Horário da sessão importa para spread"
+    },
+    {
+      "id": "max_pain_gravity",
+      "title": "Max pain gravity",
+      "body": "Near expiry, index options gravitate toward max pain — useful for BOVA hedge context.",
+      "pt": "Max pain atrai preço perto do vencimento"
     }
   ]
 }

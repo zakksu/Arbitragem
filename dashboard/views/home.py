@@ -50,6 +50,11 @@ def _render_status_bar(account: dict, health: dict, universe_count: int) -> None
             <span>{clear_dot} Clear</span>
             <span style="color:#94a3b8;">|</span>
             <span style="color:#64748b;">v{version} · {scanner_mode}</span>
+            <span style="color:#94a3b8;">|</span>
+            <a href="http://localhost:8000/board" target="_blank" rel="noopener"
+               style="color:#f59e0b;font-weight:600;text-decoration:none;">
+               Structure Deck →
+            </a>
         </div>
         """,
         unsafe_allow_html=True,

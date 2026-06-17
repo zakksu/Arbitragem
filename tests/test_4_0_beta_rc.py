@@ -24,7 +24,7 @@ def test_pulse_rail_api(client):
 
 
 def test_pulse_rail_partial(client):
-    r = client.get("/board/partials/pulse-rail")
+    r = client.get("/board/partials/pulse-rail-legacy")
     assert r.status_code == 200
     assert "bb-pulse-rail" in r.text
 
@@ -45,7 +45,41 @@ def test_ntsl_arm(client, tmp_path, monkeypatch):
         json={"symbol": "PETR4", "structure_type": "scalp", "side": "long"},
     )
     assert r.status_code == 200
-    assert r.json()["status"] == "armed"
+    data = r.json()
+    assert data["status"] == "armed"
+    assert data["leg_count"] >= 1
+    content = (tmp_path / "ntsl" / data["filename"]).read_text(encoding="utf-8")
+    assert "PETR4" in content
+    assert "TODO" not in content
+
+
+def test_ntsl_arm_multileg_legs(client, tmp_path, monkeypatch):
+    monkeypatch.setattr("src.services.ntsl_arm.NTSL_DIR", tmp_path / "ntsl")
+    legs = [
+        {"symbol": "PETR4", "side": "buy", "quantity": 100, "leg_type": "cash"},
+        {
+            "symbol": "PETRX120",
+            "side": "sell",
+            "quantity": 100,
+            "leg_type": "call",
+            "strike": 120,
+        },
+    ]
+    r = client.post(
+        "/api/v1/ntsl/arm",
+        json={
+            "symbol": "PETR4",
+            "structure_type": "covered_call",
+            "side": "long",
+            "legs": legs,
+        },
+    )
+    assert r.status_code == 200
+    data = r.json()
+    assert data["leg_count"] == 2
+    content = (tmp_path / "ntsl" / data["filename"]).read_text(encoding="utf-8")
+    assert "Leg 1" in content
+    assert "covered call" in content.lower()
 
 
 def test_kpi_history(client):
@@ -113,6 +147,8 @@ def test_trade_product_odds_source(client, monkeypatch):
 def test_watchlist_atr_cache(monkeypatch):
     from src.services.watchlist_enrich import _ATR_CACHE, _atr_pct_stub
 
+    monkeypatch.setenv("PAPER_TRADING_MODE", "false")
+    get_settings.cache_clear()
     _ATR_CACHE.clear()
     calls = {"n": 0}
     orig = __import__("src.integrations.profit_bridge", fromlist=["get_profit_client"]).get_profit_client

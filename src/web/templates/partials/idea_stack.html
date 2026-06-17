@@ -1,5 +1,8 @@
 {% if filter_symbol %}
 <p class="bb-stack-filter">Filtered: <strong>{{ filter_symbol }}</strong>
+    {% with key="stack.filter" %}
+    {% include "partials/help_tip.html" %}
+    {% endwith %}
     <button type="button" class="bb-btn-toolbar" style="font-size:0.65rem"
             hx-get="/board/partials/ideas" hx-target="#idea-stack" hx-swap="innerHTML">Show all</button>
 </p>
@@ -11,6 +14,7 @@
     <li class="bb-idea">
         <div class="bb-idea-head">
             <span class="bb-idea-sym">{{ idea.symbol }}</span>
+            <span class="bb-idea-status-tag bb-status-{{ idea.status }}">{{ idea.status }}</span>
             {% if idea.structure_type %}
             <span class="bb-structure-badge bb-structure-{{ idea.structure_type|replace('_', '-') }}">
                 {{ idea.structure_type|replace("_", " ") }}
@@ -24,7 +28,7 @@
             {% if idea.reliability is not none %}
             <span class="bb-idea-rel">
                 rel <strong>{{ "%.0f"|format(idea.reliability) }}%</strong>
-                {% with tip="Scanner reliability score for this pattern.", pt="Confiabilidade" %}
+                {% with key="stack.reliability" %}
                 {% include "partials/help_tip.html" %}
                 {% endwith %}
             </span>
@@ -32,7 +36,7 @@
             {% if idea.idea_score is defined %}
             <span class="bb-idea-score" title="Idea score 0–100">
                 <strong>{{ idea.idea_score }}</strong>
-                {% with tip="Ranked score — reliability × gates × walk-forward.", pt="Pontuação" %}
+                {% with key="stack.score" %}
                 {% include "partials/help_tip.html" %}
                 {% endwith %}
             </span>
@@ -84,11 +88,11 @@
         {% set dd_ok = dd_raw is not none and (dd_raw|float) <= 8.0 %}
         <div class="bb-proof {% if pf >= 1.3 and dd_ok %}bb-proof-pass{% else %}bb-proof-warn{% endif %}">
             PF <strong>{{ "%.2f"|format(pf) }}</strong>
-            {% with tip="Profit factor from backtest — gross wins / gross losses.", pt="Fator de lucro" %}
+            {% with key="stack.profit_factor" %}
             {% include "partials/help_tip.html" %}
             {% endwith %}
             · DD <strong>{% if dd_raw is not none %}{{ "%.1f"|format(dd_raw|float) }}%{% else %}—{% endif %}</strong>
-            {% with tip="Maximum drawdown (rebaixamento) — peak-to-trough loss in backtest.", pt="Rebaixamento máximo" %}
+            {% with key="stack.drawdown" %}
             {% include "partials/help_tip.html" %}
             {% endwith %}
             {% if trades is not none %} · <strong>{{ trades }}</strong> trades{% endif %}
@@ -122,8 +126,8 @@
     {% endfor %}
 </ul>
 {% else %}
-<div class="bb-ideas-empty">
-    <p>No trade ideas yet.</p>
-    <p style="font-size:0.72rem;margin-top:0.5rem;">Scanner will push to <code>/api/v1/ideas</code></p>
+<div class="bb-ideas-empty bb-empty-state">
+    <p class="bb-empty-title">No trade ideas yet</p>
+    <p class="bb-empty-hint">Press <kbd>S</kbd> or tap <strong>Scan</strong> to populate the stack.</p>
 </div>
 {% endif %}

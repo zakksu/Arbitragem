@@ -189,12 +189,11 @@ def evaluate_golden_path(session: Session) -> dict[str, Any]:
         },
     ]
 
-    ok_count = sum(1 for it in items if it["ok"])
-    base_score = round(ok_count / 6 * 100, 1) if items else 0.0
-    trust_score = base_score if ok_count < 6 else 100.0
-    if ok_count >= 5 and trust_score < 85.0:
-        trust_score = 85.0
-    trust_ok = trust_score >= 85.0
+    from src.services.trust_scorecard import build_trust_scorecard
+
+    scorecard = build_trust_scorecard(session, checklist_items=items, ram_budget_mb=settings.ram_budget_mb)
+    trust_score = float(scorecard["score_pct"])
+    trust_ok = bool(scorecard["passing"])
 
     items.append(
         {
@@ -202,7 +201,8 @@ def evaluate_golden_path(session: Session) -> dict[str, Any]:
             "num": 7,
             "label": "Trust scorecard ≥ 85%",
             "ok": trust_ok,
-            "detail": f"{trust_score:.0f}% from checklist",
+            "detail": f"{trust_score:.0f}% composite"
+            + (f" — red: {', '.join(scorecard['gates_red'])}" if scorecard.get("gates_red") else ""),
         }
     )
 

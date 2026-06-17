@@ -22,6 +22,8 @@
          hx-swap="innerHTML"></div>
     <div id="setup-panel" class="bb-setup-drawer" aria-live="polite"></div>
 
+    {% set staged_load = golden_path_mode or low_ram_mode %}
+
     {% if golden_path_mode %}
     <div class="bb-golden-path-slot"
          hx-get="/board/partials/golden-path"
@@ -40,7 +42,7 @@
             <div class="bb-col-body"
                  id="watchlist"
                  hx-get="/board/partials/watchlist"
-                 hx-trigger="{% if golden_path_mode %}load delay:80ms{% else %}load{% endif %}"
+                 hx-trigger="{% if staged_load %}load delay:80ms{% else %}load{% endif %}"
                  hx-swap="innerHTML">
                 <div class="bb-watch-empty"><span class="bb-loading"></span></div>
             </div>
@@ -73,7 +75,7 @@
             <div class="bb-col-body"
                  id="idea-stack"
                  hx-get="/board/partials/ideas"
-                 hx-trigger="{% if golden_path_mode %}load delay:250ms, every 60s{% else %}load, every 60s{% endif %}"
+                 hx-trigger="{% if staged_load %}load delay:250ms, every 60s{% else %}load, every 60s{% endif %}"
                  hx-swap="innerHTML">
                 <div class="bb-ideas-empty"><span class="bb-loading"></span></div>
             </div>
@@ -99,7 +101,7 @@
         {% endif %}
         <div id="trader-desk-slot" class="bb-footer-pulse"
              hx-get="/board/partials/trader-desk"
-             hx-trigger="{% if golden_path_mode %}load delay:400ms{% else %}load{% endif %}"
+             hx-trigger="{% if staged_load %}load delay:400ms{% else %}load{% endif %}"
              hx-swap="innerHTML">
             <span class="bb-muted">Loading trader desk…</span>
         </div>

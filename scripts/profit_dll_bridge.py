@@ -24,6 +24,10 @@ from pathlib import Path
 from fastapi import FastAPI
 
 ROOT = Path(__file__).resolve().parents[1]
+sys.path.insert(0, str(ROOT))
+
+from src.integrations.profit_dll_detect import probe_dll_loadable
+
 _STUB = ROOT / "scripts" / "profit_bridge_stub.py"
 _spec = importlib.util.spec_from_file_location("profit_bridge_stub", _STUB)
 _stub = importlib.util.module_from_spec(_spec)
@@ -39,24 +43,17 @@ _max_pain_from_chain = _stub._max_pain_from_chain
 
 app = FastAPI(title="Profit DLL Bridge", version="3.0.0")
 _DLL_LOADED = False
+_DLL_PROBE: dict = {"loadable": False, "callbacks_wired": False}
 
 
 def _try_load_dll() -> bool:
-    """Load ProfitDLL via ctypes when available on Windows."""
-    global _DLL_LOADED
-    dll_path = os.getenv("PROFIT_DLL_PATH", "").strip()
-    if not dll_path or not Path(dll_path).exists():
-        return False
-    if sys.platform != "win32":
-        return False
-    try:
-        import ctypes  # noqa: F401
-
-        # TODO: ctypes.CDLL(dll_path) + Nelogica login/subscribe callbacks
-        _DLL_LOADED = False
-        return _DLL_LOADED
-    except Exception:
-        return False
+    """Load ProfitDLL via ctypes when available on Windows (callbacks still stub)."""
+    global _DLL_LOADED, _DLL_PROBE
+    dll_path = os.getenv("PROFIT_DLL_PATH", "").strip() or None
+    _DLL_PROBE = probe_dll_loadable(dll_path)
+    # TODO: wire Nelogica login/subscribe callbacks when DLL loadable
+    _DLL_LOADED = bool(_DLL_PROBE.get("loadable"))
+    return _DLL_LOADED
 
 
 @app.on_event("startup")
@@ -74,7 +71,9 @@ def health():
         "status": "ok",
         "mode": _mode(),
         "version": "3.0.0",
-        "dll_path": os.getenv("PROFIT_DLL_PATH", ""),
+        "dll_path": os.getenv("PROFIT_DLL_PATH", "") or _DLL_PROBE.get("path"),
+        "dll_probe": _DLL_PROBE,
+        "callbacks_wired": False,
         "symbols": "core14+bova",
     }
 
@@ -159,6 +158,16 @@ def run_backtest(payload: dict):
     result = _stub.run_backtest(payload)
     result["source"] = _mode()
     return result
+
+
+@app.post("/orders")
+def place_order(payload: dict):
+    return _stub.place_order(payload)
+
+
+@app.get("/orders/pending")
+def pending_orders():
+    return _stub.pending_orders()
 
 
 if __name__ == "__main__":

@@ -1,0 +1,38 @@
+<div class="bb-crypto-paper bb-accent-rail" id="crypto-paper-panel">
+    <div class="bb-crypto-head">
+        <strong>Crypto paper</strong>
+        <span class="bb-crypto-badge">{{ meta.binance_pair or symbol }} · paper only</span>
+    </div>
+    {% if error %}
+    <p class="bb-muted">{{ error }}</p>
+    {% elif preview %}
+    <div class="bb-crypto-preview">
+        <div class="bb-budget-row">
+            <span>Fill preview (0.01 {{ symbol }})</span>
+            <strong>${{ "%.2f"|format(preview.expected_fill) }}</strong>
+        </div>
+        <div class="bb-budget-row">
+            <span>Notional</span>
+            <strong>${{ "%.2f"|format(preview.notional_usd) }}</strong>
+        </div>
+        <div class="bb-budget-row">
+            <span>Slippage</span>
+            <em>{{ preview.slippage_ticks }} ticks · {{ preview.quote_source }}</em>
+        </div>
+    </div>
+    <form class="bb-crypto-form"
+          hx-post="/board/partials/symbol/{{ symbol }}/crypto-paper/execute"
+          hx-target="#crypto-paper-log"
+          hx-swap="innerHTML">
+        <input type="hidden" name="side" value="buy">
+        <label>
+            Qty ({{ symbol }})
+            <input type="number" name="quantity" min="0.0001" step="0.0001" value="0.01">
+        </label>
+        <button type="submit" class="bb-btn-confirm">Paper buy</button>
+    </form>
+    <div id="crypto-paper-log" class="bb-crypto-log"></div>
+    {% else %}
+    <p class="bb-muted">Enable PAPER_TRADING_MODE and CRYPTO_PAPER_ENABLED for preview.</p>
+    {% endif %}
+</div>

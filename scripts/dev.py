@@ -67,7 +67,24 @@ def _env() -> dict[str, str]:
     env = os.environ.copy()
     env["PYTHONPATH"] = str(ROOT)
     env["API_BASE_URL"] = "http://localhost:8000/api/v1"
+    if env.get("LOW_RAM_MODE", "").lower() in ("1", "true", "yes"):
+        env.setdefault("STREAMLIT_SLIM_MODE", "true")
+        env.setdefault("ARBITRAGEM_BG_TESTS", "false")
+        env.setdefault("CRYPTO_WATCHLIST_ENABLED", "false")
+        env.setdefault("FUTURES_WATCHLIST_ENABLED", "false")
+        env.setdefault("SOCIAL_SIGNALS_ENABLED", "false")
     return env
+
+
+def _apply_low_ram_cli(args: argparse.Namespace) -> None:
+    if getattr(args, "low_ram", False):
+        os.environ["LOW_RAM_MODE"] = "true"
+        try:
+            from src.config import get_settings
+
+            get_settings.cache_clear()
+        except Exception:
+            pass
 
 
 def _http_ok(url: str, timeout: float = 3.0) -> bool:
@@ -353,6 +370,7 @@ def _wait_healthy(timeout: int) -> tuple[bool, dict[str, Any]]:
 
 
 def cmd_start(args: argparse.Namespace) -> int:
+    _apply_low_ram_cli(args)
     if not VENV_DIR.exists():
         print("[dev] No venv — running setup first...")
         cmd_setup(args)
@@ -509,6 +527,7 @@ def cmd_stop(_: argparse.Namespace) -> int:
 
 
 def cmd_restart(args: argparse.Namespace) -> int:
+    _apply_low_ram_cli(args)
     cmd_stop(args)
     time.sleep(1)
     return cmd_start(args)
@@ -617,6 +636,11 @@ def main() -> int:
         p.add_argument("--timeout", type=int, default=DEFAULT_TIMEOUT)
         p.add_argument("--json", action="store_true", help="Print status JSON")
         p.add_argument("--open", action="store_true", help="Open dashboard in browser")
+        p.add_argument(
+            "--low-ram",
+            action="store_true",
+            help="LOW_RAM_MODE: slim Streamlit, skip futures/crypto rows, longer quote cache",
+        )
         p.set_defaults(func=cmd_restart if name == "restart" else cmd_start)
 
     p_status = sub.add_parser("status", help="Show service status")

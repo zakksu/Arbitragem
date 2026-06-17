@@ -13,9 +13,20 @@ Set in .env:
 from __future__ import annotations
 
 import hashlib
+import json
+import uuid
 from datetime import datetime
+from pathlib import Path
 
 from fastapi import FastAPI
+
+ROOT = Path(__file__).resolve().parents[1]
+OUTBOX = ROOT / "data" / "profit_outbox"
+OUTBOX.mkdir(parents=True, exist_ok=True)
+(OUTBOX / "pending").mkdir(parents=True, exist_ok=True)
+
+_STUB_POSITIONS: dict[str, dict] = {}
+_PENDING_ORDERS: list[dict] = []
 
 CORE14 = [
     "PETR4", "VALE3", "PRIO3", "ITUB4", "BBAS3", "BBDC4", "BBSE3", "B3SA3",
@@ -268,7 +279,78 @@ def iv_rank(underlying: str):
 
 @app.get("/positions")
 def positions():
-    return []
+    out = []
+    for sym, p in _STUB_POSITIONS.items():
+        out.append(
+            {
+                "symbol": sym,
+                "quantity": p["quantity"],
+                "avg_price": p["avg_price"],
+                "unrealized_pnl": p.get("unrealized_pnl", 0.0),
+            }
+        )
+    return out
+
+
+@app.get("/orders/pending")
+def pending_orders():
+    return list(_PENDING_ORDERS)
+
+
+@app.post("/orders")
+def place_order(payload: dict):
+    """Motor ticket — sim auto-fills; live writes outbox for ProfitChart / NTSL."""
+    ticket_id = str(uuid.uuid4())[:8]
+    sym = str(payload.get("symbol", "")).upper()
+    side = str(payload.get("side", "buy")).lower()
+    qty = int(payload.get("quantity", 100))
+    is_paper = bool(payload.get("is_paper", True))
+    q = _quote_for(sym)
+    fill_price = round(q["ask"] if side == "buy" else q["bid"], 4)
+
+    ticket = {
+        "ticket_id": ticket_id,
+        "symbol": sym,
+        "side": side,
+        "quantity": qty,
+        "order_type": payload.get("order_type", "market"),
+        "price": payload.get("price") or fill_price,
+        "stop_price": payload.get("stop_price"),
+        "target_price": payload.get("target_price"),
+        "idea_id": payload.get("idea_id"),
+        "account_profile": payload.get("account_profile", "sim"),
+        "account_id": payload.get("account_id"),
+        "created_at": datetime.utcnow().isoformat() + "Z",
+        "chart_trading_hint": (
+            f"{'C' if side == 'buy' else 'V'} Mercado · {qty} · {sym}"
+        ),
+    }
+    (OUTBOX / "next_order.json").write_text(json.dumps(ticket, indent=2), encoding="utf-8")
+    (OUTBOX / "pending" / f"{ticket_id}.json").write_text(
+        json.dumps(ticket, indent=2), encoding="utf-8"
+    )
+
+    if is_paper:
+        signed = qty if side == "buy" else -qty
+        pos = _STUB_POSITIONS.get(sym, {"quantity": 0, "avg_price": fill_price, "unrealized_pnl": 0.0})
+        old_q = pos["quantity"]
+        new_q = old_q + signed
+        if new_q == 0:
+            _STUB_POSITIONS.pop(sym, None)
+        else:
+            pos["quantity"] = new_q
+            pos["avg_price"] = fill_price
+            pos["unrealized_pnl"] = round((q["last"] - fill_price) * new_q, 2)
+            _STUB_POSITIONS[sym] = pos
+        return {
+            **ticket,
+            "status": "filled",
+            "fill_price": fill_price,
+            "source": "profit_sim",
+        }
+
+    _PENDING_ORDERS.append({**ticket, "status": "pending"})
+    return {**ticket, "status": "pending", "source": "profit_outbox"}
 
 
 @app.get("/account")

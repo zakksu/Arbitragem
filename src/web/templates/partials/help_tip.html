@@ -1,8 +1,11 @@
 {# HelpTip — EN explanation + optional PT-BR hint (premium hover bubble) #}
-{% if key is defined and key %}
-{% set _tt = get_tooltip(key) %}
+{% set _key = tip_key if tip_key is defined else (key if key is defined else "") %}
+{% if _key %}
+{% set _tt = get_tooltip(_key) %}
 {% set tip = _tt.en %}
 {% set pt = _tt.pt %}
+{% elif tip is not defined %}
+{% set tip = "" %}
 {% endif %}
 <span class="bb-help-tip"
       role="button"

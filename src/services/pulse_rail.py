@@ -1,50 +1,81 @@
-"""Bottom pulse rail feeds — news, calendar, lessons stubs (4.0-beta)."""
+"""Bottom pulse rail feeds — news RSS, calendar, lessons (4.0 GA)."""
 
 from __future__ import annotations
 
-import json
-from pathlib import Path
+import xml.etree.ElementTree as ET
+from datetime import datetime
 
-from src.config import PROJECT_ROOT
+import httpx
 
-_EDU_PATH = PROJECT_ROOT / "data" / "education" / "axioms.json"
+from src.services.education import daily_axiom, list_axioms
+
+_RSS_FEEDS = (
+    "https://www.investing.com/rss/news_285.rss",
+    "https://feeds.finance.yahoo.com/rss/2.0/headline?s=^BVSP&region=US&lang=en-US",
+)
+_CURATED_NEWS = [
+    {
+        "headline": "B3 session — Core14 liquidity normal",
+        "summary": "No major macro surprise in last hour; sector pairs active.",
+    },
+    {
+        "headline": "Ibovespa futures steady ahead of open",
+        "summary": "Pre-market volumes within 30-day average.",
+    },
+]
 
 
-def _load_axioms() -> list[dict]:
-    if _EDU_PATH.is_file():
+def _parse_rss(xml_text: str) -> list[dict[str, str]]:
+    items: list[dict[str, str]] = []
+    try:
+        root = ET.fromstring(xml_text)
+        for item in root.iter("item"):
+            title = item.findtext("title") or ""
+            desc = item.findtext("description") or ""
+            if title:
+                items.append({"headline": title.strip()[:120], "summary": desc.strip()[:200]})
+            if len(items) >= 3:
+                break
+    except ET.ParseError:
+        pass
+    return items
+
+
+def _fetch_headlines() -> dict:
+    from src.config import get_settings
+
+    if get_settings().low_ram_enabled:
+        idx = datetime.utcnow().day % len(_CURATED_NEWS)
+        return dict(_CURATED_NEWS[idx])
+    for url in _RSS_FEEDS:
         try:
-            data = json.loads(_EDU_PATH.read_text(encoding="utf-8"))
-            return list(data.get("axioms") or data) if isinstance(data, dict) else list(data)
-        except (json.JSONDecodeError, OSError):
-            pass
+            with httpx.Client(timeout=5.0, follow_redirects=True) as client:
+                r = client.get(url, headers={"User-Agent": "ArbitragemDashboard/4.0"})
+                if r.status_code == 200 and r.text.strip():
+                    items = _parse_rss(r.text)
+                    if items:
+                        return items[0]
+        except httpx.HTTPError:
+            continue
+    idx = datetime.utcnow().day % len(_CURATED_NEWS)
+    return dict(_CURATED_NEWS[idx])
+
+
+def _calendar_events() -> list[dict[str, str]]:
+    now = datetime.utcnow()
     return [
-        {
-            "title": "Mean reversion",
-            "body": "Extreme moves toward VWAP often fade in liquid Core14 names.",
-            "pt": "Reversão à média",
-        },
-        {
-            "title": "Risk first",
-            "body": "Size from stop distance — never from hope.",
-            "pt": "Risco primeiro",
-        },
+        {"time": "10:00", "label": "B3 cash open", "impact": "high"},
+        {"time": "14:30", "label": "US economic data (watch USD/BRL)", "impact": "medium"},
+        {"time": "17:55", "label": "B3 closing auction", "impact": "high"},
+        {"time": "18:00", "label": "After-market", "impact": "low"},
     ]
 
 
 def get_pulse_rail() -> dict:
-    axioms = _load_axioms()
-    lesson = axioms[0] if axioms else {"title": "—", "body": "—"}
+    lesson = daily_axiom()
     return {
-        "news": {
-            "headline": "B3 session — Core14 liquidity normal",
-            "summary": "No major macro surprise in last hour; sector pairs active.",
-        },
-        "calendar": {
-            "events": [
-                {"time": "14:30", "label": "US CPI (stub)", "impact": "high"},
-                {"time": "18:00", "label": "BCB Copom minutes (stub)", "impact": "medium"},
-            ],
-        },
+        "news": _fetch_headlines(),
+        "calendar": {"events": _calendar_events()},
         "lesson": lesson,
-        "axioms_count": len(axioms),
+        "axioms_count": len(list_axioms()),
     }

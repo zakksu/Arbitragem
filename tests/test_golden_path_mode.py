@@ -7,7 +7,8 @@ from fastapi.testclient import TestClient
 
 from src.config import get_settings
 from src.main import create_app
-from src.web.router import _enriched_watchlist_sync
+from src.services.enriched_watchlist import build_enriched_watchlist
+from src.web.router import _with_db
 
 
 @pytest.fixture
@@ -29,9 +30,10 @@ def test_scanner_universe_petr4_only(monkeypatch):
 def test_watchlist_sync_petr4_only(monkeypatch):
     monkeypatch.setenv("GOLDEN_PATH_MODE", "true")
     monkeypatch.setenv("FUTURES_WATCHLIST_ENABLED", "true")
+    monkeypatch.setenv("CRYPTO_WATCHLIST_ENABLED", "true")
     get_settings.cache_clear()
-    rows = _enriched_watchlist_sync()
-    symbols = [r["symbol"] for r in rows]
+    payload = _with_db(build_enriched_watchlist)
+    symbols = [r["symbol"] for r in payload["symbols"]]
     assert symbols == ["PETR4"]
 
 

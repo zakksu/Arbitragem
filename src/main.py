@@ -2,6 +2,8 @@
 
 from contextlib import asynccontextmanager
 
+import asyncio
+
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
@@ -19,6 +21,32 @@ from src.models import get_session_factory
 from src.web.board_auth import BoardAuthMiddleware
 
 
+async def _orchestrator_loop() -> None:
+    """Trading motor — scan, rank, paper-execute when sleeves ON."""
+    from src.services.trading_orchestrator import (
+        motor_session_open,
+        orchestrator_should_run,
+    )
+    from src.services.trader_agent import run_trader_cycle
+
+    await asyncio.sleep(8)
+    while True:
+        settings = get_settings()
+        if settings.paper_trading_mode and settings.auto_trading_on_sleeves:
+            interval = max(15, settings.effective_paper_orchestrator_interval_sec)
+        else:
+            interval = max(20, settings.effective_orchestrator_interval_sec)
+        if orchestrator_should_run() and motor_session_open():
+            session = get_session_factory()()
+            try:
+                await asyncio.to_thread(run_trader_cycle, session)
+            except Exception:
+                pass
+            finally:
+                session.close()
+        await asyncio.sleep(interval)
+
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     setup_logging()
@@ -29,7 +57,19 @@ async def lifespan(app: FastAPI):
     finally:
         session.close()
     start_scheduler()
+    settings = get_settings()
+    motor_task = None
+    if settings.autonomy_enabled or (
+        settings.paper_trading_mode and settings.auto_trading_on_sleeves
+    ):
+        motor_task = asyncio.create_task(_orchestrator_loop())
     yield
+    if motor_task:
+        motor_task.cancel()
+        try:
+            await motor_task
+        except asyncio.CancelledError:
+            pass
     stop_scheduler()
 
 

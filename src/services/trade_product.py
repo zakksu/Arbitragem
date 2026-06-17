@@ -5,6 +5,7 @@ from __future__ import annotations
 from typing import Any
 
 from src.services.idea_score import score_idea
+from src.services.education import structure_blurb
 from src.services.odds_panel import pattern_odds
 
 
@@ -36,6 +37,7 @@ def build_trade_product(
         if session is not None
         else {}
     )
+    struct_edu = structure_blurb(idea.get("structure_type"))
     return {
         "symbol": idea.get("symbol"),
         "structure_type": idea.get("structure_type"),
@@ -43,6 +45,7 @@ def build_trade_product(
         "score": score,
         "thesis": _clean_thesis(idea.get("rationale"), idea.get("title")),
         "economics_tags": tags[:5],
+        "structure_education": struct_edu,
         "why_not_alternatives": _alternatives(idea),
         "odds": {
             "win_rate_pct": odds_extra.get("win_rate_pct")

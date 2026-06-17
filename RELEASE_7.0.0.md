@@ -14,6 +14,7 @@ Local-first release: one symbol (**PETR4**) flawless end-to-end on Filipe's PC, 
 | **7.0-beta** | P&L reconciliation, trust scorecard → checklist #7, journal retention, Streamlit slim mode, `/api/v1/ops/memory` |
 | **7.0-rc** | Symbol factory backend + UI (locked/unlocked), shadow/promote APIs, PRIO3 shadow workflow |
 | **7.0 GA** | Release docs, RAM snapshot tooling, session recording script, full test suite green |
+| **7.0 low-RAM** | `LOW_RAM_MODE`, hardware rules, `benchmark_ram.py`, resource profile toggles |
 
 Mockups: [golden path](assets/mockup_7_0_golden_path.png) · [symbol factory](assets/mockup_7_0_symbol_factory.png) · [ops panel](assets/mockup_7_0_ops_panel.png)
 
@@ -35,14 +36,18 @@ Enable golden path in `.env`:
 
 ```env
 GOLDEN_PATH_MODE=true
+LOW_RAM_MODE=true
 ARBITRAGEM_BG_TESTS=1
 ```
+
+**Low-RAM on <16 GB hosts:** `LOW_RAM_MODE=true` (or rely on `GOLDEN_PATH_MODE` auto-enable). Disables Ollama/RSS/social, slim Streamlit, 60s desk SSE, +50% motor interval, 15-row desk journal. See `.cursor/rules/low-ram-hardware.mdc`.
 
 **Agent / ops loop:**
 
 ```powershell
 python scripts/status_tick.py --json
 python scripts/ram_snapshot.py
+python scripts/benchmark_ram.py --json
 python scripts/golden_path_record_session.py --dry-run --json
 ```
 
@@ -89,6 +94,7 @@ APIs: `GET /api/v1/symbol-factory/status` · `POST .../shadow` · `POST .../prom
 | `scripts/golden_path_record_session.py` | Record today's session if checklist all green |
 | `scripts/golden_path_record_session.py --dev-fill-sessions 5` | **Dev only** — seed 5 session dates to test factory unlock locally |
 | `scripts/ram_snapshot.py` | Write stack RSS to `data/.dev/ram_snapshot.json` (ops panel reads this) |
+| `scripts/benchmark_ram.py` | Peak RSS for imports + golden path evaluate → `data/.dev/ram_benchmark.json` |
 | `scripts/test_worker.py` | Background pytest → `data/.dev/test_status.json` |
 | `scripts/status_tick.py --json` | Single JSON health snapshot for agents |
 

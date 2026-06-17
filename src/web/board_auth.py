@@ -22,6 +22,11 @@ class BoardAuthMiddleware(BaseHTTPMiddleware):
         if not settings.board_auth_enabled or not settings.board_password:
             return await call_next(request)
 
+        # Local dev: skip basic-auth popup loops (use admin/admin on public tunnel only)
+        host = (request.client.host if request.client else "") or ""
+        if host in ("127.0.0.1", "::1", "localhost"):
+            return await call_next(request)
+
         auth = request.headers.get("Authorization", "")
         if auth.startswith("Basic "):
             try:

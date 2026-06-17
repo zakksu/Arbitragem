@@ -7,6 +7,7 @@ from typing import Any
 from sqlalchemy.orm import Session
 
 from src.config import get_settings
+from src.services.resource_profile import get_resource_profile
 from src.integrations.profit_bridge import get_profit_client
 from src.services.crypto_quotes import build_crypto_watchlist_rows
 from src.services.filipe_universe import load_filipe_core14
@@ -36,6 +37,7 @@ _CORE14_FALLBACK: list[dict[str, str]] = [
 def build_enriched_watchlist(session: Session) -> dict[str, Any]:
     """Return enriched watchlist payload — shared by API and board partials."""
     settings = get_settings()
+    res_profile = get_resource_profile(settings)
     if settings.golden_path_mode:
         sym = settings.golden_path_symbol
         rows: list[dict[str, Any]] = [
@@ -48,9 +50,9 @@ def build_enriched_watchlist(session: Session) -> dict[str, Any]:
         )
         for row in rows:
             row.setdefault("asset_class", "equity")
-        if settings.futures_watchlist_enabled:
+        if settings.futures_watchlist_enabled and res_profile.watchlist_extra_universes:
             rows.extend(build_futures_watchlist_rows())
-        if settings.crypto_watchlist_enabled:
+        if settings.crypto_watchlist_enabled and res_profile.watchlist_extra_universes:
             rows.extend(build_crypto_watchlist_rows())
 
     eq_syms = [
@@ -69,9 +71,9 @@ def build_enriched_watchlist(session: Session) -> dict[str, Any]:
             row["ask"] = q.ask
 
     svc = TradeIdeaService(session)
-    ideas = [svc.to_dict(i) for i in svc.list_ideas(limit=50)]
-    profile = get_or_create_profile(session)
-    enriched = enrich_watchlist_rows(rows, ideas, cost_per_trade_brl=profile.cost_per_trade_brl)
+    ideas = [svc.to_dict(i) for i in svc.list_ideas(limit=res_profile.watchlist_ideas_limit)]
+    risk_profile = get_or_create_profile(session)
+    enriched = enrich_watchlist_rows(rows, ideas, cost_per_trade_brl=risk_profile.cost_per_trade_brl)
     futures = [r for r in enriched if r.get("asset_class") == "future"]
     crypto = [r for r in enriched if r.get("asset_class") == "crypto"]
     return {

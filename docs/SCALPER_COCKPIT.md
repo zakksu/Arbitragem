@@ -45,10 +45,22 @@ Never routes to live broker — `mode: sandbox` only.
 
 Status bar: Today · 5D · 20D · 3mo — `GET /api/v1/kpi/history?range=5d`
 
-## Paper week gate
+## Paper week gate (4.0 GA)
 
+**CLI:**
 ```bash
 python scripts/paper_validation.py
+python scripts/paper_validation.py --export csv
 ```
 
-Target: 10+ structure confirms, 3+ journaled Trade Products before live.
+**API (Worker W4.18):**
+- `GET /api/v1/paper/validation` — checklist + `gate_pass`
+- `GET /api/v1/paper/journal/export?format=json|csv|file`
+- `POST /api/v1/paper/journal/export` — writes `exports/journal/paper_journal_*.csv`
+
+Gate: **10+** structure confirms, **3+** Trade Products with rationale. Exit code `0` = pass, `2` = not ready for live.
+
+## Mobile / GA polish
+
+- Board is desktop-first; narrow view shows mobile banner (Worker W4.18)
+- Empty states: watchlist with no scan, idea stack with no symbol selected

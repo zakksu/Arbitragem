@@ -9,18 +9,30 @@
         <span class="bb-pill {% if bootstrap.paper_trading_mode %}bb-pill-paper{% else %}bb-pill-live{% endif %}">
             {% if bootstrap.paper_trading_mode %}Paper{% else %}Live{% endif %}
         </span>
+        {% if bootstrap.profit_account %}
+        <strong class="bb-profit-acct" title="{{ bootstrap.profit_account.label }}">
+            {{ bootstrap.profit_account.display }}
+        </strong>
+        {% endif %}
         {% with key="cockpit.paper_mode" %}
         {% include "partials/help_tip.html" %}
         {% endwith %}
     </div>
+    {% include "partials/paper_gate_banner.html" %}
     <div class="bb-status-item">
         Scanner
         <strong>{{ bootstrap.scanner_mode or "—" }}</strong>
         <span>({{ bootstrap.scanner_symbol_count or 0 }})</span>
+        {% with key="cockpit.scanner" %}
+        {% include "partials/help_tip.html" %}
+        {% endwith %}
     </div>
     <div class="bb-status-item">
         Profit
         <strong>{% if bootstrap.profit_bridge %}OK{% else %}offline{% endif %}</strong>
+        {% with key="cockpit.profit_bridge" %}
+        {% include "partials/help_tip.html" %}
+        {% endwith %}
     </div>
     {% else %}
     <div class="bb-status-item bb-muted">Status loading…</div>
@@ -37,21 +49,24 @@
         </strong>
         <em>/ ±{{ cockpit.max_net_delta }}</em>
     </div>
-    <div class="bb-status-kpi">
-        <span class="bb-cockpit-label">Day P&amp;L</span>
+    <div class="bb-status-kpi" id="kpi-pnl-wrap">
+        <span class="bb-cockpit-label" id="kpi-range-label">Day P&amp;L</span>
         {% with key="cockpit.day_pnl" %}
         {% include "partials/help_tip.html" %}
         {% endwith %}
-        <strong class="{% if cockpit.day_pnl >= 0 %}bb-pnl-pos{% else %}bb-pnl-neg{% endif %}">
+        <strong id="kpi-pnl-value" class="{% if cockpit.day_pnl >= 0 %}bb-pnl-pos{% else %}bb-pnl-neg{% endif %}">
             R$ {{ "%.2f"|format(cockpit.day_pnl) }}
         </strong>
         {% if cockpit.pnl_source %}
-        <em class="bb-pnl-source" title="P&L source">{{ cockpit.pnl_source|capitalize }}</em>
+        <em class="bb-pnl-source" id="kpi-pnl-source" title="P&L source">{{ cockpit.pnl_source|capitalize }}</em>
         {% endif %}
     </div>
     {% if cockpit.top_sector %}
     <div class="bb-status-kpi">
         <span class="bb-cockpit-label">Sector</span>
+        {% with key="cockpit.sector" %}
+        {% include "partials/help_tip.html" %}
+        {% endwith %}
         <strong>{{ cockpit.top_sector }}</strong>
         <em>{{ "%.0f"|format(cockpit.top_sector_pct) }}%</em>
     </div>
@@ -64,6 +79,9 @@
         <strong>R$ {{ "%.0f"|format(cockpit.margin_estimate_brl) }}</strong>
     </div>
     <div class="bb-cockpit-gate">
+        {% with key="cockpit.gate" %}
+        {% include "partials/help_tip.html" %}
+        {% endwith %}
         {% if cockpit.gate_status == 'blocked' %}
         <span class="bb-gate-blocked">GATE BLOCKED</span>
         {% elif cockpit.gate_status == 'warning' %}
@@ -75,11 +93,30 @@
     {% endif %}
 
     {% if risk %}
-    {% if risk.kill_switch_active %}
-    <div class="bb-status-item bb-kill-status">
-        <span class="bb-pill bb-pill-kill">KILL ON</span>
-        {% if risk.kill_switch_reason %}
-        <span class="bb-kill-reason" title="{{ risk.kill_switch_reason }}">{{ risk.kill_switch_reason }}</span>
+    <div class="bb-sleeve-toggles" id="sleeve-toggles">
+        {% set sleeves = risk.sleeves or {} %}
+        {% for key, label in [('cash', 'CASH'), ('options', 'OPT'), ('pairs', 'PAIR')] %}
+        <button type="button"
+                class="bb-sleeve-btn{% if sleeves.get(key, true) %} is-open{% else %} is-paused{% endif %}"
+                id="sleeve-{{ key }}"
+                data-sleeve="{{ key }}"
+                data-open="{% if sleeves.get(key, true) %}true{% else %}false{% endif %}"
+                hx-post="/api/v1/risk/sleeves"
+                hx-vals='js:(function(){var b=document.getElementById("sleeve-{{ key }}");var on=b&&b.dataset.open==="true";return {sleeve:"{{ key }}",open:!on,reason:on?"board pause":"board resume"};})()'
+                hx-swap="none"
+                hx-on::after-request="var b=document.getElementById('sleeve-{{ key }}');if(b){var on=b.dataset.open==='true';b.dataset.open=on?'false':'true';b.classList.toggle('is-open',!on);b.classList.toggle('is-paused',on);}htmx.trigger('#status-bar','load');">
+            {{ label }}
+        </button>
+        {% endfor %}
+        {% with key="cockpit.sleeves" %}
+        {% include "partials/help_tip.html" %}
+        {% endwith %}
+    </div>
+    {% if risk.orchestrator_active %}
+    <div class="bb-status-item">
+        <span class="bb-pill bb-pill-auto" title="Trading motor — auto scan &amp; execute when sleeves ON">MOTOR</span>
+        {% if bootstrap and bootstrap.paper_capital_brl %}
+        <em class="bb-muted">R$ {{ "{:,.0f}".format(bootstrap.paper_capital_brl) }}</em>
         {% endif %}
     </div>
     {% endif %}
@@ -94,10 +131,13 @@
          hx-trigger="load, every 60s"
          hx-swap="innerHTML"></div>
     <div id="kpi-filters" class="bb-kpi-filters">
-        <button type="button" class="bb-kpi-chip is-active" data-range="today">Today</button>
-        <button type="button" class="bb-kpi-chip" data-range="5d">5D</button>
-        <button type="button" class="bb-kpi-chip" data-range="20d">20D</button>
-        <button type="button" class="bb-kpi-chip" data-range="3mo">3mo</button>
+        <button type="button" class="bb-kpi-chip is-active" data-range="today" data-tip-key="kpi.range_today">Today</button>
+        <button type="button" class="bb-kpi-chip" data-range="5d" data-tip-key="kpi.range_5d">5D</button>
+        <button type="button" class="bb-kpi-chip" data-range="20d" data-tip-key="kpi.range_20d">20D</button>
+        <button type="button" class="bb-kpi-chip" data-range="ytd" data-tip-key="kpi.range_ytd">YTD</button>
+        {% with key="kpi.filters" %}
+        {% include "partials/help_tip.html" %}
+        {% endwith %}
     </div>
     <div id="layout-presets" class="bb-layout-slot"
          hx-get="/board/partials/layout-presets"
@@ -113,19 +153,8 @@
             {% include "partials/help_tip.html" %}
             {% endwith %}
         </button>
-        <button type="button"
-                class="bb-btn-toolbar bb-btn-danger{% if risk and risk.kill_switch_active %} is-active{% endif %}"
-                id="kill-switch-btn"
-                data-kill-active="{% if risk and risk.kill_switch_active %}true{% else %}false{% endif %}"
-                hx-post="/api/v1/risk/kill-switch"
-                hx-vals='js:(function(){var b=document.getElementById("kill-switch-btn");var on=b&&b.dataset.killActive==="true";return {active:!on,reason:on?"board resume":"board stop"};})()'
-                hx-swap="none"
-                hx-on::after-request="var b=document.getElementById('kill-switch-btn');if(b){b.dataset.killActive=b.dataset.killActive==='true'?'false':'true';}htmx.trigger('#status-bar','load');htmx.trigger('#idea-stack','load');">
-            {% if risk and risk.kill_switch_active %}KILL ON{% else %}KILL{% endif %}
-            {% with key="cockpit.kill" %}
-            {% include "partials/help_tip.html" %}
-            {% endwith %}
-        </button>
+        <a class="bb-btn-toolbar bb-btn-link" href="/board/strategy-lab">Strategy Lab</a>
+        <a class="bb-btn-toolbar bb-btn-link" href="/board/strategies">Strategies</a>
         <button type="button" class="bb-btn-toolbar"
                 hx-get="/board/partials/risk-profile"
                 hx-target="body"

@@ -10,6 +10,7 @@ from src.config import get_settings
 from src.integrations.clear_api import get_clear_client
 from src.integrations.profit_bridge import get_profit_client
 from src.models import ScanResult, Strategy
+from src.services.profit_accounts import resolve_profit_account
 
 
 def build_bootstrap(session: Session) -> dict:
@@ -19,7 +20,7 @@ def build_bootstrap(session: Session) -> dict:
     account = clear.get_account_summary()
 
     alerts: list[dict[str, str]] = []
-    if not clear.is_configured():
+    if settings.execution_backend == "clear" and not clear.is_configured():
         alerts.append({"level": "warning", "message": "Clear API in mock mode — add credentials in `.env`."})
 
     strategies = session.query(Strategy).all()
@@ -54,10 +55,16 @@ def build_bootstrap(session: Session) -> dict:
             if len([a for a in alerts if "Scanner" in a.get("message", "")]) >= 3:
                 break
 
+    profit_acct = resolve_profit_account(settings)
+
     return {
         "status": "ok",
         "version": __version__,
         "paper_trading_mode": settings.paper_trading_mode,
+        "paper_capital_brl": settings.paper_capital_brl,
+        "auto_trading_on_sleeves": settings.auto_trading_on_sleeves,
+        "execution_backend": settings.execution_backend,
+        "profit_account": profit_acct,
         "scanner_mode": settings.scanner_mode,
         "scanner_symbol_count": len(settings.scanner_symbol_list),
         "clear_api": clear.is_configured(),

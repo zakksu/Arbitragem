@@ -1,0 +1,29 @@
+<div class="bb-mobile-banner" role="status" aria-live="polite">
+    <span class="bb-mobile-banner-icon" aria-hidden="true">📱</span>
+    <div class="bb-mobile-banner-copy">
+        <strong>Mobile view</strong>
+        <span>Idea Stack + confirm · full board on desktop</span>
+    </div>
+    <div class="bb-mobile-banner-risk">
+        {% if bootstrap %}
+        <span class="bb-pill {% if bootstrap.paper_trading_mode %}bb-pill-paper{% else %}bb-pill-live{% endif %}">
+            {% if bootstrap.paper_trading_mode %}Paper{% else %}Live{% endif %}
+        </span>
+        {% endif %}
+        {% if risk and not risk.sleeves_all_open %}
+        <span class="bb-pill bb-pill-paused">SLEEVES PAUSED</span>
+        {% endif %}
+        {% if cockpit %}
+        {% if cockpit.gate_status == 'blocked' %}
+        <span class="bb-gate-blocked">GATE BLOCKED</span>
+        {% elif cockpit.gate_status == 'warning' %}
+        <span class="bb-gate-warn">WARNING</span>
+        {% else %}
+        <span class="bb-gate-ok">GATE OK</span>
+        {% endif %}
+        <span class="bb-mobile-banner-pnl {% if cockpit.day_pnl >= 0 %}bb-pnl-pos{% else %}bb-pnl-neg{% endif %}">
+            R$ {{ "%.2f"|format(cockpit.day_pnl) }}
+        </span>
+        {% endif %}
+    </div>
+</div>

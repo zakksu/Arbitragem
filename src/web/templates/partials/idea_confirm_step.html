@@ -6,6 +6,8 @@
             #{{ idea.id }} · <strong>{{ idea.symbol }}</strong> · {{ (idea.side or "—")|upper }}
         </p>
 
+        {% include "partials/idea_gates_banner.html" %}
+
         {% if error %}
         <div class="bb-proof bb-proof-warn bb-risk-banner">
             <strong>Confirm blocked</strong> — {{ error }}
@@ -20,8 +22,8 @@
 
         {% if risk and not risk.can_confirm_ideas %}
         <div class="bb-proof bb-proof-warn bb-risk-banner">
-            Confirms blocked — kill switch active.
-            {% if risk.kill_switch_reason %}({{ risk.kill_switch_reason }}){% endif %}
+            Confirms blocked — trading sleeve paused.
+            {% if risk.sleeves_reason %}({{ risk.sleeves_reason }}){% endif %}
         </div>
         {% elif cockpit and not cockpit.can_confirm %}
         <div class="bb-proof bb-proof-warn bb-risk-banner">
@@ -35,12 +37,59 @@
         </div>
         {% endif %}
 
+        {% if risk_box %}
+        <div class="bb-idea-levels" style="margin:0.5rem 0">
+            <span>Entry <strong>R$ {{ "%.2f"|format(risk_box.entry_price or 0) }}</strong></span>
+            <span>Stop <strong>R$ {{ "%.2f"|format(risk_box.stop_price or 0) }}</strong></span>
+            <span>Target <strong>R$ {{ "%.2f"|format(risk_box.target_price or 0) }}</strong></span>
+        </div>
+        <div class="bb-proof bb-proof-pass" style="font-size:0.75rem;margin-bottom:0.5rem">
+            Max risk <strong>R$ {{ "%.2f"|format(risk_box.risk_brl or 0) }}</strong>
+            · Target gain <strong>R$ {{ "%.2f"|format(risk_box.reward_brl or 0) }}</strong>
+            {% if risk_box.risk_reward %} · R:R <strong>{{ risk_box.risk_reward }}</strong>{% endif %}
+        </div>
+        {% endif %}
+
         {% if idea.legs and idea.legs|length > 1 %}
         <ul class="bb-legs" style="margin:0.5rem 0">
             {% for leg in idea.legs %}
             <li>{{ leg.side|upper }} {{ leg.quantity }} {{ leg.symbol }}</li>
             {% endfor %}
         </ul>
+        {% endif %}
+
+        {% set fill = idea.fill_preview or idea.paper_fill or {} %}
+        {% if fill %}
+        <div class="bb-fill-preview">
+            <div class="bb-fill-preview-head">
+                Paper fill preview
+                {% with key="trade.fill_preview" %}
+                {% include "partials/help_tip.html" %}
+                {% endwith %}
+            </div>
+            <div class="bb-fill-grid">
+                {% if fill.ideal_price is defined or fill.ideal_fill is defined %}
+                <span>Ideal <strong>R$ {{ "%.4f"|format(fill.ideal_price|default(fill.ideal_fill, true)) }}</strong></span>
+                {% endif %}
+                {% if fill.expected_price is defined or fill.expected_fill is defined %}
+                <span>Expected <strong>R$ {{ "%.4f"|format(fill.expected_price|default(fill.expected_fill, true)) }}</strong></span>
+                {% endif %}
+                {% if fill.slippage_ticks is defined %}
+                <span>Slip <strong>{{ fill.slippage_ticks }} tick{% if fill.slippage_ticks != 1 %}s{% endif %}</strong></span>
+                {% elif fill.slippage_brl is defined %}
+                <span>Slip <strong>R$ {{ "%.2f"|format(fill.slippage_brl) }}</strong></span>
+                {% endif %}
+            </div>
+            {% if fill.model %}
+            <p class="bb-muted" style="font-size:0.68rem;margin:0.35rem 0 0">{{ fill.model }}</p>
+            {% else %}
+            <p class="bb-muted" style="font-size:0.68rem;margin:0.35rem 0 0">spread + 1 tick per leg</p>
+            {% endif %}
+        </div>
+        {% elif idea.legs %}
+        <div class="bb-fill-preview bb-fill-preview-stub">
+            <span class="bb-muted">Expected vs ideal fill — spread + 1 tick per leg (paper model).</span>
+        </div>
         {% endif %}
 
         <form id="idea-confirm-form" class="bb-confirm-form">

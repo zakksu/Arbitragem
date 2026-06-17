@@ -1,0 +1,29 @@
+# Cloudflare Tunnel — Arbitragem (Windows PC → public HTTPS)
+#
+# Setup (once):
+#   cloudflared tunnel login
+#   cloudflared tunnel create arbitragem
+#   python scripts/dev.py tunnel setup
+#
+# DNS (pick one):
+#   cloudflared tunnel route dns arbitragem trading.dmconsultoria.seg.br
+#   cloudflared tunnel route dns arbitragem dashboard.dmconsultoria.seg.br
+#   — OR at GoDaddy: CNAME trading → <TUNNEL_ID>.cfargotunnel.com
+#
+# Run:
+#   python scripts/dev.py start --wait
+#   python scripts/dev.py tunnel start
+
+tunnel: arbitragem
+# Replace with the JSON file created by `cloudflared tunnel create arbitragem`
+# (usually %USERPROFILE%\.cloudflared\<TUNNEL_UUID>.json)
+credentials-file: C:\Users\YOUR_USER\.cloudflared\TUNNEL_UUID.json
+
+ingress:
+  # API, OpenAPI docs, HTMX blackboard (/board)
+  - hostname: trading.dmconsultoria.seg.br
+    service: http://localhost:8000
+  # Streamlit dashboard (optional second hostname)
+  - hostname: dashboard.dmconsultoria.seg.br
+    service: http://localhost:8501
+  - service: http_status:404

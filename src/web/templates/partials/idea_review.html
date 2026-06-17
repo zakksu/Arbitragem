@@ -4,6 +4,8 @@
         <h3>Idea #{{ idea.id }} — {{ idea.symbol }}</h3>
         <p class="bb-modal-sub">{{ idea.title or "—" }} · {{ (idea.side or "—")|upper }} · {{ idea.status }}</p>
 
+        {% include "partials/idea_gates_banner.html" %}
+
         {% if idea.status != 'backtested' or not idea.backtest_proof %}
         <div class="bb-proof bb-proof-warn bb-risk-banner">
             <strong>⚠ Risk warning</strong> — This idea has not passed backtest gates.
@@ -20,10 +22,20 @@
         {% endif %}
 
         <div class="bb-idea-levels" style="margin:0.75rem 0">
-            <span>E <strong>{{ "%.2f"|format(idea.entry_price or 0) }}</strong></span>
-            <span>S <strong>{{ "%.2f"|format(idea.stop_price or 0) }}</strong></span>
-            <span>T <strong>{{ "%.2f"|format(idea.target_price or 0) }}</strong></span>
+            <span>Entry <strong>R$ {{ "%.2f"|format(risk_box.entry_price or idea.entry_price or 0) }}</strong></span>
+            <span>Stop <strong>R$ {{ "%.2f"|format(risk_box.stop_price or idea.stop_price or 0) }}</strong></span>
+            <span>Target <strong>R$ {{ "%.2f"|format(risk_box.target_price or idea.target_price or 0) }}</strong></span>
         </div>
+        {% if risk_box %}
+        <div class="bb-proof bb-proof-pass" style="font-size:0.75rem;margin-bottom:0.5rem">
+            Risk <strong>R$ {{ "%.2f"|format(risk_box.risk_brl or 0) }}</strong>
+            · Reward <strong>R$ {{ "%.2f"|format(risk_box.reward_brl or 0) }}</strong>
+            {% if risk_box.risk_reward %}
+            · R:R <strong>{{ "%.2f"|format(risk_box.risk_reward) }}</strong>
+            {% endif %}
+            · Qty <strong>{{ risk_box.quantity }}</strong>
+        </div>
+        {% endif %}
         {% if idea.legs %}
         <ul class="bb-legs">
             {% for leg in idea.legs %}

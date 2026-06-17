@@ -1,4 +1,4 @@
-<div class="bb-replay-lab" id="replay-lab-panel">
+<div class="bb-replay-lab bb-accent-rail" id="replay-lab-panel">
     <div class="bb-replay-head">
         <strong>Replay Lab</strong>
         <span class="bb-muted">sandbox · no live orders</span>
@@ -9,7 +9,8 @@
     <form class="bb-replay-form"
           hx-post="/board/partials/replay-lab/run"
           hx-target="#replay-lab-log"
-          hx-swap="innerHTML">
+          hx-swap="innerHTML"
+          hx-on::after-request="bbReplayAfterRequest(event)">
         <input type="hidden" name="symbol" value="{{ symbol }}">
         <label>
             Speed

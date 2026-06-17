@@ -1,0 +1,56 @@
+---
+description: Low-RAM hardware constraints for Arbitragem (<16 GB host, 1.2 GB stack budget)
+alwaysApply: true
+---
+
+# Low-RAM hardware (Arbitragem)
+
+Filipe's PC has **<16 GB RAM**. Release 7.0 stack budget is **1.2 GB** (`RAM_BUDGET_MB`).
+
+## Enable
+
+```env
+LOW_RAM_MODE=true          # explicit
+GOLDEN_PATH_MODE=true      # also enables low-RAM behavior
+```
+
+Config: `get_settings().low_ram_enabled` — true when either flag is on.
+
+## What this project is (not Ragnarok/crypto)
+
+- **Local B3 stock scalper**: Profit DLL bridge, FastAPI blackboard, Streamlit dashboard, paper motor.
+- Workload is **I/O-bound**: httpx → Profit bridge, SQLite WAL, SSE quote/desk streams.
+- **No GPU required** for core trading. GPU is optional only for future Ollama/ML — disable Ollama in low-RAM.
+- **No CuPy / CUDA** unless explicitly added later.
+
+## Low-RAM toggles (automatic when `low_ram_enabled`)
+
+| Area | Normal | Low-RAM |
+|------|--------|---------|
+| Ollama | on if configured | **off** (no probe/chat) |
+| Pulse RSS | live fetch | **curated headlines only** |
+| Futures/crypto watchlist | on | **off** (golden path already PETR4-only) |
+| Streamlit | full nav | **slim nav** + shorter API cache TTL |
+| Motor interval | base | **+50%** sleep between cycles |
+| Desk SSE | 10–30 s | **60 s** |
+| Quote heartbeat | 15 s (multi) | **30 s** |
+| Trader desk journal | 35 rows | **15 rows** |
+| Profit bridge httpx | per-call client | **shared singleton** |
+
+## SQLite
+
+- `PRAGMA journal_mode=WAL` at `init_db()` — required for concurrent API + motor.
+- Do not load full journal/history into memory; paginate and cap list endpoints.
+
+## Agents — before shipping RAM-heavy features
+
+1. Run `python scripts/benchmark_ram.py` — target **<500 MB** peak for scanner-loop equivalent.
+2. Run `python scripts/ram_snapshot.py` with desk + motor up — must stay **≤1.2 GB** stack RSS.
+3. Prefer cache TTL + SSE interval over new background threads.
+4. Never add duplicate EventSources or unbounded in-memory quote maps.
+
+## Do not
+
+- Spawn extra workers/processes without measuring RSS.
+- Enable Ollama, RSS, futures, crypto watchlist in low-RAM without explicit user override.
+- Use GPU libraries (CuPy, torch CUDA) in default install path.

@@ -1,0 +1,38 @@
+{
+  "kpi.range_today": {
+    "en": "Session P&L from Profit bridge or journal — resets at B3 open.",
+    "pt": "Resultado do dia"
+  },
+  "kpi.range_5d": {
+    "en": "Rolling 5-day P&L, win rate, and PF₂₀ from closed trades.",
+    "pt": "Últimos 5 dias"
+  },
+  "kpi.range_20d": {
+    "en": "Rolling 20-day performance — aligns with PF₂₀ window.",
+    "pt": "Últimos 20 dias"
+  },
+  "kpi.range_ytd": {
+    "en": "Year-to-date P&L and stats from journal + Profit exports.",
+    "pt": "Ano até hoje"
+  },
+  "kpi.win_rate": {
+    "en": "Win rate (%) — winning trades / total closed in range.",
+    "pt": "Taxa de acerto"
+  },
+  "kpi.profit_factor": {
+    "en": "Profit factor on last 20 trades — gross wins / gross losses.",
+    "pt": "Fator de lucro"
+  },
+  "kpi.slippage": {
+    "en": "Avg slippage in ticks — paper spread + 1 tick model vs ideal.",
+    "pt": "Slippage médio"
+  },
+  "kpi.week_pnl": {
+    "en": "Week P&L rollup — Profit bridge + journal when available.",
+    "pt": "Resultado semanal"
+  },
+  "kpi.filters": {
+    "en": "Date range chips — filter P&L, win%, and PF₂₀ from journal rollups.",
+    "pt": "Filtro de período"
+  }
+}

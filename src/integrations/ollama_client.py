@@ -29,7 +29,7 @@ class OllamaClient:
         self.timeout = self.settings.ollama_timeout_seconds
 
     def is_available(self) -> bool:
-        if not self.settings.ollama_enabled:
+        if not self.settings.ollama_runtime_enabled:
             return False
         if self.settings.app_env == "test":
             return False
@@ -42,6 +42,8 @@ class OllamaClient:
             return False
 
     def chat(self, user_message: str, context: str | None = None) -> str:
+        if not self.settings.ollama_runtime_enabled:
+            return "Ollama disabled in low-RAM mode."
         prompt = user_message
         if context:
             prompt = f"Context:\n{context}\n\nUser request:\n{user_message}"

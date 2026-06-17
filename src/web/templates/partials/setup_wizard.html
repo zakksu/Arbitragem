@@ -8,7 +8,21 @@
         Execution: <strong>{{ setup.execution_backend or "—" }}</strong>
         · Paper: <strong>{{ "yes" if setup.paper_trading_mode else "no" }}</strong>
         · Scanner: <strong>{{ setup.scanner_mode or "—" }}</strong>
+        {% if setup.profit_account %}
+        · Account: <strong>{{ setup.profit_account.display }}</strong>
+        {% endif %}
     </p>
+
+    {% if setup.profit_accounts %}
+    <ul class="bb-setup-accounts">
+        {% for ac in setup.profit_accounts %}
+        <li class="{% if ac.active %}is-active{% endif %}">
+            <strong>{{ ac.label }}</strong>
+            <span>{{ ac.account_id }} — {{ ac.holder }}</span>
+        </li>
+        {% endfor %}
+    </ul>
+    {% endif %}
 
     <ul class="bb-setup-steps">
         {% for step in setup.steps or [] %}

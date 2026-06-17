@@ -6,14 +6,23 @@
     <div class="bb-tp-head">
         <span class="bb-tp-score" title="Idea score 0–100">{{ product.score }}</span>
         <strong>{{ product.symbol }}</strong>
+        {% with key="trade.product" %}
+        {% include "partials/help_tip.html" %}
+        {% endwith %}
         <span class="bb-structure-badge">{{ product.structure_type|replace("_", " ") }}</span>
         <span class="bb-side-{{ product.side }}">{{ product.side|upper }}</span>
     </div>
     <div class="bb-tp-tabs" role="tablist">
-        <button type="button" class="bb-tp-tab is-active" data-tp-tab="thesis">Thesis</button>
-        <button type="button" class="bb-tp-tab" data-tp-tab="chart">Chart</button>
+        <button type="button" class="bb-tp-tab is-active" data-tp-tab="thesis">Thesis
+            {% with key="trade.thesis" %}{% include "partials/help_tip.html" %}{% endwith %}
+        </button>
+        <button type="button" class="bb-tp-tab" data-tp-tab="chart">Chart
+            {% with key="trade.chart_levels" %}{% include "partials/help_tip.html" %}{% endwith %}
+        </button>
         <button type="button" class="bb-tp-tab" data-tp-tab="legs">Legs</button>
-        <button type="button" class="bb-tp-tab" data-tp-tab="notes">Notes</button>
+        <button type="button" class="bb-tp-tab" data-tp-tab="notes">Notes
+            {% with key="trade.notes" %}{% include "partials/help_tip.html" %}{% endwith %}
+        </button>
     </div>
     <div class="bb-tp-panel is-active" data-tp-panel="thesis">
         <p>{{ product.thesis }}</p>
@@ -26,6 +35,9 @@
         {% endif %}
         {% if product.odds %}
         <div class="bb-tp-odds">
+            {% with key="trade.odds" %}
+            {% include "partials/help_tip.html" %}
+            {% endwith %}
             {% if product.odds.source %}
             <span class="bb-odds-source" title="Odds data source">{{ product.odds.source }}</span>
             {% endif %}
@@ -40,6 +52,15 @@
             {% endif %}
             {% if product.odds.sample_size is defined and product.odds.sample_size %}
             · n={{ product.odds.sample_size }}
+            {% endif %}
+        </div>
+        {% endif %}
+        {% if product.structure_education %}
+        <div class="bb-tp-education">
+            <strong>{{ product.structure_education.title or product.structure_type }}</strong>
+            <p>{{ product.structure_education.summary or product.structure_education.body }}</p>
+            {% if product.structure_education.pt %}
+            <em class="bb-muted">{{ product.structure_education.pt }}</em>
             {% endif %}
         </div>
         {% endif %}

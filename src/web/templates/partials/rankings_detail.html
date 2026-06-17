@@ -1,0 +1,69 @@
+<div class="bb-lab-detail" id="ranking-detail-{{ detail.id }}">
+    <header class="bb-lab-detail-head">
+        <h2>{{ detail.symbol }} <em class="bb-muted">{{ detail.strategy_name }}</em></h2>
+        <div class="bb-lab-metrics">
+            <span>Idea <strong>{{ "%.0f"|format(detail.idea_score) }}</strong></span>
+            <span>WF <strong>{{ "%.1f"|format(detail.wf_score) }}</strong></span>
+            <span>PF <strong>{{ "%.2f"|format(detail.profit_factor) }}</strong></span>
+            <span>DD <strong>{{ "%.2f"|format(detail.max_drawdown_pct) }}%</strong></span>
+        </div>
+    </header>
+
+    <div class="bb-chart-wrap bb-lab-equity" data-equity='{{ detail.equity_curve | tojson }}'>
+        <div class="bb-chart-canvas bb-lab-chart" id="lab-chart-{{ detail.id }}"></div>
+    </div>
+
+    <section class="bb-lab-section">
+        <h3>Walk-forward folds</h3>
+        <ul class="bb-desk-list">
+            {% for f in detail.fold_results %}
+            <li>Fold {{ f.fold }} — train {{ f.train_pnl }} / test {{ f.test_pnl }}</li>
+            {% else %}
+            <li class="bb-muted">No fold data</li>
+            {% endfor %}
+        </ul>
+    </section>
+
+    <section class="bb-lab-section">
+        <h3>Parameters</h3>
+        <pre class="bb-lab-pre">{{ detail.parameters | tojson(indent=2) }}</pre>
+    </section>
+
+    <section class="bb-lab-section">
+        <h3>Ollama commentary</h3>
+        <p class="bb-lab-commentary">{{ detail.ollama_commentary or "—" }}</p>
+        {% if not detail.ollama_commentary %}
+        <button type="button" class="bb-btn bb-btn-sm"
+                hx-get="/board/strategy-lab/{{ detail.id }}?commentary=1"
+                hx-target="#lab-detail"
+                hx-swap="innerHTML">Generate commentary</button>
+        {% endif %}
+    </section>
+
+    <footer class="bb-lab-actions">
+        <button type="button" class="bb-btn bb-btn-primary"
+                hx-post="/board/strategy-lab/{{ detail.id }}/promote"
+                hx-target="#lab-detail"
+                hx-swap="innerHTML">
+            Promote to Idea Stack
+        </button>
+    </footer>
+</div>
+<script>
+(function () {
+    var wrap = document.querySelector("#ranking-detail-{{ detail.id }} .bb-lab-equity");
+    var el = document.querySelector("#lab-chart-{{ detail.id }}");
+    if (!wrap || !el || el.dataset.mounted === "1" || typeof LightweightCharts === "undefined") return;
+    el.dataset.mounted = "1";
+    var raw = [];
+    try { raw = JSON.parse(wrap.getAttribute("data-equity") || "[]"); } catch (e) {}
+    var chart = LightweightCharts.createChart(el, {
+        width: el.clientWidth || 480, height: 180,
+        layout: { background: { color: "#121212" }, textColor: "#8a8a8a" },
+        grid: { vertLines: { color: "#1f1f1f" }, horzLines: { color: "#1f1f1f" } }
+    });
+    var series = chart.addAreaSeries({ lineColor: "#f97316", topColor: "rgba(249,115,22,0.35)", bottomColor: "rgba(0,0,0,0)" });
+    series.setData(raw.map(function (p) { return { time: p.time, value: p.value }; }));
+    chart.timeScale().fitContent();
+})();
+</script>

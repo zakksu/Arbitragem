@@ -188,6 +188,10 @@ class RiskSummaryResponse(BaseModel):
     can_start_new_strategy: bool
     kill_switch_active: bool = False
     kill_switch_reason: str | None = None
+    sleeves: dict[str, bool] | None = None
+    sleeves_all_open: bool = True
+    sleeves_reason: str | None = None
+    autonomy_enabled: bool = False
     can_confirm_ideas: bool = True
     can_execute_ideas: bool = True
 
@@ -230,6 +234,9 @@ class NtslArmRequest(BaseModel):
     structure_type: str = "scalp"
     side: str = "long"
     ntsl_code: str | None = None
+    legs: list[dict[str, Any]] | None = None
+    stop_ticks: int | None = None
+    target_ticks: int | None = None
 
 
 class TradeIdeaResponse(BaseModel):

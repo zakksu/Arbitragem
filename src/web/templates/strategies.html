@@ -1,0 +1,48 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Strategies — Arbitragem Scalper</title>
+    <link rel="stylesheet" href="/static/blackboard.css">
+    <link rel="stylesheet" href="/static/blackboard_4_0.css">
+</head>
+<body class="bb-app bb-strategies-page">
+    <header class="bb-status">
+        <div class="bb-logo">Arbitragem Scalper <span>Strategies</span></div>
+        <div class="bb-toolbar">
+            <a class="bb-btn-toolbar bb-btn-link" href="/board">← Board</a>
+            <a class="bb-btn-toolbar bb-btn-link" href="/board/strategy-lab">Strategy Lab</a>
+        </div>
+    </header>
+    <main class="bb-strategies-main">
+        <p class="bb-muted">{{ report.disclaimer }}</p>
+        <table class="bb-strategies-table">
+            <thead>
+                <tr>
+                    <th>Strategy</th>
+                    <th>Description</th>
+                    <th>Backtest</th>
+                    <th>Walk-forward</th>
+                    <th>Yesterday P&amp;L</th>
+                    <th>Trades</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for s in report.strategies %}
+                <tr>
+                    <td><strong>{{ s.name }}</strong><br><em class="bb-muted">{{ s.id }}</em></td>
+                    <td>{{ s.description }}</td>
+                    <td><span class="bb-pill bb-pill-{{ s.backtest_status }}">{{ s.backtest_status }}</span></td>
+                    <td><span class="bb-pill bb-pill-{{ s.walk_forward_status }}">{{ s.walk_forward_status }}</span></td>
+                    <td class="{% if s.yesterday.hypothetical_pnl_brl >= 0 %}bb-pnl-pos{% else %}bb-pnl-neg{% endif %}">
+                        R$ {{ "%.2f"|format(s.yesterday.hypothetical_pnl_brl) }}
+                    </td>
+                    <td>{{ s.yesterday.trades }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </main>
+</body>
+</html>

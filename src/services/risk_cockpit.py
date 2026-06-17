@@ -98,10 +98,12 @@ def build_risk_cockpit(session: Session) -> dict:
     top_sector = max(sector_pct, key=sector_pct.get) if sector_pct else None
     margin_est = _margin_estimate_stub(legs)
     max_net_delta = profile.max_net_delta
+    if settings.paper_trading_mode and settings.auto_trading_on_sleeves:
+        max_net_delta = max(max_net_delta, 5.0)
 
     gate_status = summary["status"]
     if gate_status != "blocked" and abs(net_delta) > max_net_delta:
-        gate_status = "blocked"
+        gate_status = "blocked" if not settings.paper_trading_mode else "warning"
 
     sector_cap = (profile.sector_caps or {}).get("default", 40.0)
     if top_sector and sector_pct.get(top_sector, 0.0) > sector_cap:
@@ -124,7 +126,7 @@ def build_risk_cockpit(session: Session) -> dict:
         "margin_estimate_brl": margin_est,
         "gate_status": gate_status,
         "loss_gate_status": summary["status"],
-        "can_confirm": gate_status == "ok",
+        "can_confirm": gate_status in ("ok", "warning"),
         "trades_today": summary["trades_today"],
     }
 

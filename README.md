@@ -29,7 +29,12 @@ python scripts/dev.py start --wait --open
 
 ```bash
 python scripts/paper_validation.py
+python scripts/paper_validation.py --export csv
 ```
+
+API: `GET /api/v1/paper/validation` · `GET /api/v1/paper/journal/export?format=csv`
+
+Gate: 10+ structure confirms, 3+ Trade Products journaled (`gate_pass: true`).
 
 ## ProfitDLL detection
 
@@ -44,4 +49,4 @@ Optional `.env`: `PROFITCHART_EXE=C:\path\to\ProfitChart.exe` for co-start with 
 - [RELEASE_4.0.0.md](RELEASE_4.0.0.md) — scope
 - [docs/SCALPER_COCKPIT.md](docs/SCALPER_COCKPIT.md) — operator guide
 
-**Version:** 4.0.0 · Paper default · No Clear API
+**Version:** 4.0.0 GA · Paper default · No Clear API

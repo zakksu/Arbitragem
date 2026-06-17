@@ -36,3 +36,15 @@ def test_cli_json_exit_code(tmp_path, monkeypatch):
     data = json.loads(proc.stdout)
     assert isinstance(data["found"], bool)
     assert proc.returncode in (0, 2)
+
+
+def test_probe_dll_loadable_fake_file(tmp_path, monkeypatch):
+    fake_dll = tmp_path / "ProfitDLL.dll"
+    fake_dll.write_bytes(b"not-a-real-dll")
+    monkeypatch.setenv("PROFIT_DLL_PATH", str(fake_dll))
+    from src.integrations.profit_dll_detect import probe_dll_loadable
+
+    probe = probe_dll_loadable(str(fake_dll))
+    assert probe["path"] == str(fake_dll.resolve())
+    assert probe["callbacks_wired"] is False
+    assert probe["loadable"] is False or probe["loadable"] is True

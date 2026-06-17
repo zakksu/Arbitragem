@@ -1,0 +1,30 @@
+{% if gates %}
+<div class="bb-lifecycle-strip" aria-label="Idea lifecycle">
+    {% set order = ['detected', 'backtested', 'confirmed', 'executed'] %}
+    {% for state in order %}
+    {% set idx = loop.index0 %}
+    {% set cur_idx = order.index(idea.status) if idea.status in order else -1 %}
+    <span class="bb-lifecycle-step{% if state == idea.status %} is-current{% elif cur_idx > idx %} is-done{% endif %}">
+        {{ state }}
+    </span>
+    {% if not loop.last %}<span class="bb-lifecycle-arrow">→</span>{% endif %}
+    {% endfor %}
+</div>
+{% if gates.blockers %}
+<div class="bb-proof bb-proof-warn bb-gates-blockers" style="font-size:0.72rem;margin:0.35rem 0">
+    <strong>Gates</strong> —
+    {% for b in gates.blockers %}{{ b }}{% if not loop.last %} · {% endif %}{% endfor %}
+</div>
+{% elif gates.backtest_gate_pass %}
+<div class="bb-proof bb-proof-pass" style="font-size:0.72rem;margin:0.35rem 0">Backtest gate passed</div>
+{% endif %}
+{% endif %}
+{% if clear and not clear.paper_trading_mode and clear.live_enabled %}
+<div class="bb-proof bb-proof-warn bb-live-banner" style="font-size:0.72rem;margin:0.35rem 0">
+    <strong>LIVE</strong> — Clear routing active. Confirm/execute sends real orders.
+</div>
+{% elif clear and clear.paper_trading_mode %}
+<div class="bb-proof bb-proof-pass" style="font-size:0.72rem;margin:0.35rem 0">
+    Paper mode — fills stay in journal only.
+</div>
+{% endif %}

@@ -14,6 +14,7 @@ def client(monkeypatch):
     get_settings.cache_clear()
     monkeypatch.setenv("SCANNER_OLLAMA_ON_SCAN", "false")
     monkeypatch.setenv("PROFIT_BRIDGE_ENABLED", "false")
+    monkeypatch.setenv("BOARD_AUTH_ENABLED", "false")
     init_db()
     return TestClient(create_app())
 
@@ -83,3 +84,44 @@ def test_sector_strip_partial(client):
 def test_confirm_step_partial_not_found(client):
     r = client.get("/board/partials/ideas/99999/confirm-step")
     assert r.status_code == 404
+
+
+def test_symbol_panel_vwap(client, monkeypatch):
+    monkeypatch.setenv("PROFIT_BRIDGE_ENABLED", "true")
+    get_settings.cache_clear()
+    r = client.get("/board/partials/symbol/PETR4")
+    assert r.status_code == 200
+    assert "Session VWAP" in r.text or "data-vwap" in r.text
+
+
+def test_board_notes_partial_persist(client):
+    client.put("/api/v1/board/PETR4/notes", json={"content": "VWAP reclaim watch"})
+    r = client.get("/board/partials/symbol/PETR4")
+    assert r.status_code == 200
+    assert "VWAP reclaim watch" in r.text
+    assert 'hx-post="/board/partials/symbol/PETR4/notes"' in r.text
+
+
+def test_idea_review_gates_banner(client):
+    from src.models import TradeIdea, get_session_factory
+
+    session = get_session_factory()()
+    idea = TradeIdea(symbol="PETR4", structure_type="scalp_long", side="long", status="detected")
+    session.add(idea)
+    session.commit()
+    iid = idea.id
+    session.close()
+    r = client.get(f"/board/partials/ideas/{iid}/review")
+    assert r.status_code == 200
+    assert "bb-lifecycle-strip" in r.text
+    assert "detected" in r.text
+
+
+def test_mobile_watchlist_layout_css():
+    from pathlib import Path
+
+    css = Path("src/web/static/blackboard.css").read_text(encoding="utf-8")
+    assert "bb-col-watch" in css
+    assert "display: flex !important" in css
+    assert "bb-col-board" in css
+    assert "display: none !important" in css

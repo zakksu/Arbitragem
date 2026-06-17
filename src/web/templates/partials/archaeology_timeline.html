@@ -1,0 +1,33 @@
+<div class="bb-archaeology bb-accent-rail" id="archaeology-panel">
+    <div class="bb-arch-head">
+        <strong>Trade archaeology</strong>
+        <span class="bb-muted">Profit CSV history</span>
+        {% with key="section.history" %}
+        {% include "partials/help_tip.html" %}
+        {% endwith %}
+    </div>
+
+    <div class="bb-arch-actions">
+        <form class="bb-arch-import"
+              hx-post="/board/partials/archaeology/import"
+              hx-encoding="multipart/form-data"
+              hx-target="#archaeology-body"
+              hx-swap="innerHTML">
+            <label class="bb-arch-file">
+                Import CSV
+                <input type="file" name="file" accept=".csv,text/csv" required
+                       onchange="if(this.files.length) htmx.trigger(this.closest('form'), 'submit')">
+            </label>
+        </form>
+        <button type="button" class="bb-btn-secondary"
+                hx-post="/board/partials/archaeology/scan"
+                hx-target="#archaeology-body"
+                hx-swap="innerHTML">
+            Scan folder
+        </button>
+    </div>
+
+    <div id="archaeology-body">
+        {% include "partials/archaeology_events.html" %}
+    </div>
+</div>

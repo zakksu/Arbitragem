@@ -1,3 +1,5 @@
-<p><strong>{{ run.status|upper }}</strong> · {{ run.symbol }} · {{ run.speed }}× · {{ run.mode }}</p>
-<p class="bb-muted">{{ run.message }}</p>
-<code>job {{ run.job_id }}</code>
+<div class="bb-replay-log-result bb-accent-rail{% if run.status in ('queued', 'ok', 'started', 'running') %} is-success{% endif %}">
+    <p><strong>{{ run.status|upper }}</strong> · {{ run.symbol }} · {{ run.speed }}× · {{ run.mode }}</p>
+    <p class="bb-muted">{{ run.message }}</p>
+    <code>job {{ run.job_id }}</code>
+</div>

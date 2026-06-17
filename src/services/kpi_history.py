@@ -39,6 +39,25 @@ def _profit_factor_last_n(session: Session, n: int = 20) -> float | None:
     return round(gains / losses, 2)
 
 
+def _avg_slippage_ticks(session: Session, since: datetime) -> float | None:
+    rows = session.query(Trade).filter(Trade.executed_at >= since).all()
+    ticks: list[float] = []
+    for t in rows:
+        payload = t.raw_payload or {}
+        if payload.get("slippage_model") != "spread_plus_1_tick":
+            continue
+        bid = payload.get("quote_bid")
+        ask = payload.get("quote_ask")
+        if bid is None or ask is None:
+            continue
+        spread = float(ask) - float(bid)
+        tick = 0.01 if (t.price or 0) < 50 else 0.05
+        ticks.append(round(spread / tick + 1.0, 2))
+    if not ticks:
+        return None
+    return round(sum(ticks) / len(ticks), 2)
+
+
 def build_kpi_history(session: Session, range_key: str = "today") -> dict:
     now = datetime.utcnow()
     today_start = datetime.combine(now.date(), time.min)
@@ -58,5 +77,6 @@ def build_kpi_history(session: Session, range_key: str = "today") -> dict:
         "trades": trades if range_key != "today" else day["trades_today"],
         "win_rate_pct": win_rate,
         "profit_factor_20": _profit_factor_last_n(session, 20),
+        "avg_slippage_ticks": _avg_slippage_ticks(session, since),
         "pnl_source": day["pnl_source"],
     }

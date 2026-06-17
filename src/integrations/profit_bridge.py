@@ -70,9 +70,16 @@ class ProfitBridgeClient:
         self.enabled = self.settings.profit_bridge_enabled
         self.auto_detect = self.settings.profit_bridge_auto_detect
         self._reach_cache: tuple[float, bool] | None = None
+        self._http: httpx.Client | None = None
 
     def _client(self, timeout: float = 5.0) -> httpx.Client:
         return httpx.Client(base_url=self.base_url, timeout=timeout)
+
+    def _shared_client(self) -> httpx.Client:
+        """Reuse one httpx client on hot quote paths (low-RAM)."""
+        if self._http is None:
+            self._http = httpx.Client(base_url=self.base_url, timeout=5.0)
+        return self._http
 
     def _bridge_reachable(self) -> bool:
         import time
@@ -82,8 +89,8 @@ class ProfitBridgeClient:
             return self._reach_cache[1]
         probe = 1.5
         try:
-            with self._client(timeout=probe) as client:
-                ok = client.get("/health").status_code == 200
+            client = self._shared_client()
+            ok = client.get("/health").status_code == 200
         except Exception:
             ok = False
         self._reach_cache = (now, ok)
@@ -114,8 +121,12 @@ class ProfitBridgeClient:
         if not wanted_set:
             return {}
         now = time.time()
+        from src.services.resource_profile import get_resource_profile
+
+        profile = get_resource_profile()
+        quote_ttl = profile.quote_cache_ttl_sec
         cached = _QUOTES_CACHE.get(wanted_set)
-        if cached and now - cached[0] < QUOTE_CACHE_TTL_SEC:
+        if cached and now - cached[0] < quote_ttl:
             return dict(cached[1])
 
         wanted = set(wanted_set)
@@ -124,24 +135,24 @@ class ProfitBridgeClient:
 
         if self._should_use_bridge() and self._bridge_reachable():
             try:
-                with self._client(timeout=3.0) as client:
-                    r = client.get("/quotes")
-                    if r.status_code == 200:
-                        batch_ok = True
-                        payload = r.json()
-                        rows = payload if isinstance(payload, list) else payload.get("quotes", [])
-                        for data in rows:
-                            sym = str(data.get("symbol", "")).upper()
-                            if sym not in wanted:
-                                continue
-                            out[sym] = ProfitQuote(
-                                symbol=sym,
-                                bid=float(data["bid"]),
-                                ask=float(data["ask"]),
-                                last=float(data["last"]),
-                                volume=int(data.get("volume", 0)),
-                                timestamp=datetime.fromisoformat(data["timestamp"]),
-                            )
+                client = self._shared_client()
+                r = client.get("/quotes")
+                if r.status_code == 200:
+                    batch_ok = True
+                    payload = r.json()
+                    rows = payload if isinstance(payload, list) else payload.get("quotes", [])
+                    for data in rows:
+                        sym = str(data.get("symbol", "")).upper()
+                        if sym not in wanted:
+                            continue
+                        out[sym] = ProfitQuote(
+                            symbol=sym,
+                            bid=float(data["bid"]),
+                            ask=float(data["ask"]),
+                            last=float(data["last"]),
+                            volume=int(data.get("volume", 0)),
+                            timestamp=datetime.fromisoformat(data["timestamp"]),
+                        )
             except Exception as exc:
                 logger.warning("profit_quotes_batch_failed", error=str(exc))
 
@@ -153,7 +164,8 @@ class ProfitBridgeClient:
             else:
                 out[sym] = self._synthetic_quote(sym)
         _QUOTES_CACHE[wanted_set] = (now, dict(out))
-        if len(_QUOTES_CACHE) > 8:
+        max_entries = profile.quote_cache_max_entries
+        if len(_QUOTES_CACHE) > max_entries:
             oldest = min(_QUOTES_CACHE.items(), key=lambda kv: kv[1][0])[0]
             _QUOTES_CACHE.pop(oldest, None)
         return out

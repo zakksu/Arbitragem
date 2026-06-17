@@ -1,0 +1,11 @@
+{% if validation and bootstrap and bootstrap.paper_trading_mode and not validation.gate_pass %}
+<div class="bb-paper-gate" role="status">
+    <strong>Paper week</strong>
+    <span>{{ validation.counts.structure_confirms }}/{{ validation.targets.structure_confirms }} confirms</span>
+    <span>·</span>
+    <span>{{ validation.counts.trade_products_journaled }}/{{ validation.targets.trade_products_journaled }} products</span>
+    {% with key="cockpit.paper_gate" %}
+    {% include "partials/help_tip.html" %}
+    {% endwith %}
+</div>
+{% endif %}

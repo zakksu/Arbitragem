@@ -142,7 +142,7 @@ def test_kill_switch_blocks_confirm_and_execute(client):
 
     r2 = client.post(f"/api/v1/ideas/{idea_id}/confirm")
     assert r2.status_code == 400
-    assert "Kill switch" in r2.json()["detail"]
+    assert "sleeve" in r2.json()["detail"].lower() or "paused" in r2.json()["detail"].lower()
 
     client.post("/api/v1/risk/kill-switch", json={"active": False})
 

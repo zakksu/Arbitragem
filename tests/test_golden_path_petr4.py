@@ -91,3 +91,19 @@ def test_board_shows_golden_path_slot(client):
     assert r.status_code == 200
     assert "bb-golden-path-slot" in r.text
     assert "ops-panel-strip" in r.text
+
+
+def test_golden_path_api(client):
+    r = client.get("/api/v1/golden-path")
+    assert r.status_code == 200
+    body = r.json()
+    assert body["symbol"] == "PETR4"
+    assert len(body["items"]) == 7
+
+
+def test_ops_memory_api(client):
+    r = client.get("/api/v1/ops/memory")
+    assert r.status_code == 200
+    body = r.json()
+    assert "motor_cycle_ms" in body
+    assert "ram_budget_mb" in body

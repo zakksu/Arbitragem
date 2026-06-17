@@ -1,3 +1,53 @@
+{% macro watch_row(row) %}
+        <tr class="bb-watch-row bb-bias-{{ row.bias or 'neutral' }}{% if row.asset_class in ('future', 'futures') %} bb-watch-row-futures{% elif row.asset_class == 'crypto' %} bb-watch-row-crypto{% endif %}{% if active_symbol == row.symbol %} is-active{% endif %}"
+            data-symbol="{{ row.symbol }}"
+            data-symbol-url="/board/partials/symbol/{{ row.symbol }}"
+            data-sort-symbol="{{ row.symbol }}"
+            data-sort-watch_score="{{ row.watch_score or row.idea_score or 0 }}"
+            data-sort-atr_pct="{{ row.atr_pct if row.atr_pct is defined and row.atr_pct is not none else -1 }}"
+            data-sort-est_cost_brl="{{ row.est_cost_brl if row.est_cost_brl is defined and row.est_cost_brl is not none else -1 }}"
+            data-sort-last="{{ row.last if row.last is defined and row.last is not none else -1 }}"
+            role="button"
+            tabindex="0">
+            <td>
+                <span class="bb-sym">{{ row.symbol }}</span>
+                {% if row.asset_class in ('future', 'futures') and row.session_status %}
+                <span class="bb-session-badge bb-session-{{ row.session_status }}"
+                      title="B3 futures — {{ row.session_label or row.session_status }}">
+                    {{ row.underlying or row.futures_root or 'FUT' }} · {{ row.session_label or row.session_status|upper }}
+                </span>
+                {% endif %}
+                {% if row.asset_class == 'crypto' %}
+                <span class="bb-crypto-badge" title="Binance spot — read-only, paper fills only">
+                    {{ row.binance_pair or 'CRYPTO' }} · READ
+                </span>
+                {% endif %}
+                {% if row.sector and row.asset_class != 'crypto' %}
+                <span class="bb-sector">{{ row.sector }}</span>
+                {% endif %}
+            </td>
+            <td class="bb-score" style="text-align:right">
+                <strong class="{% if (row.watch_score or row.idea_score or 0) >= 60 %}bb-score-high{% elif (row.watch_score or row.idea_score or 0) >= 40 %}bb-score-mid{% else %}bb-score-low{% endif %}">
+                    {{ row.watch_score or row.idea_score or 0 }}
+                </strong>
+            </td>
+            <td style="text-align:right">
+                {% if row.asset_class == 'crypto' %}—{% elif row.atr_pct is defined and row.atr_pct is not none %}{{ "%.1f"|format(row.atr_pct) }}%{% else %}—{% endif %}
+            </td>
+            <td style="text-align:right">
+                {% if row.asset_class == 'crypto' %}—{% elif row.est_cost_brl is defined and row.est_cost_brl is not none %}R${{ "%.0f"|format(row.est_cost_brl) }}{% else %}—{% endif %}
+            </td>
+            <td class="bb-price bb-quote-last" style="text-align:right">
+                {% if row.last is defined and row.last is not none %}
+                {% if row.symbol and row.symbol.startswith('WIN') %}{{ "%.0f"|format(row.last) }}
+                {% elif row.symbol and row.symbol.startswith('WDO') %}{{ "%.3f"|format(row.last) }}
+                {% elif row.asset_class == 'crypto' %}{{ "%.2f"|format(row.last) }}
+                {% else %}{{ "%.2f"|format(row.last) }}{% endif %}
+                {% else %}—{% endif %}
+            </td>
+        </tr>
+{% endmacro %}
+
 {% if symbols %}
 <span data-count="{{ symbols|length }}" hidden></span>
 <div class="bb-watch-toolbar">
@@ -9,25 +59,25 @@
         <tr>
             <th class="bb-sortable" data-sort="symbol" data-sort-type="text">
                 Symbol
-                {% with key="watchlist.symbol" %}
+                {% with tip_key="watchlist.symbol" %}
                 {% include "partials/help_tip.html" %}
                 {% endwith %}
             </th>
-            <th class="bb-sortable" data-sort="idea_score" data-sort-type="number" style="text-align:right">
+            <th class="bb-sortable" data-sort="watch_score" data-sort-type="number" style="text-align:right">
                 Score
-                {% with key="watchlist.score" %}
+                {% with tip_key="watchlist.score" %}
                 {% include "partials/help_tip.html" %}
                 {% endwith %}
             </th>
             <th class="bb-sortable" data-sort="atr_pct" data-sort-type="number" style="text-align:right">
                 ATR%
-                {% with key="watchlist.atr_pct" %}
+                {% with tip_key="watchlist.atr_pct" %}
                 {% include "partials/help_tip.html" %}
                 {% endwith %}
             </th>
             <th class="bb-sortable" data-sort="est_cost_brl" data-sort-type="number" style="text-align:right">
                 Cost
-                {% with key="watchlist.cost" %}
+                {% with tip_key="watchlist.cost" %}
                 {% include "partials/help_tip.html" %}
                 {% endwith %}
             </th>
@@ -35,45 +85,26 @@
         </tr>
     </thead>
     <tbody>
-        {% for row in symbols %}
-        <tr class="bb-watch-row bb-bias-{{ row.bias or 'neutral' }}{% if active_symbol == row.symbol %} is-active{% endif %}"
-            data-symbol="{{ row.symbol }}"
-            data-symbol-url="/board/partials/symbol/{{ row.symbol }}"
-            data-sort-symbol="{{ row.symbol }}"
-            data-sort-idea_score="{{ row.idea_score or 0 }}"
-            data-sort-atr_pct="{{ row.atr_pct if row.atr_pct is not none else -1 }}"
-            data-sort-est_cost_brl="{{ row.est_cost_brl if row.est_cost_brl is not none else -1 }}"
-            data-sort-last="{{ row.last if row.last is defined and row.last is not none else -1 }}"
-            role="button"
-            tabindex="0">
-            <td>
-                <span class="bb-sym">{{ row.symbol }}</span>
-                {% if row.sector %}
-                <span class="bb-sector">{{ row.sector }}</span>
-                {% endif %}
-            </td>
-            <td class="bb-score" style="text-align:right">
-                <strong class="{% if (row.idea_score or 0) >= 60 %}bb-score-high{% elif (row.idea_score or 0) >= 40 %}bb-score-mid{% else %}bb-score-low{% endif %}">
-                    {{ row.idea_score or 0 }}
-                </strong>
-            </td>
-            <td style="text-align:right">
-                {% if row.atr_pct is not none %}{{ "%.1f"|format(row.atr_pct) }}%{% else %}—{% endif %}
-            </td>
-            <td style="text-align:right">
-                {% if row.est_cost_brl is not none %}R${{ "%.0f"|format(row.est_cost_brl) }}{% else %}—{% endif %}
-            </td>
-            <td class="bb-price bb-quote-last" style="text-align:right">
-                {% if row.last is defined and row.last is not none %}
-                {{ "%.2f"|format(row.last) }}
-                {% else %}—{% endif %}
-            </td>
-        </tr>
+        {% for row in equity_rows or symbols %}
+        {{ watch_row(row) }}
         {% endfor %}
+        {% if futures_rows %}
+        <tr class="bb-watch-section-row"><td colspan="5">Futures</td></tr>
+        {% for row in futures_rows %}
+        {{ watch_row(row) }}
+        {% endfor %}
+        {% endif %}
+        {% if crypto_rows %}
+        <tr class="bb-watch-section-row bb-watch-section-crypto"><td colspan="5">Crypto · read-only</td></tr>
+        {% for row in crypto_rows %}
+        {{ watch_row(row) }}
+        {% endfor %}
+        {% endif %}
     </tbody>
 </table>
 {% else %}
-<div class="bb-watch-empty">
-    <p>No symbols in universe.</p>
+<div class="bb-watch-empty bb-empty-state">
+    <p class="bb-empty-title">No symbols loaded</p>
+    <p class="bb-empty-hint">Run <strong>Scan</strong> in the toolbar or check API health.</p>
 </div>
 {% endif %}

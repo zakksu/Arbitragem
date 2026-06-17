@@ -9,7 +9,8 @@ from src.config import get_settings
 from src.integrations.clear_api import get_clear_client
 from src.integrations.ollama_client import get_ollama_client
 from src.integrations.profit_bridge import get_profit_client
-from src.integrations.profit_dll_detect import detect_profit_dll
+from src.integrations.profit_dll_detect import detect_profit_dll, probe_dll_loadable
+from src.services.profit_accounts import profit_account_checklist, resolve_profit_account
 
 
 def _resolve_dll_path() -> tuple[str, bool, dict]:
@@ -31,6 +32,9 @@ def build_setup_status() -> dict:
     profit = get_profit_client()
     clear = get_clear_client()
     dll_path, dll_exists, dll_detect = _resolve_dll_path()
+    profitchart = settings.profitchart_exe.strip()
+    profitchart_ok = bool(profitchart and Path(profitchart).exists())
+    profit_acct = resolve_profit_account(settings)
 
     steps = [
         {
@@ -50,6 +54,20 @@ def build_setup_status() -> dict:
             "auto_detected": dll_detect.get("source") != "env" and dll_exists,
         },
         {
+            "id": "profitchart",
+            "label": "ProfitChart install",
+            "ok": profitchart_ok,
+            "detail": profitchart or "PROFITCHART_EXE not set (optional)",
+            "action": "Set PROFITCHART_EXE in .env — dev.py co-starts on Windows",
+        },
+        {
+            "id": "profit_account",
+            "label": "ProfitChart account",
+            "ok": bool(settings.profit_password.strip()),
+            "detail": profit_acct["display"],
+            "action": "Set PROFIT_PASSWORD in .env; select matching account in Profit Chart Trading panel",
+        },
+        {
             "id": "clear_api",
             "label": "Clear Smart Trader API",
             "ok": clear.is_configured(),
@@ -59,13 +77,23 @@ def build_setup_status() -> dict:
         {
             "id": "ollama",
             "label": "Ollama AI",
-            "ok": get_ollama_client().is_available() if settings.ollama_enabled else False,
-            "detail": settings.ollama_model if settings.ollama_enabled else "disabled",
+            "ok": get_ollama_client().is_available() if settings.ollama_runtime_enabled else False,
+            "detail": settings.ollama_model if settings.ollama_runtime_enabled else "disabled",
             "action": "ollama serve && ollama pull llama3.2",
+        },
+        {
+            "id": "autonomous_ops",
+            "label": "Autonomous scheduler",
+            "ok": settings.autonomous_engine_enabled and settings.autonomous_rankings_sync,
+            "detail": (
+                f"Rankings sync every {settings.rankings_sync_interval_hours}h · "
+                f"WF promote={'on' if settings.walk_forward_auto_promote else 'off'}"
+            ),
+            "action": "POST /api/v1/backtest/rankings/sync or POST /api/v1/autonomous/run",
         },
     ]
 
-    ready_live = steps[0]["ok"] and steps[2]["ok"] and not settings.paper_trading_mode
+    ready_live = steps[0]["ok"] and steps[3]["ok"] and not settings.paper_trading_mode
 
     return {
         "version": settings.app_env,
@@ -73,8 +101,18 @@ def build_setup_status() -> dict:
         "paper_trading_mode": settings.paper_trading_mode,
         "scanner_mode": settings.scanner_mode,
         "execution_backend": settings.execution_backend,
+        "profit_account": profit_acct,
+        "profit_accounts": profit_account_checklist(settings),
         "steps": steps,
-        "profit_dll_detect": dll_detect,
+        "profit_dll_detect": {**dll_detect, "probe": probe_dll_loadable(dll_path or None)},
+        "autonomous_ops": {
+            "engine_enabled": settings.autonomous_engine_enabled,
+            "rankings_sync": settings.autonomous_rankings_sync,
+            "rankings_sync_interval_hours": settings.rankings_sync_interval_hours,
+            "walk_forward_auto_promote": settings.walk_forward_auto_promote,
+            "walk_forward_use_bridge_candles": settings.walk_forward_use_bridge_candles,
+            "autonomy_motor_enabled": settings.autonomy_enabled,
+        },
         "ready_for_paper": steps[0]["ok"] or True,
         "ready_for_live": ready_live,
         "backtest_gates": {

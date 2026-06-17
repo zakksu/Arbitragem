@@ -135,6 +135,38 @@ class OptimizationRun(Base):
     strategy: Mapped["Strategy | None"] = relationship(back_populates="optimization_runs")
 
 
+class BacktestRanking(Base):
+    """Strategy Lab ranking row — synced from WFO / backtest runs."""
+
+    __tablename__ = "backtest_rankings"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    strategy_id: Mapped[int | None] = mapped_column(ForeignKey("strategies.id"), nullable=True)
+    optimization_run_id: Mapped[int | None] = mapped_column(
+        ForeignKey("optimization_runs.id"), nullable=True, index=True
+    )
+    strategy_name: Mapped[str | None] = mapped_column(String(120), nullable=True)
+    symbol: Mapped[str] = mapped_column(String(32), index=True)
+    sector: Mapped[str | None] = mapped_column(String(40), index=True, nullable=True)
+    structure_type: Mapped[str] = mapped_column(String(40), default="scalp_long", index=True)
+    idea_score: Mapped[float] = mapped_column(Float, default=0.0, index=True)
+    wf_score: Mapped[float] = mapped_column(Float, default=0.0, index=True)
+    profit_factor: Mapped[float] = mapped_column(Float, default=0.0)
+    max_drawdown_pct: Mapped[float] = mapped_column(Float, default=0.0)
+    win_rate: Mapped[float] = mapped_column(Float, default=0.0)
+    status: Mapped[str] = mapped_column(String(20), default="candidate", index=True)
+    parameters: Mapped[dict | None] = mapped_column(JSON, nullable=True)
+    fold_results: Mapped[list | None] = mapped_column(JSON, nullable=True)
+    equity_curve: Mapped[list | None] = mapped_column(JSON, nullable=True)
+    parameter_history: Mapped[list | None] = mapped_column(JSON, nullable=True)
+    ollama_commentary: Mapped[str | None] = mapped_column(Text, nullable=True)
+    last_optimized_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True, index=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime, default=datetime.utcnow, onupdate=datetime.utcnow
+    )
+
+
 class ScanResult(Base):
     __tablename__ = "scan_results"
 
@@ -246,6 +278,21 @@ class BoardLayout(Base):
     updated_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 
 
+class MotorJournal(Base):
+    """Append-only trader agent log (Phase B)."""
+
+    __tablename__ = "motor_journal"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    phase: Mapped[str] = mapped_column(String(20), index=True)
+    level: Mapped[str] = mapped_column(String(12), default="info")
+    message: Mapped[str] = mapped_column(Text)
+    symbol: Mapped[str | None] = mapped_column(String(16), nullable=True, index=True)
+    idea_id: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    meta: Mapped[dict | None] = mapped_column(JSON, nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, index=True)
+
+
 def get_engine():
     settings = get_settings()
     connect_args = {}
@@ -291,7 +338,10 @@ def init_db() -> None:
                 conn.commit()
 
     from src.services.board_layout import BoardLayoutService
+    from src.services.journal_maintenance import ensure_journal_indexes
     from src.services.risk_profile import get_or_create_profile
+
+    ensure_journal_indexes()
 
     session = get_session_factory()()
     try:

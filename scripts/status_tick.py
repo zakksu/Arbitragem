@@ -98,6 +98,13 @@ def main() -> int:
     golden_path = _golden_path_summary()
     symbol_factory = _symbol_factory_summary()
     ram_mb = _stack_rss_mb()
+    try:
+        from src.config import get_settings
+        from src.services.resource_profile import profile_snapshot
+
+        resource_profile = profile_snapshot(get_settings())
+    except Exception:
+        resource_profile = None
 
     if args.json:
         payload = {
@@ -109,6 +116,7 @@ def main() -> int:
             "golden_path": golden_path,
             "symbol_factory": symbol_factory,
             "ram_mb": ram_mb,
+            "resource_profile": resource_profile,
         }
         print(json.dumps(payload, indent=2, default=str))
         return 0 if health else 1

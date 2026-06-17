@@ -35,6 +35,14 @@
         <span class="bb-cockpit-label">Margin est.</span>
         <strong>R$ {{ "%.0f"|format(cockpit.margin_estimate_brl) }}</strong>
     </div>
+    {% if sleeves %}
+    <div class="bb-cockpit-metric bb-sleeve-status">
+        <span class="bb-cockpit-label">Sleeves</span>
+        {% for key, label in [('cash', 'CASH'), ('options', 'OPT'), ('pairs', 'PAIR')] %}
+        <span class="bb-sleeve-dot{% if sleeves.get(key, true) %} is-open{% else %} is-paused{% endif %}">{{ label }}</span>
+        {% endfor %}
+    </div>
+    {% endif %}
     <div class="bb-cockpit-gate">
         {% if cockpit.gate_status == 'blocked' %}
         <span class="bb-gate-blocked">GATE BLOCKED</span>

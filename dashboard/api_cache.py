@@ -8,9 +8,14 @@ from typing import Any
 import streamlit as st
 
 from dashboard.utils import api_get
+from src.config import get_settings
 
 _DEFAULT_TTL = 60
 _BOOTSTRAP_TTL = 30
+
+
+def _default_ttl() -> int:
+    return get_settings().streamlit_cache_ttl_sec
 
 
 def _cache_get(key: str) -> Any | None:
@@ -28,7 +33,9 @@ def _cache_set(key: str, data: Any, ttl: int) -> Any:
     return data
 
 
-def cached_get(path: str, params: dict | None = None, ttl: int = _DEFAULT_TTL) -> Any:
+def cached_get(path: str, params: dict | None = None, ttl: int | None = None) -> Any:
+    if ttl is None:
+        ttl = _default_ttl()
     key = f"{path}|{params or {}}"
     hit = _cache_get(key)
     if hit is not None:

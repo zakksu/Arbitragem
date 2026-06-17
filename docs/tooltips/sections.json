@@ -1,0 +1,34 @@
+{
+  "section.help": {
+    "en": "Hover ? icons for EN explanations with PT-BR trading terms.",
+    "pt": "Ajuda contextual"
+  },
+  "section.risk_drawer": {
+    "en": "Risk Profile drawer — max daily loss R$500 default, position caps, kill rules.",
+    "pt": "Painel de risco"
+  },
+  "section.profit_pnl": {
+    "en": "P&L from Profit bridge — no Clear mock; journal fills when bridge offline.",
+    "pt": "P&L via Profit"
+  },
+  "section.history": {
+    "en": "B3 trade history archaeology — 4.2+ from Profit CSV exports.",
+    "pt": "Histórico B3"
+  },
+  "layout.scalp": {
+    "en": "Scalp preset — balanced watchlist, board, and idea stack columns.",
+    "pt": "Layout scalp"
+  },
+  "layout.structure": {
+    "en": "Structure preset — wider board for multi-leg builder and Greeks.",
+    "pt": "Layout estrutura"
+  },
+  "layout.learn": {
+    "en": "Learn preset — hides idea stack; focus on Trade Product and education rail.",
+    "pt": "Layout aprendizado"
+  },
+  "toolbar.shortcuts": {
+    "en": "S scan · K kill toggle · 1-9 watchlist row · R refresh · Enter top idea.",
+    "pt": "Atalhos de teclado"
+  }
+}

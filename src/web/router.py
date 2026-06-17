@@ -45,7 +45,7 @@ def _pulse_rail_with_social_sync() -> dict[str, Any]:
     from src.services.social_signals import get_social_signals
 
     pulse = get_pulse_rail()
-    if not get_settings().social_signals_enabled:
+    if not get_settings().social_signals_runtime_enabled:
         return pulse
     social = get_social_signals(limit=8)
     out = dict(pulse)
@@ -263,7 +263,7 @@ async def board_page(request: Request):
     return TEMPLATES.TemplateResponse(
         request,
         "board.html",
-        {"golden_path_mode": settings.golden_path_mode},
+        {"golden_path_mode": settings.golden_path_mode, "low_ram_mode": settings.low_ram_enabled},
     )
 
 
@@ -1059,7 +1059,7 @@ async def trader_desk_stream(request: Request):
 
     async def event_generator():
         settings = get_settings()
-        interval = 30 if settings.golden_path_mode else 10
+        interval = settings.desk_sse_interval_sec
         while True:
             if await request.is_disconnected():
                 break

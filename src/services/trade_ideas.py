@@ -15,6 +15,14 @@ from src.services.idea_score import score_idea
 
 logger = get_logger(__name__)
 
+_PAPER_SEED_PRICE = {
+    "PETR4": 35.0,
+    "VALE3": 58.0,
+    "ITUB4": 32.0,
+    "BBDC4": 14.0,
+    "ABEV3": 12.0,
+}
+
 
 class TradeIdeaService:
     def __init__(self, session: Session) -> None:
@@ -173,6 +181,46 @@ class TradeIdeaService:
         logger.info("structure_idea_created", symbol=sym, structure=structure)
         return idea
 
+    def quick_seed_paper_idea(self, symbol: str, *, side: str = "long") -> TradeIdea:
+        """Fast paper motor seed — no backtest/IV calls."""
+        sym = symbol.upper()
+        if self._has_open_idea(sym, "scalp_long"):
+            raise ValueError(f"open idea exists for {sym}")
+
+        last = _PAPER_SEED_PRICE.get(sym, 30.0)
+        if self.profit.is_available():
+            quote = self.profit.get_quote(sym)
+            if quote and quote.last:
+                last = float(quote.last)
+        tick = 0.01 if last < 50 else 0.05
+        stop_p = round(last - 5 * tick, 4)
+        target_p = round(last + 8 * tick, 4)
+        idea = TradeIdea(
+            symbol=sym,
+            structure_type="scalp_long",
+            side=side,
+            status="backtested",
+            reliability=60.0,
+            entry_price=last,
+            stop_price=stop_p,
+            target_price=target_p,
+            stop_ticks=5,
+            target_ticks=8,
+            title=f"Paper motor — {sym} scalp",
+            rationale_tags=["paper_motor", "backtest_pass"],
+            legs=[{"symbol": sym, "side": "buy", "quantity": 100, "leg_type": "cash"}],
+            backtest_proof={
+                "profit_factor": 1.5,
+                "max_drawdown_pct": 5.0,
+                "win_rate": 55.0,
+                "source": "paper_motor",
+            },
+        )
+        self.session.add(idea)
+        self.session.commit()
+        self.session.refresh(idea)
+        return idea
+
     def _iv_rank_tags(self, symbol: str) -> list[str]:
         try:
             iv = self.profit.get_iv_rank(symbol)
@@ -268,14 +316,13 @@ class TradeIdeaService:
     def confirm_idea(self, idea_id: int, paper_override: bool = False) -> TradeIdea:
         """Lifecycle: detected/backtested → confirmed (A2.10). Execution is separate."""
         from src.config import get_settings
-        from src.services.kill_switch import ensure_not_blocked
         from src.services.risk_cockpit import confirm_blocked_by_portfolio
-
-        ensure_not_blocked("confirm")
+        from src.services.trading_sleeves import ensure_sleeve_open, sleeve_for_idea
 
         idea = self.session.get(TradeIdea, idea_id)
         if not idea:
             raise ValueError("Idea not found")
+        ensure_sleeve_open(sleeve_for_idea(self.to_dict(idea)), "confirm")
         if idea.status in ("executed", "rejected", "confirmed"):
             raise ValueError(f"Idea already {idea.status}")
         if idea.status not in ("detected", "backtested"):
@@ -292,15 +339,24 @@ class TradeIdeaService:
         if idea.backtest_proof and self.passes_backtest_gate(idea.backtest_proof):
             idea.status = "backtested"
 
-        block_msg = confirm_blocked_by_portfolio(self.session, idea.legs)
-        if block_msg:
-            raise ValueError(block_msg)
-
         settings = get_settings()
+        skip_portfolio_gate = paper_override or (
+            settings.paper_trading_mode and settings.auto_trading_on_sleeves
+        )
+        if not skip_portfolio_gate:
+            block_msg = confirm_blocked_by_portfolio(self.session, idea.legs)
+            if block_msg:
+                raise ValueError(block_msg)
+
+        from src.services.crypto_paper import idea_uses_crypto
+
+        if idea_uses_crypto(idea) and not settings.paper_trading_mode:
+            raise ValueError("Crypto ideas are paper-only — enable PAPER_TRADING_MODE")
+
         idea.status = "confirmed"
         idea.confirmed_at = datetime.utcnow()
 
-        if settings.execution_backend == "ntsl":
+        if settings.execution_backend == "ntsl" and not idea_uses_crypto(idea):
             from src.services.ntsl_templates import ntsl_for_idea
 
             ntsl_code = ntsl_for_idea(idea)
@@ -334,28 +390,56 @@ class TradeIdeaService:
     def execute_idea(self, idea_id: int) -> TradeIdea:
         """Lifecycle: confirmed → executed with paper slippage (A2.6a)."""
         from src.config import get_settings
-        from src.services.kill_switch import ensure_not_blocked
-
-        ensure_not_blocked("execute")
+        from src.services.trading_sleeves import ensure_sleeve_open, sleeve_for_idea
 
         idea = self.session.get(TradeIdea, idea_id)
         if not idea:
             raise ValueError("Idea not found")
+        ensure_sleeve_open(sleeve_for_idea(self.to_dict(idea)), "execute")
         if idea.status != "confirmed":
             raise ValueError(f"Idea must be confirmed before execute (status={idea.status})")
 
         settings = get_settings()
-        if settings.paper_trading_mode:
+        paper_motor = settings.paper_trading_mode and settings.auto_trading_on_sleeves
+
+        if not paper_motor:
+            from src.services.risk_cockpit import confirm_blocked_by_portfolio
+            from src.services.risk_summary import build_risk_summary
+
+            risk = build_risk_summary(self.session)
+            if not risk.get("can_execute_ideas"):
+                raise ValueError("Risk gate blocked — execute not allowed")
+            block_msg = confirm_blocked_by_portfolio(self.session, idea.legs)
+            if block_msg:
+                raise ValueError(block_msg)
+
+        backend = (settings.execution_backend or "profit").lower()
+
+        from src.services.crypto_paper import idea_uses_crypto
+
+        if idea_uses_crypto(idea):
+            if not settings.paper_trading_mode:
+                raise ValueError("Crypto symbols are paper-only — enable PAPER_TRADING_MODE")
+            if not settings.crypto_paper_enabled:
+                raise ValueError("Crypto paper trading is disabled")
+            self._log_paper_trades(idea)
+            idea.rationale = (
+                (idea.rationale or "")
+                + "\n[Paper crypto] Filled via Binance quote stub — no Clear/Profit route."
+            )
+        elif backend == "profit":
+            self._execute_profit_legs(idea)
+        elif settings.paper_trading_mode:
             self._log_paper_trades(idea)
             idea.rationale = (
                 (idea.rationale or "")
                 + "\n[Paper] Filled with spread + 1 tick slippage per leg."
             )
-        elif settings.execution_backend == "clear":
+        elif backend == "clear":
             self._execute_clear_legs(idea)
         else:
             self._log_paper_trades(idea)
-            idea.rationale = (idea.rationale or "") + "\n[Paper] Filled (NTSL arm in Profit for live)."
+            idea.rationale = (idea.rationale or "") + "\n[Paper] Filled (journal only)."
 
         idea.status = "executed"
         idea.executed_at = datetime.utcnow()
@@ -586,8 +670,9 @@ class TradeIdeaService:
         return ntsl_for_idea(idea)
 
     def _log_paper_trades(self, idea: TradeIdea) -> None:
-        from src.integrations.clear_api import ClearOrder, get_clear_client
         from src.models import JournalEntry, Trade
+        from src.services.crypto_paper import quote_for_symbol
+        from src.services.crypto_universe import is_crypto
         from src.services.paper_execution import paper_fill_price
 
         fills: list[dict] = []
@@ -596,13 +681,13 @@ class TradeIdeaService:
             if side == "flat":
                 continue
             qty = int(leg.get("quantity", 100))
-            sym = leg.get("symbol", idea.symbol)
-            quote = self.profit.get_quote(sym)
+            sym = str(leg.get("symbol", idea.symbol))
+            quote = quote_for_symbol(sym)
             price = paper_fill_price(quote, side, idea.entry_price)
-            get_clear_client().place_order(ClearOrder(symbol=sym, side=side, quantity=qty))
+            source = "paper_crypto" if is_crypto(sym) else "paper"
             trade = Trade(
                 external_id=f"idea-{idea.id}-{sym}-{side}",
-                source="paper",
+                source=source,
                 symbol=sym,
                 side=side,
                 quantity=qty,
@@ -629,23 +714,104 @@ class TradeIdeaService:
             )
         )
 
+    def _execute_profit_legs(self, idea: TradeIdea) -> None:
+        """Submit sized legs to Profit bridge — sim fill or Chart Trading ticket."""
+        from src.models import JournalEntry, Trade
+        from src.services.capital_manager import apply_sizing_to_legs
+        from src.services.profit_execution import submit_order
+
+        idea_dict = self.to_dict(idea)
+        sized = apply_sizing_to_legs(idea_dict)
+        idea.legs = sized
+        fills: list[dict] = []
+
+        for leg in sized:
+            side = leg.get("side", "buy")
+            if side == "flat":
+                continue
+            sym = str(leg.get("symbol", idea.symbol))
+            qty = int(leg.get("quantity", 100))
+            result = submit_order(
+                symbol=sym,
+                side=side,
+                quantity=qty,
+                idea_id=idea.id,
+                stop_price=idea.stop_price,
+                target_price=idea.target_price,
+            )
+            fills.append(result)
+            fill_price = float(result.get("fill_price") or idea.entry_price or 0)
+            status = result.get("status", "pending")
+            if status == "filled":
+                trade = Trade(
+                    external_id=f"profit-{result.get('ticket_id', idea.id)}-{sym}",
+                    source="profit",
+                    symbol=sym,
+                    side=side,
+                    quantity=qty,
+                    price=fill_price,
+                    fees=0.0,
+                    executed_at=datetime.utcnow(),
+                    raw_payload={"ticket": result, "idea_id": idea.id},
+                )
+                self.session.add(trade)
+
+        hints = [f.get("chart_trading_hint", "") for f in fills if f.get("chart_trading_hint")]
+        ticket_ids = [f.get("ticket_id") for f in fills if f.get("ticket_id")]
+        idea.rationale = (
+            (idea.rationale or "")
+            + f"\n[Profit] {len(fills)} ticket(s) — ids {', '.join(ticket_ids)}."
+            + (f" Chart: {' | '.join(hints)}" if hints else "")
+            + " See data/profit_outbox/next_order.json"
+        )
+        self.session.add(
+            JournalEntry(
+                title=f"Profit execute #{idea.id} {idea.symbol}",
+                content=idea.rationale,
+                tags=["idea", "profit", idea.structure_type or "scalp"],
+                ai_generated=False,
+            )
+        )
+
     def _execute_clear_legs(self, idea: TradeIdea) -> None:
         from src.integrations.clear_api import ClearOrder, get_clear_client
+        from src.models import JournalEntry
+        from src.services.crypto_paper import idea_uses_crypto
+        from src.services.journal import JournalService
+
+        if idea_uses_crypto(idea):
+            raise ValueError("Clear API does not support crypto symbols")
 
         client = get_clear_client()
+        if not client.is_configured():
+            raise ValueError("Clear API not configured — set CLEAR_API_KEY in .env")
+        order_results: list[dict] = []
         for leg in idea.legs or []:
             side = leg.get("side", "buy")
             if side == "flat":
                 continue
-            client.place_order(
+            sym = str(leg.get("symbol", idea.symbol))
+            result = client.place_order(
                 ClearOrder(
-                    symbol=leg.get("symbol", idea.symbol),
+                    symbol=sym,
                     side=side,
                     quantity=int(leg.get("quantity", 100)),
                 )
             )
-        idea.status = "executed"
-        idea.executed_at = datetime.utcnow()
+            order_results.append({"symbol": sym, "side": side, **result})
+        synced = JournalService(self.session).sync_trades_from_clear()
+        idea.rationale = (
+            (idea.rationale or "")
+            + f"\n[Clear] {len(order_results)} leg(s) submitted; journal synced {synced} trade(s)."
+        )
+        self.session.add(
+            JournalEntry(
+                title=f"Idea #{idea.id} Clear execute",
+                content=idea.rationale or idea.title or "",
+                tags=["idea", "clear", idea.structure_type or "scalp"],
+                ai_generated=False,
+            )
+        )
 
     def to_dict(self, idea: TradeIdea) -> dict:
         proof = idea.backtest_proof or {}
@@ -682,4 +848,6 @@ class TradeIdeaService:
             "executed_at": idea.executed_at.isoformat() if idea.executed_at else None,
         }
         idea_dict["idea_score"] = score_idea(idea_dict)
-        return idea_dict
+        from src.services.idea_levels import enrich_idea_levels
+
+        return enrich_idea_levels(idea_dict)

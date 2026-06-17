@@ -7,6 +7,7 @@ import streamlit as st
 from dashboard.api_cache import get_sidebar_context, invalidate_cache, refresh_integrations
 from dashboard.components.alerts import render_alerts_sidebar
 from dashboard.utils import api_post
+from src.config import get_settings
 
 PAGES = [
     "Home",
@@ -19,6 +20,14 @@ PAGES = [
     "Ollama Insights",
     "Settings",
 ]
+
+SLIM_PAGES = ["Home", "Performance", "Journal", "Settings"]
+
+
+def _nav_pages() -> list[str]:
+    if get_settings().streamlit_slim_enabled:
+        return SLIM_PAGES
+    return PAGES
 
 
 def _integration_dots(health: dict) -> str:
@@ -58,19 +67,20 @@ def render_sidebar() -> str:
         st.sidebar.caption("Run: python scripts/dev.py start")
 
     st.sidebar.divider()
+    pages = _nav_pages()
     nav_override = st.session_state.pop("nav_page", None)
-    if nav_override in PAGES:
+    if nav_override in pages:
         page = st.sidebar.radio(
             "Navigate",
-            PAGES,
-            index=PAGES.index(nav_override),
+            pages,
+            index=pages.index(nav_override),
             label_visibility="collapsed",
             key="main_nav",
         )
     else:
         page = st.sidebar.radio(
             "Navigate",
-            PAGES,
+            pages,
             label_visibility="collapsed",
             key="main_nav",
         )

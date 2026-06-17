@@ -61,7 +61,7 @@ def test_list_ideas_for_stack_dedupes_symbol(client):
     assert petr[0].reliability == 90
 
 
-def test_kill_switch_does_not_duplicate_rationale(client):
+def test_kill_switch_pauses_sleeves_without_rejecting_ideas(client):
     session = get_session_factory()()
     idea = TradeIdea(
         symbol="VALE3",
@@ -75,12 +75,13 @@ def test_kill_switch_does_not_duplicate_rationale(client):
     iid = idea.id
     session.close()
 
-    client.post("/api/v1/risk/kill-switch", json={"active": True, "reason": "test"})
+    r1 = client.post("/api/v1/risk/kill-switch", json={"active": True, "reason": "test"})
+    assert r1.json()["rejected_ideas"] == 0
     client.post("/api/v1/risk/kill-switch", json={"active": True, "reason": "test2"})
     client.post("/api/v1/risk/kill-switch", json={"active": False})
 
     session = get_session_factory()()
     updated = session.get(TradeIdea, iid)
     session.close()
-    assert updated.status == "rejected"
-    assert updated.rationale.count("[Kill switch]") == 1
+    assert updated.status == "backtested"
+    assert updated.rationale == "Original thesis"

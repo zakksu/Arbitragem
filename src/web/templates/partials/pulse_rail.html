@@ -1,39 +1,180 @@
 {% if pulse %}
-<div class="bb-pulse-rail">
-    <div class="bb-pulse-third bb-pulse-news">
+<div class="bb-pulse-rail bb-pulse-footer-grid">
+    <div class="bb-pulse-third bb-pulse-risk bb-accent-rail">
         <div class="bb-pulse-head">
-            News
-            {% with tip="Headlines with market effect summary — read-only.", pt="Notícias" %}
+            <span>Risk Management</span>
+            {% with key="pulse.risk" %}
             {% include "partials/help_tip.html" %}
             {% endwith %}
+        </div>
+        {% if cockpit %}
+        <div class="bb-risk-cockpit bb-risk-{{ cockpit.gate_status }} bb-risk-inline">
+            <div class="bb-cockpit-metric">
+                <span class="bb-cockpit-label">Day P&amp;L</span>
+                <strong class="{% if cockpit.day_pnl >= 0 %}bb-pnl-pos{% else %}bb-pnl-neg{% endif %}">
+                    R$ {{ "%.2f"|format(cockpit.day_pnl) }}
+                </strong>
+            </div>
+            <div class="bb-cockpit-metric">
+                <span class="bb-cockpit-label">Net Δ</span>
+                <strong>{{ "%+.2f"|format(cockpit.net_delta) }}</strong>
+                <em>/ ±{{ cockpit.max_net_delta }}</em>
+            </div>
+            <div class="bb-cockpit-metric">
+                <span class="bb-cockpit-label">Margin</span>
+                <strong>R$ {{ "%.0f"|format(cockpit.margin_estimate_brl) }}</strong>
+            </div>
+            {% if sleeves %}
+            <div class="bb-cockpit-metric bb-sleeve-status">
+                <span class="bb-cockpit-label">Sleeves</span>
+                {% for key, label in [('cash', 'C'), ('options', 'O'), ('pairs', 'P')] %}
+                <span class="bb-sleeve-dot{% if sleeves.get(key, true) %} is-open{% else %} is-paused{% endif %}" title="{{ key }}">{{ label }}</span>
+                {% endfor %}
+            </div>
+            {% endif %}
+            {% if autonomy_enabled %}
+            <div class="bb-cockpit-metric">
+                <span class="bb-pill bb-pill-auto">AUTO</span>
+            </div>
+            {% endif %}
+            <div class="bb-cockpit-gate">
+                {% if cockpit.gate_status == 'blocked' %}
+                <span class="bb-gate-blocked">BLOCKED</span>
+                {% elif cockpit.gate_status == 'warning' %}
+                <span class="bb-gate-warn">WARN</span>
+                {% else %}
+                <span class="bb-gate-ok">OK</span>
+                {% endif %}
+            </div>
+        </div>
+        {% else %}
+        <p class="bb-pulse-body bb-muted">Risk cockpit loading…</p>
+        {% endif %}
+    </div>
+    <div class="bb-pulse-third bb-pulse-desk bb-accent-rail">
+        <div class="bb-pulse-head">
+            <span>Positions &amp; Trades</span>
+            {% with key="pulse.desk" %}
+            {% include "partials/help_tip.html" %}
+            {% endwith %}
+            {% if orchestrator and orchestrator.active %}
+            <span class="bb-pill bb-pill-auto" title="Orchestrator running">MOTOR</span>
+            {% endif %}
+        </div>
+        {% if desk %}
+        <div class="bb-trading-desk">
+            <div class="bb-desk-section">
+                <strong>Positions ({{ desk.positions_count }})</strong>
+                {% if desk.positions %}
+                <ul class="bb-desk-list">
+                    {% for p in desk.positions[:4] %}
+                    <li>
+                        <span class="bb-desk-sym">{{ p.symbol }}</span>
+                        {{ p.quantity }} @ {{ "%.2f"|format(p.avg_price) }}
+                        {% if p.unrealized_pnl is defined %}
+                        <em class="{% if p.unrealized_pnl >= 0 %}bb-pnl-pos{% else %}bb-pnl-neg{% endif %}">
+                            {{ "%+.2f"|format(p.unrealized_pnl) }}
+                        </em>
+                        {% endif %}
+                    </li>
+                    {% endfor %}
+                </ul>
+                {% else %}
+                <p class="bb-muted">Flat — no open positions</p>
+                {% endif %}
+            </div>
+            <div class="bb-desk-section">
+                <strong>Open / confirmed ({{ desk.orders_count }})</strong>
+                {% if desk.open_orders %}
+                <ul class="bb-desk-list">
+                    {% for o in desk.open_orders[:4] %}
+                    <li>
+                        <span class="bb-desk-sym">{{ o.symbol }}</span>
+                        {{ o.side|upper }} {{ o.quantity }}
+                        <em>#{{ o.idea_id }}</em>
+                    </li>
+                    {% endfor %}
+                </ul>
+                {% else %}
+                <p class="bb-muted">No pending confirms</p>
+                {% endif %}
+            </div>
+            <div class="bb-desk-section">
+                <strong>Profit tickets ({{ desk.profit_pending|length if desk.profit_pending else 0 }})</strong>
+                {% if desk.profit_pending %}
+                <ul class="bb-desk-list">
+                    {% for t in desk.profit_pending[:3] %}
+                    <li>
+                        <span class="bb-desk-sym">{{ t.symbol }}</span>
+                        {{ t.chart_trading_hint or (t.side|upper ~ ' ' ~ t.quantity) }}
+                        <em>{{ t.status }}</em>
+                    </li>
+                    {% endfor %}
+                </ul>
+                {% endif %}
+            </div>
+            <div class="bb-desk-section">
+                <strong>Today ({{ desk.trades_count }})</strong>
+                {% if desk.today_trades %}
+                <ul class="bb-desk-list">
+                    {% for t in desk.today_trades[:5] %}
+                    <li>
+                        <time>{{ t.executed_at }}</time>
+                        <span class="bb-desk-sym">{{ t.symbol }}</span>
+                        {{ t.side|upper }} {{ t.quantity }} @ {{ "%.2f"|format(t.price) }}
+                        {% if t.pnl is not none %}
+                        <em class="{% if t.pnl >= 0 %}bb-pnl-pos{% else %}bb-pnl-neg{% endif %}">
+                            R$ {{ "%.2f"|format(t.pnl) }}
+                        </em>
+                        {% endif %}
+                    </li>
+                    {% endfor %}
+                </ul>
+                {% else %}
+                <p class="bb-muted">No fills yet today</p>
+                {% endif %}
+            </div>
+        </div>
+        {% else %}
+        <p class="bb-muted">Desk loading…</p>
+        {% endif %}
+    </div>
+    <div class="bb-pulse-third bb-pulse-news-cal bb-accent-rail">
+        <div class="bb-pulse-head">
+            <span>News &amp; Calendar</span>
+            {% with key="pulse.news" %}
+            {% include "partials/help_tip.html" %}
+            {% endwith %}
+            {% if pulse.social_signals %}
+            {% with key="pulse.social" %}
+            {% include "partials/help_tip.html" %}
+            {% endwith %}
+            {% endif %}
         </div>
         <p class="bb-pulse-title">{{ pulse.news.headline }}</p>
         <p class="bb-pulse-body">{{ pulse.news.summary }}</p>
-    </div>
-    <div class="bb-pulse-third bb-pulse-cal">
-        <div class="bb-pulse-head">
-            Calendar
-            {% with tip="Next 48h macro and earnings events.", pt="Calendário econômico" %}
-            {% include "partials/help_tip.html" %}
-            {% endwith %}
+        {% if pulse.social_signals %}
+        <div class="bb-social-chips" aria-label="Social signals (read-only)">
+            {% for sig in pulse.social_signals %}
+            <span class="bb-social-chip bb-social-{{ sig.source }} bb-social-{{ sig.sentiment or 'neutral' }}"
+                  title="Read-only signal — never auto-trades">
+                <em class="bb-social-src">{{ sig.source }}</em>
+                {% if sig.handle %}<strong class="bb-social-handle">@{{ sig.handle|replace('@', '') }}</strong>{% endif %}
+                <span class="bb-social-text">{{ sig.text }}</span>
+            </span>
+            {% endfor %}
         </div>
+        {% if pulse.social_disclaimer %}
+        <p class="bb-social-disclaimer bb-muted">{{ pulse.social_disclaimer }}</p>
+        {% endif %}
+        {% endif %}
         <ul class="bb-pulse-events">
             {% for ev in pulse.calendar.events %}
-            <li><span class="bb-ev-time">{{ ev.time }}</span> {{ ev.label }}</li>
+            <li><time>{{ ev.time }}</time> {{ ev.label }} <em class="bb-impact-{{ ev.impact }}">{{ ev.impact }}</em></li>
             {% endfor %}
         </ul>
     </div>
-    <div class="bb-pulse-third bb-pulse-lesson">
-        <div class="bb-pulse-head">
-            Lesson
-            {% with tip="Trading axiom / theory — rotatable daily.", pt="Lição" %}
-            {% include "partials/help_tip.html" %}
-            {% endwith %}
-        </div>
-        <p class="bb-pulse-title">{{ pulse.lesson.title }}</p>
-        <p class="bb-pulse-body">{{ pulse.lesson.body }}</p>
-    </div>
 </div>
 {% else %}
-<span class="bb-muted">Pulse rail loading…</span>
+<span class="bb-muted">Pulse rail unavailable</span>
 {% endif %}

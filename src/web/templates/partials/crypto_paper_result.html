@@ -1,0 +1,8 @@
+<div class="bb-crypto-result bb-accent-rail{% if result %} is-success{% else %} is-error{% endif %}">
+    {% if result %}
+    <p><strong>FILLED</strong> · {{ result.side|upper }} {{ result.quantity_crypto }} {{ symbol }} @ ${{ "%.2f"|format(result.expected_fill) }}</p>
+    <p class="bb-muted">Trade #{{ result.trade_id }} · {{ result.source }}</p>
+    {% else %}
+    <p><strong>BLOCKED</strong> · {{ error }}</p>
+    {% endif %}
+</div>

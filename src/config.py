@@ -143,10 +143,75 @@ class Settings(BaseSettings):
 
     # 7.0 — Golden path (PETR4-only local perfection)
     golden_path_mode: bool = False
+    low_ram_mode: bool = False
+    streamlit_slim_mode: bool = False
+    motor_journal_retention_days: int = 30
+    golden_path_sessions_required: int = 5
+    ram_budget_mb: int = 1200
+    symbol_factory_max_per_week: int = 1
+    arbitragem_bg_tests: bool = True
 
     @property
     def golden_path_symbol(self) -> str:
         return "PETR4"
+
+    @property
+    def low_ram_enabled(self) -> bool:
+        """True when LOW_RAM_MODE or GOLDEN_PATH_MODE is on."""
+        return self.low_ram_mode or self.golden_path_mode
+
+    @property
+    def streamlit_slim_enabled(self) -> bool:
+        return self.low_ram_enabled or self.streamlit_slim_mode
+
+    @property
+    def ollama_runtime_enabled(self) -> bool:
+        return self.ollama_enabled and not self.low_ram_enabled
+
+    @property
+    def social_signals_runtime_enabled(self) -> bool:
+        return self.social_signals_enabled and not self.low_ram_enabled
+
+    @property
+    def streamlit_cache_ttl_sec(self) -> int:
+        return 30 if self.low_ram_enabled else 60
+
+    @property
+    def desk_sse_interval_sec(self) -> int:
+        if self.low_ram_enabled:
+            return 60
+        if self.golden_path_mode:
+            return 30
+        return 10
+
+    @property
+    def quotes_heartbeat_sec(self) -> int:
+        return 30 if self.low_ram_enabled else 15
+
+    @property
+    def trader_desk_journal_limit(self) -> int:
+        return 15 if self.low_ram_enabled else 35
+
+    @property
+    def effective_orchestrator_interval_sec(self) -> int:
+        base = self.orchestrator_interval_sec
+        return int(base * 1.5) if self.low_ram_enabled else base
+
+    @property
+    def effective_paper_orchestrator_interval_sec(self) -> int:
+        base = self.paper_orchestrator_interval_sec
+        return int(base * 1.5) if self.low_ram_enabled else base
+
+    @property
+    def effective_optimization_max_workers(self) -> int:
+        return self.resource_profile.max_optimization_workers
+
+    @property
+    def resource_profile(self):
+        """Lazy import — keeps config module light at import time."""
+        from src.services.resource_profile import get_resource_profile
+
+        return get_resource_profile(self)
 
     @property
     def scanner_symbol_list(self) -> list[str]:

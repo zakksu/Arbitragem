@@ -12,7 +12,19 @@
     "pt": "Volatilidade ATR"
   },
   "watchlist.cost": {
-    "en": "Est. commission + slippage per trade (from risk profile).",
+    "en": "Estimated round-trip cost in BRL including slip buffer.",
     "pt": "Custo estimado"
+  },
+  "watchlist.reset_sort": {
+    "en": "Reset column sort to default idea-score ranking.",
+    "pt": "Resetar ordenação"
+  },
+  "watchlist.bias": {
+    "en": "Row color — green long bias, red short, neutral flat.",
+    "pt": "Viés do papel"
+  },
+  "watchlist.futures": {
+    "en": "WIN/WDO mini futures — cyan row + B3 session badge (open/pre/closed).",
+    "pt": "Futuros WIN/WDO"
   }
 }

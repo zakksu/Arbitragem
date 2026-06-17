@@ -40,8 +40,17 @@ class OptimizerService:
         results: list[dict[str, Any]] = []
         best: dict[str, Any] | None = None
 
+        from src.services.resource_profile import get_resource_profile
+
+        prof = get_resource_profile()
+        max_combos = 16 if prof.low_ram else 10_000
+        combo_count = 0
+
         try:
             for combo in itertools.product(*values):
+                if combo_count >= max_combos:
+                    break
+                combo_count += 1
                 params = dict(zip(keys, combo))
                 strategy.parameters = params
                 bt = self.backtest.run_python_backtest(strategy, symbol)
@@ -87,6 +96,13 @@ class OptimizerService:
         keys = list(parameter_space.keys())
         bounds = np.array([parameter_space[k] for k in keys])
         rng = np.random.default_rng(42)
+
+        from src.services.resource_profile import get_resource_profile
+
+        prof = get_resource_profile()
+        if prof.low_ram:
+            generations = min(generations, 5)
+            population = min(population, 8)
 
         def random_individual() -> np.ndarray:
             return rng.uniform(bounds[:, 0], bounds[:, 1])

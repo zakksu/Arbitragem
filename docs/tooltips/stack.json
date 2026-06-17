@@ -1,0 +1,30 @@
+{
+  "stack.filter": {
+    "en": "Idea stack filtered to active watchlist symbol — click Show all to reset.",
+    "pt": "Filtro por papel"
+  },
+  "stack.score": {
+    "en": "Idea score 0–100 — reliability × gates × walk-forward fit.",
+    "pt": "Pontuação da ideia"
+  },
+  "stack.reliability": {
+    "en": "Scanner pattern reliability for this symbol and setup.",
+    "pt": "Confiabilidade do padrão"
+  },
+  "stack.profit_factor": {
+    "en": "Backtest profit factor — gross wins divided by gross losses.",
+    "pt": "Fator de lucro (backtest)"
+  },
+  "stack.drawdown": {
+    "en": "Maximum drawdown (rebaixamento) — peak-to-trough loss in backtest.",
+    "pt": "Rebaixamento máximo"
+  },
+  "stack.confirm": {
+    "en": "Two-step confirm — gates, portfolio check, then paper execute.",
+    "pt": "Confirmar ideia"
+  },
+  "stack.walk_forward": {
+    "en": "Walk-forward folds passed — out-of-sample validation badge.",
+    "pt": "Walk-forward"
+  }
+}

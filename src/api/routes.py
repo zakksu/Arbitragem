@@ -88,7 +88,7 @@ def integrations_status():
         return cache["data"]
 
     data = {
-        "ollama": get_ollama_client().is_available() if settings.ollama_enabled else False,
+        "ollama": get_ollama_client().is_available() if settings.ollama_runtime_enabled else False,
         "profit_bridge": get_profit_client().is_available(),
         "clear_api": get_clear_client().is_configured(),
     }
@@ -107,7 +107,7 @@ def health_check():
     if cache and now - cache["at"] < 30:
         ollama_ok, profit_ok = cache["ollama"], cache["profit"]
     else:
-        ollama_ok = get_ollama_client().is_available() if settings.ollama_enabled else False
+        ollama_ok = get_ollama_client().is_available() if settings.ollama_runtime_enabled else False
         profit_ok = get_profit_client().is_available()
         health_check._cache = {"at": now, "ollama": ollama_ok, "profit": profit_ok}
     return HealthResponse(
@@ -765,13 +765,16 @@ async def stream_quotes(symbols: str | None = None):
 
     async def generate():
         client = get_profit_client()
+        from src.services.resource_profile import get_resource_profile
+
+        poll_sec = get_resource_profile(settings).sse_poll_sec
         if settings.golden_path_mode and not symbols:
             syms = [settings.golden_path_symbol]
         elif symbols:
             syms = [s.strip().upper() for s in symbols.split(",") if s.strip()]
         else:
             syms = symbol_list()
-        heartbeat_sec = 30 if len(syms) <= 1 else 15
+        heartbeat_sec = settings.quotes_heartbeat_sec
         last_heartbeat = time.monotonic()
         while True:
             batch = await asyncio.to_thread(client.get_quotes_batch, syms)
@@ -795,7 +798,7 @@ async def stream_quotes(symbols: str | None = None):
                 yield f"data: {json.dumps({'type': 'heartbeat', 'ts': time.time()})}\n\n"
                 last_heartbeat = now
 
-            await asyncio.sleep(2)
+            await asyncio.sleep(poll_sec)
 
     from fastapi.responses import StreamingResponse
 
@@ -1078,7 +1081,7 @@ def social_signals(limit: int = 12):
     from src.config import get_settings
     from src.services.social_signals import get_social_signals
 
-    if not get_settings().social_signals_enabled:
+    if not get_settings().social_signals_runtime_enabled:
         return {
             "signals": [],
             "count": 0,

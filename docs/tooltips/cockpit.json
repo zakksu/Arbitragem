@@ -1,4 +1,8 @@
 {
+  "cockpit.paper_gate": {
+    "en": "Paper week #3 gate — 10+ structure confirms and 3+ journaled Trade Products before live.",
+    "pt": "Portão da semana paper"
+  },
   "cockpit.paper_mode": {
     "en": "Paper simulates fills without broker risk. Live sends real orders after confirm.",
     "pt": "Simulado vs real"
@@ -22,6 +26,10 @@
   "cockpit.kill": {
     "en": "Pause all strategies and block new confirms.",
     "pt": "Parar tudo"
+  },
+  "cockpit.sleeves": {
+    "en": "Trading sleeves — pause CASH (equities), OPT (options), or PAIR (sector pairs) independently.",
+    "pt": "Mangas de trading"
   },
   "cockpit.risk": {
     "en": "Max daily loss R$500, position caps, cost per trade.",
@@ -54,5 +62,21 @@
   "cockpit.replay_lab": {
     "en": "Sandbox replay job — no live orders; tune speed 1–20×.",
     "pt": "Laboratório de replay"
+  },
+  "cockpit.gate": {
+    "en": "Portfolio gate — OK / WARNING / BLOCKED from net Δ and margin limits.",
+    "pt": "Portão de risco"
+  },
+  "cockpit.sector": {
+    "en": "Top sector concentration % of open notional.",
+    "pt": "Concentração setorial"
+  },
+  "cockpit.scanner": {
+    "en": "Active scanner mode and symbol count (Core14 default).",
+    "pt": "Modo do scanner"
+  },
+  "cockpit.profit_bridge": {
+    "en": "Profit DLL bridge status — OK when Windows PC path is reachable.",
+    "pt": "Ponte Profit"
   }
 }

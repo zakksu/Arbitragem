@@ -1,0 +1,31 @@
+{% if timeline and timeline.events %}
+<p class="bb-muted bb-arch-count">{{ timeline.count }} event(s){% if timeline.symbol_filter %} · {{ timeline.symbol_filter }}{% endif %}</p>
+<table class="bb-arch-table">
+    <thead>
+        <tr>
+            <th>When</th>
+            <th>Symbol</th>
+            <th>Side</th>
+            <th style="text-align:right">Qty</th>
+            <th style="text-align:right">Price</th>
+            <th style="text-align:right">P&amp;L</th>
+        </tr>
+    </thead>
+    <tbody>
+        {% for ev in timeline.events %}
+        <tr>
+            <td><time>{{ ev.executed_at[:10] if ev.executed_at else '—' }}</time></td>
+            <td><span class="bb-desk-sym">{{ ev.symbol }}</span></td>
+            <td class="bb-arch-side-{{ ev.side }}">{{ ev.side|upper }}</td>
+            <td style="text-align:right">{{ ev.quantity }}</td>
+            <td style="text-align:right">{{ "%.2f"|format(ev.price) }}</td>
+            <td style="text-align:right" class="{% if ev.pnl is not none and ev.pnl >= 0 %}bb-pnl-pos{% elif ev.pnl is not none %}bb-pnl-neg{% endif %}">
+                {% if ev.pnl is not none %}R$ {{ "%.2f"|format(ev.pnl) }}{% else %}—{% endif %}
+            </td>
+        </tr>
+        {% endfor %}
+    </tbody>
+</table>
+{% else %}
+<p class="bb-muted">No imported trades yet — upload a Profit trade-list CSV or scan <code>exports/archaeology</code>.</p>
+{% endif %}

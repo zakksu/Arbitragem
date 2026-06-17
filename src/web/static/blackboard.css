@@ -269,6 +269,27 @@ body {
     font-size: 0.8rem;
 }
 
+.bb-empty-state .bb-empty-title {
+    margin: 0 0 0.35rem;
+    color: var(--arb-text);
+    font-weight: 600;
+}
+
+.bb-empty-state .bb-empty-hint {
+    margin: 0;
+    font-size: 0.72rem;
+    line-height: 1.4;
+}
+
+.bb-empty-state kbd {
+    font-family: var(--arb-mono);
+    background: #222;
+    border: 1px solid var(--arb-border);
+    border-radius: 2px;
+    padding: 0.05rem 0.3rem;
+    font-size: 0.68rem;
+}
+
 /* ── Symbol panel (center blackboard) ───────────────────────── */
 
 .bb-symbol-panel {
@@ -581,20 +602,40 @@ body {
 @media (max-width: 768px) {
     .bb-main {
         grid-template-columns: 1fr;
-        grid-template-rows: auto 1fr;
+        grid-template-rows: minmax(140px, 38vh) minmax(220px, 1fr);
     }
 
-    .bb-col-watch,
-    .bb-col-board,
+    .bb-col-watch {
+        display: flex !important;
+        flex-direction: column;
+        max-height: 38vh;
+        border-right: none;
+        border-bottom: 1px solid var(--arb-border);
+    }
+
+    .bb-col-board {
+        display: none !important;
+    }
+
+    .bb-col-ideas {
+        display: flex !important;
+        flex-direction: column;
+        max-height: none;
+        border-top: none;
+    }
+
+    .bb-col-resizer,
     .bb-footer-hint,
     .bb-layout-slot,
     .bb-footer-sectors {
         display: none !important;
     }
 
-    .bb-col-ideas {
-        max-height: none;
-        border-top: none;
+    #trader-desk-slot .bb-desk-blotter,
+    #trader-desk-slot .bb-desk-motor,
+    #trader-desk-slot .bb-archaeology-drawer,
+    #trader-desk-slot .bb-market-context {
+        display: none;
     }
 
     #risk-cockpit-wrap .bb-risk-detail,

@@ -31,6 +31,8 @@ def analyze_scalp(
     spread: float | None,
     min_volume: int,
     avg_volume_30d: int | None = None,
+    vwap_reclaim_long: bool = False,
+    vwap_reclaim_short: bool = False,
 ) -> ScalpSignal:
     tags: list[str] = []
     score = 0.0
@@ -69,7 +71,18 @@ def analyze_scalp(
             tags.append("spread_compression")
             score += 12
 
-    if spike_score > 55 and price_change_pct is not None:
+    if vwap_reclaim_long:
+        tags.append("vwap_reclaim")
+        if side == "neutral":
+            side = "long"
+        score += 14
+    elif vwap_reclaim_short:
+        tags.append("vwap_reject")
+        if side == "neutral":
+            side = "short"
+        score += 12
+
+    if spike_score > 55 and price_change_pct is not None and not vwap_reclaim_long:
         if price_change_pct > 0.1:
             tags.append("vwap_reclaim")
             if side == "neutral":

@@ -1,0 +1,22 @@
+{
+  "pulse.news": {
+    "en": "Headlines with market-effect summary — read-only, never auto-trades.",
+    "pt": "Notícias"
+  },
+  "pulse.social": {
+    "en": "Twitter/RSS read-only chips — signals only, never trigger orders.",
+    "pt": "Sinais sociais (somente leitura)"
+  },
+  "pulse.calendar": {
+    "en": "Next 48h macro and earnings events — BCB/B3 calendar stubs.",
+    "pt": "Calendário econômico"
+  },
+  "pulse.lesson": {
+    "en": "Trading axiom or theory tip — rotatable education from data/education/.",
+    "pt": "Lição / axioma"
+  },
+  "pulse.rail": {
+    "en": "Bottom pulse rail — 33% news, 33% calendar, 33% lessons.",
+    "pt": "Trilho de pulso"
+  }
+}

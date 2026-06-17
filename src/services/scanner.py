@@ -40,14 +40,22 @@ def _bova_option_metrics(symbol: str, volume: int) -> tuple[int | None, float | 
 
 def _avg_volume_map() -> dict[str, int]:
     global _UNIVERSE_MAP
-    if _UNIVERSE_MAP is None:
-        settings = get_settings()
+    settings = get_settings()
+    from src.services.resource_profile import get_resource_profile
+
+    prof = get_resource_profile(settings)
+
+    def _load() -> dict[str, int]:
         if settings.scanner_mode == "filipe_core14":
             from src.services.filipe_universe import load_filipe_core14
 
-            _UNIVERSE_MAP = {s.symbol: s.avg_volume_30d for s in load_filipe_core14()}
-        else:
-            _UNIVERSE_MAP = {s.symbol: s.avg_volume_30d for s in load_ibov_top20()}
+            return {s.symbol: s.avg_volume_30d for s in load_filipe_core14()}
+        return {s.symbol: s.avg_volume_30d for s in load_ibov_top20()}
+
+    if not prof.scanner_universe_cache:
+        return _load()
+    if _UNIVERSE_MAP is None:
+        _UNIVERSE_MAP = _load()
     return _UNIVERSE_MAP
 
 
@@ -166,6 +174,13 @@ class PatternScanner:
             oi = int(volume * 0.12) if volume else None
             iv_skew = self._estimate_spread_skew(quote) if quote else None
 
+        prev_last = (prev.raw_data or {}).get("last") if prev and prev.raw_data else None
+        candles = self.profit.get_session_candles(symbol)
+        from src.services.vwap import session_vwap, vwap_context
+
+        vwap = session_vwap(candles)
+        vwap_info = vwap_context(last=last_price, prev_last=prev_last, vwap=vwap)
+
         scalp = analyze_scalp(
             volume=volume,
             spike_score=spike_score,
@@ -173,6 +188,8 @@ class PatternScanner:
             spread=spread,
             min_volume=self.settings.scanner_min_volume,
             avg_volume_30d=avg_vol,
+            vwap_reclaim_long=vwap_info["vwap_reclaim_long"],
+            vwap_reclaim_short=vwap_info["vwap_reclaim_short"],
         )
         pattern_tags = list(dict.fromkeys(scalp.pattern_tags or []))
         if iv_skew is not None and abs(iv_skew) > 0.03:
@@ -208,6 +225,7 @@ class PatternScanner:
         }
         if max_pain_signal:
             raw_data["max_pain"] = max_pain_signal
+        raw_data.update(vwap_info)
 
         iv_tags = self._iv_rank_tags(symbol)
         if iv_tags:

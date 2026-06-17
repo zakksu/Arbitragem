@@ -124,15 +124,17 @@ def motor_cycle_p95_ms() -> float | None:
 
 
 def build_ops_panel() -> dict[str, Any]:
+    from src.services.resource_profile import get_resource_profile, profile_snapshot
     from src.services.trading_orchestrator import orchestrator_status
 
     settings = get_settings()
+    res_profile = get_resource_profile(settings)
     test_status = read_test_status()
     memory = get_process_rss_mb()
     motor_ms = get_motor_cycle_ms()
     orch = orchestrator_status()
     rss = float(memory.get("rss_mb") or 0)
-    budget = settings.ram_budget_mb
+    budget = res_profile.effective_ram_budget_mb
     return {
         "motor_cycle_ms": round(motor_ms, 0) if motor_ms is not None else None,
         "motor_cycle_p95_ms": motor_cycle_p95_ms(),
@@ -142,4 +144,5 @@ def build_ops_panel() -> dict[str, Any]:
         "test_status": test_status,
         "ram_budget_mb": budget,
         "ram_over_budget": bool(memory.get("available") and rss > budget),
+        "resource_profile": profile_snapshot(settings),
     }

@@ -1,0 +1,41 @@
+<table class="bb-strategies-table bb-rankings-table" id="rankings-table">
+    <thead>
+        <tr>
+            <th data-sort="symbol">Symbol</th>
+            <th data-sort="sector">Sector</th>
+            <th data-sort="structure_type">Type</th>
+            <th data-sort="idea_score">Idea Score</th>
+            <th data-sort="wf_score">WF Score</th>
+            <th data-sort="profit_factor">PF</th>
+            <th data-sort="max_drawdown_pct">DD%</th>
+            <th data-sort="win_rate">Win%</th>
+            <th data-sort="last_optimized_at">Last Opt</th>
+            <th data-sort="status">Status</th>
+        </tr>
+    </thead>
+    <tbody>
+        {% if rankings %}
+        {% for r in rankings %}
+        <tr class="bb-ranking-row"
+            hx-get="/board/strategy-lab/{{ r.id }}"
+            hx-target="#lab-detail"
+            hx-swap="innerHTML"
+            role="button"
+            tabindex="0">
+            <td><strong>{{ r.symbol }}</strong></td>
+            <td>{{ r.sector }}</td>
+            <td>{{ r.structure_type }}</td>
+            <td>{{ "%.0f"|format(r.idea_score) }}</td>
+            <td>{{ "%.1f"|format(r.wf_score) }}</td>
+            <td>{{ "%.2f"|format(r.profit_factor) }}</td>
+            <td>{{ "%.2f"|format(r.max_drawdown_pct) }}</td>
+            <td>{{ "%.0f"|format(r.win_rate) }}%</td>
+            <td class="bb-muted">{{ r.last_optimized_at[:10] if r.last_optimized_at else "—" }}</td>
+            <td><span class="bb-pill bb-pill-{{ r.status }}">{{ r.status }}</span></td>
+        </tr>
+        {% endfor %}
+        {% else %}
+        <tr><td colspan="10" class="bb-muted">No rankings yet — run WFO sync or POST /api/v1/backtest/rankings/sync</td></tr>
+        {% endif %}
+    </tbody>
+</table>

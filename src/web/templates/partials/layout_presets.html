@@ -1,12 +1,27 @@
 <div class="bb-layout-presets">
     <span class="bb-muted">Layout</span>
+    {% set v2_presets = [
+        ("scalp", "Scalp", "layout.scalp"),
+        ("structure", "Structure", "layout.structure"),
+        ("learn", "Learn", "layout.learn"),
+    ] %}
+    {% set active = namespace(preset="scalp") %}
     {% for layout in layouts %}
+        {% if layout.is_default %}
+            {% set active.preset = layout.preset %}
+        {% endif %}
+    {% endfor %}
+    {% for preset, label, tip_key in v2_presets %}
     <button type="button"
-            class="bb-btn-layout {% if layout.is_default %}is-active{% endif %}"
-            hx-post="/board/partials/layout/{{ layout.preset }}"
+            class="bb-btn-layout {% if active.preset == preset or (active.preset == 'options_hedge' and preset == 'structure') or (active.preset == 'pairs' and preset == 'learn') %}is-active{% endif %}"
+            hx-post="/board/partials/layout/{{ preset }}"
             hx-swap="none"
-            data-preset="{{ layout.preset }}">
-        {{ layout.name }}
+            data-preset="{{ preset }}"
+            onclick="window.bbApplyLayout && window.bbApplyLayout('{{ preset }}')">
+        {{ label }}
+        {% with key=tip_key %}
+        {% include "partials/help_tip.html" %}
+        {% endwith %}
     </button>
     {% endfor %}
 </div>

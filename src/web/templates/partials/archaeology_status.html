@@ -1,0 +1,6 @@
+<div class="bb-arch-status bb-accent-rail{% if status == 'ok' %} is-success{% else %} is-error{% endif %}">
+    <p><strong>{{ status|upper }}</strong> · {{ message }}</p>
+</div>
+{% if timeline %}
+{% include "partials/archaeology_events.html" %}
+{% endif %}

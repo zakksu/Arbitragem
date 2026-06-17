@@ -1,0 +1,177 @@
+{% if desk %}
+<div class="bb-trader-desk" id="trader-desk">
+    <div class="bb-desk-col bb-desk-risk">
+        <div class="bb-desk-head">
+            <span>Risk budget</span>
+            {% if orchestrator and orchestrator.active %}
+            <span class="bb-pill bb-pill-auto" title="Motor interval {{ orchestrator.interval_sec }}s">MOTOR</span>
+            {% endif %}
+            {% with key="pulse.risk" %}{% include "partials/help_tip.html" %}{% endwith %}
+        </div>
+        {% if budget and cockpit %}
+        <div class="bb-risk-budget bb-risk-{{ cockpit.gate_status }}">
+            <div class="bb-budget-row">
+                <span>Day P&amp;L</span>
+                <strong class="{% if cockpit.day_pnl >= 0 %}bb-pnl-pos{% else %}bb-pnl-neg{% endif %}">
+                    R$ {{ "%.2f"|format(cockpit.day_pnl) }}
+                </strong>
+                {% if cockpit.pnl_source %}<em class="bb-pnl-source">{{ cockpit.pnl_source }}</em>{% endif %}
+            </div>
+            <div class="bb-budget-row">
+                <span>Loss room</span>
+                <strong>R$ {{ "%.0f"|format(budget.remaining_loss_budget_brl) }}</strong>
+                <em>/ {{ "%.0f"|format(budget.max_daily_loss_brl) }}</em>
+            </div>
+            <div class="bb-budget-row">
+                <span>Net Δ</span>
+                <strong>{{ "%+.2f"|format(cockpit.net_delta) }}</strong>
+                <em>/ ±{{ cockpit.max_net_delta }}</em>
+            </div>
+            <div class="bb-budget-row">
+                <span>Margin est.</span>
+                <strong>R$ {{ "%.0f"|format(cockpit.margin_estimate_brl) }}</strong>
+            </div>
+            <div class="bb-budget-row">
+                <span>Paper capital</span>
+                <strong>R$ {{ "%.0f"|format(budget.paper_capital_brl) }}</strong>
+            </div>
+            <div class="bb-cockpit-gate">
+                {% if cockpit.gate_status == 'blocked' %}
+                <span class="bb-gate-blocked">BLOCKED</span>
+                {% elif cockpit.gate_status == 'warning' %}
+                <span class="bb-gate-warn">WARN</span>
+                {% else %}
+                <span class="bb-gate-ok">OK</span>
+                {% endif %}
+            </div>
+            {% if sleeves %}
+            <div class="bb-sleeve-dots">
+                {% for key, label in [('cash', 'C'), ('options', 'O'), ('pairs', 'P')] %}
+                <span class="bb-sleeve-dot{% if sleeves.get(key, true) %} is-open{% else %} is-paused{% endif %}">{{ label }}</span>
+                {% endfor %}
+            </div>
+            {% endif %}
+        </div>
+        {% endif %}
+    </div>
+
+    <div class="bb-desk-col bb-desk-blotter">
+        <div class="bb-desk-head">
+            <span>Blotter</span>
+            {% with key="pulse.desk" %}{% include "partials/help_tip.html" %}{% endwith %}
+        </div>
+        <div class="bb-blotter-grid">
+            <section class="bb-blotter-section">
+                <h4>Positions ({{ desk.positions_count }})</h4>
+                {% if desk.positions %}
+                <ul class="bb-desk-list">
+                    {% for p in desk.positions[:6] %}
+                    <li>
+                        <span class="bb-desk-sym">{{ p.symbol }}</span>
+                        {{ p.quantity }} @ {{ "%.2f"|format(p.avg_price) }}
+                        {% if p.unrealized_pnl is defined %}
+                        <em class="{% if p.unrealized_pnl >= 0 %}bb-pnl-pos{% else %}bb-pnl-neg{% endif %}">
+                            {{ "%+.2f"|format(p.unrealized_pnl) }}
+                        </em>
+                        {% endif %}
+                    </li>
+                    {% endfor %}
+                </ul>
+                {% else %}
+                <p class="bb-muted">Flat</p>
+                {% endif %}
+            </section>
+            <section class="bb-blotter-section">
+                <h4>Pipeline ({{ desk.orders_count }})</h4>
+                {% if desk.open_orders %}
+                <ul class="bb-desk-list">
+                    {% for o in desk.open_orders[:6] %}
+                    <li>
+                        <span class="bb-desk-sym">{{ o.symbol }}</span>
+                        {{ o.side|upper }} {{ o.quantity }}
+                        <em>#{{ o.idea_id }}</em>
+                    </li>
+                    {% endfor %}
+                </ul>
+                {% else %}
+                <p class="bb-muted">No confirmed queue</p>
+                {% endif %}
+                {% if desk.profit_pending %}
+                <h4 class="bb-subhead">Profit tickets</h4>
+                <ul class="bb-desk-list">
+                    {% for t in desk.profit_pending[:4] %}
+                    <li>
+                        <span class="bb-desk-sym">{{ t.symbol }}</span>
+                        {{ t.chart_trading_hint or (t.side|upper ~ ' ' ~ t.quantity) }}
+                        <em>{{ t.status }}</em>
+                    </li>
+                    {% endfor %}
+                </ul>
+                {% endif %}
+            </section>
+            <section class="bb-blotter-section">
+                <h4>Today ({{ desk.trades_count }})</h4>
+                {% if desk.today_trades %}
+                <ul class="bb-desk-list bb-desk-trades">
+                    {% for t in desk.today_trades[:10] %}
+                    <li>
+                        <time>{{ t.executed_at }}</time>
+                        <span class="bb-desk-sym">{{ t.symbol }}</span>
+                        {{ t.side|upper }} {{ t.quantity }} @ {{ "%.2f"|format(t.price) }}
+                        {% if t.pnl is not none %}
+                        <em class="{% if t.pnl >= 0 %}bb-pnl-pos{% else %}bb-pnl-neg{% endif %}">
+                            R$ {{ "%.2f"|format(t.pnl) }}
+                        </em>
+                        {% endif %}
+                    </li>
+                    {% endfor %}
+                </ul>
+                {% else %}
+                <p class="bb-muted">No fills yet</p>
+                {% endif %}
+            </section>
+        </div>
+    </div>
+
+    <div class="bb-desk-col bb-desk-motor">
+        <div class="bb-desk-head">
+            <span>Trader agent</span>
+            {% if orchestrator and orchestrator.last_run %}
+            <em class="bb-muted" title="Last cycle">{{ orchestrator.last_run[11:19] if orchestrator.last_run|length > 19 else orchestrator.last_run }}</em>
+            {% endif %}
+        </div>
+        <ul class="bb-motor-log">
+            {% for row in journal %}
+            <li class="bb-motor-{{ row.level }} bb-motor-phase-{{ row.phase|lower }}">
+                <time>{{ row.time }}</time>
+                <span class="bb-motor-phase">{{ row.phase }}</span>
+                {% if row.symbol %}<strong>{{ row.symbol }}</strong>{% endif %}
+                <span class="bb-motor-msg">{{ row.message }}</span>
+            </li>
+            {% else %}
+            <li class="bb-muted">Motor log empty — sleeves ON to start</li>
+            {% endfor %}
+        </ul>
+        <details class="bb-market-context">
+            <summary>Market context (lazy)</summary>
+            <div id="market-context-slot"
+                 hx-get="/board/partials/market-context"
+                 hx-trigger="toggle once from:closest details"
+                 hx-swap="innerHTML">
+                <span class="bb-muted">Expand to load news</span>
+            </div>
+        </details>
+        <details class="bb-archaeology-drawer">
+            <summary>Trade archaeology (lazy)</summary>
+            <div id="archaeology-slot"
+                 hx-get="/board/partials/archaeology"
+                 hx-trigger="toggle once from:closest details"
+                 hx-swap="innerHTML">
+                <span class="bb-muted">Expand to load history timeline</span>
+            </div>
+        </details>
+    </div>
+</div>
+{% else %}
+<span class="bb-muted">Trader desk loading…</span>
+{% endif %}

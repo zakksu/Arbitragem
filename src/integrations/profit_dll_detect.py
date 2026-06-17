@@ -119,6 +119,39 @@ def detect_profit_dll() -> dict:
     }
 
 
+def probe_dll_loadable(dll_path: str | Path | None = None) -> dict:
+    """Try ctypes load without Nelogica login/subscribe callbacks."""
+    path: Path | None = None
+    if dll_path:
+        path = Path(dll_path)
+    else:
+        recommended = detect_profit_dll().get("recommended")
+        path = Path(recommended) if recommended else None
+
+    base = {
+        "loadable": False,
+        "path": str(path.resolve()) if path and path.is_file() else (str(path) if path else None),
+        "callbacks_wired": False,
+        "platform": sys.platform,
+    }
+    if not path or not path.is_file():
+        base["reason"] = "not_found"
+        return base
+    if sys.platform != "win32":
+        base["reason"] = "not_windows"
+        return base
+    try:
+        import ctypes
+
+        ctypes.CDLL(str(path.resolve()))
+        base["loadable"] = True
+        base["reason"] = None
+        return base
+    except OSError as exc:
+        base["reason"] = str(exc)
+        return base
+
+
 def env_line_for_best_match() -> str | None:
     result = detect_profit_dll()
     if result["recommended"]:

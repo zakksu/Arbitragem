@@ -3,6 +3,7 @@
 
 from __future__ import annotations
 
+import argparse
 import json
 import sys
 from pathlib import Path
@@ -10,24 +11,32 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
 
-from src.models import Trade, get_session_factory, init_db
-from src.models import TradeIdea
+from src.models import get_session_factory, init_db
+from src.services.paper_validation import (
+    build_paper_validation,
+    build_journal_export,
+    write_journal_csv,
+)
 
 
 def main() -> int:
+    parser = argparse.ArgumentParser(description="Paper week #3 validation gate")
+    parser.add_argument(
+        "--export",
+        choices=("json", "csv", "none"),
+        default="none",
+        help="Export journal alongside checklist",
+    )
+    args = parser.parse_args()
+
     init_db()
     session = get_session_factory()()
     try:
-        confirms = session.query(TradeIdea).filter(TradeIdea.status.in_(["confirmed", "executed"])).count()
-        trades = session.query(Trade).count()
-        products = session.query(TradeIdea).filter(TradeIdea.rationale.isnot(None)).count()
-        report = {
-            "structure_confirms": confirms,
-            "journal_trades": trades,
-            "trade_products_journaled": products,
-            "gate_pass": confirms >= 10 and products >= 3,
-            "note": "Paper week #3 — run after 10+ confirms and 3 Trade Products journaled",
-        }
+        report = build_paper_validation(session)
+        if args.export == "json":
+            report["journal"] = build_journal_export(session)
+        elif args.export == "csv":
+            report["journal_file"] = write_journal_csv(session)
         print(json.dumps(report, indent=2))
         return 0 if report["gate_pass"] else 2
     finally:

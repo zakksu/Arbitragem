@@ -34,7 +34,7 @@ class WalkForwardOptimizer:
             strategy_id=strategy.id,
             method="walk_forward",
             status="running",
-            parameter_space={"space": parameter_space, "folds": folds},
+            parameter_space={"space": parameter_space, "folds": folds, "symbol": symbol},
         )
         self.session.add(run)
         self.session.commit()

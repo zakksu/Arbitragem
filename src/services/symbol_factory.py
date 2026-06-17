@@ -12,6 +12,7 @@ from src.config import PROJECT_ROOT, get_settings
 from src.services.filipe_universe import load_filipe_core14
 from src.services.golden_path import golden_path_summary
 from src.services.ops_panel import get_process_rss_mb, read_test_status
+from src.services.resource_profile import get_resource_profile
 
 FACTORY_PATH = PROJECT_ROOT / "data" / "symbol_factory.json"
 SHADOW_SESSIONS_REQUIRED = 3
@@ -53,7 +54,7 @@ def _factory_lock_reasons(session: Session) -> list[str]:
         reasons.append("tests_red")
 
     mem = get_process_rss_mb()
-    budget = settings.ram_budget_mb
+    budget = get_resource_profile(settings).effective_ram_budget_mb
     if mem.get("available") and float(mem.get("rss_mb") or 0) > budget:
         reasons.append("ram_over_budget")
 
@@ -86,7 +87,7 @@ def factory_status(session: Session) -> dict[str, Any]:
         "candidates": factory_candidates(),
         "shadow_sessions_required": SHADOW_SESSIONS_REQUIRED,
         "max_add_per_week": settings.symbol_factory_max_per_week,
-        "ram_budget_mb": settings.ram_budget_mb,
+        "ram_budget_mb": get_resource_profile(settings).effective_ram_budget_mb,
         "test_status": read_test_status().get("state"),
     }
 

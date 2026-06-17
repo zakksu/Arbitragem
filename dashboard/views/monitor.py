@@ -149,6 +149,12 @@ def render() -> None:
     st.title("Live Monitor")
     st.caption("Start/stop strategies · risk limits · real-time status")
 
+    st.link_button(
+        "Open Structure Deck (blackboard)",
+        "http://localhost:8000/board",
+        use_container_width=False,
+    )
+
     auto = st.toggle("Auto-refresh (15s)", value=True, key="monitor_auto_refresh")
     if auto:
         _live_refresh()

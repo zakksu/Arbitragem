@@ -70,6 +70,11 @@ def _run_walk_forward_promotion() -> None:
         from src.services.system_audit import log_event
 
         result = run_walk_forward_promotion(session, folds=settings.walk_forward_promote_folds)
+        if settings.autonomous_rankings_sync:
+            from src.autonomous.backtest_rankings import BacktestRankingsService
+
+            synced = BacktestRankingsService(session).sync_from_optimization_runs()
+            result["rankings_synced"] = synced
         log_event(
             session,
             level="info",
@@ -90,6 +95,36 @@ def _run_profit_pnl_sync() -> None:
         sync_profit_pnl(session)
     except Exception as exc:
         logger.error("profit_pnl_sync_failed", error=str(exc))
+    finally:
+        session.close()
+
+
+def _run_pnl_reconcile() -> None:
+    settings = get_settings()
+    if not settings.golden_path_mode:
+        return
+    session = get_session_factory()()
+    try:
+        from src.services.pnl_reconcile import reconcile_symbol_pnl
+
+        reconcile_symbol_pnl(session, settings.golden_path_symbol)
+    except Exception as exc:
+        logger.error("pnl_reconcile_failed", error=str(exc))
+    finally:
+        session.close()
+
+
+def _run_journal_maintenance() -> None:
+    session = get_session_factory()()
+    try:
+        from src.services.journal_maintenance import ensure_journal_indexes, prune_motor_journal
+
+        ensure_journal_indexes()
+        result = prune_motor_journal(session)
+        if result.get("deleted"):
+            logger.info("motor_journal_pruned", **result)
+    except Exception as exc:
+        logger.error("journal_maintenance_failed", error=str(exc))
     finally:
         session.close()
 
@@ -129,6 +164,19 @@ def start_scheduler() -> None:
         minutes=10,
         id="export_watcher",
     )
+    _scheduler.add_job(
+        _run_pnl_reconcile,
+        "interval",
+        minutes=5,
+        id="pnl_reconcile",
+    )
+    _scheduler.add_job(
+        _run_journal_maintenance,
+        "cron",
+        hour=3,
+        minute=0,
+        id="journal_maintenance",
+    )
     if settings.walk_forward_auto_promote:
         _scheduler.add_job(
             _run_walk_forward_promotion,
@@ -136,6 +184,9 @@ def start_scheduler() -> None:
             hours=settings.walk_forward_interval_hours,
             id="walk_forward_promotion",
         )
+    from src.autonomous.scheduler import register_autonomous_jobs
+
+    register_autonomous_jobs(_scheduler)
     _scheduler.start()
     logger.info("scheduler_started")
 

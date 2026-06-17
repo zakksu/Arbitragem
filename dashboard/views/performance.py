@@ -10,7 +10,9 @@ from dashboard.components.charts import (
     symbol_pnl_bar,
     win_loss_pie,
 )
-from dashboard.api_cache import cached_get
+from dashboard.api_cache import cached_get, invalidate_cache
+from dashboard.components.empty_state import render_empty_state
+from dashboard.utils import api_post
 
 
 def render() -> None:
@@ -26,7 +28,24 @@ def render() -> None:
 
     df = prepare_trades_df(trades)
     if df.empty:
-        st.info("No trades yet. Go to **Journal** → **Sync Trades** or connect Clear API.")
+        render_empty_state(
+            "No performance data yet",
+            "Sync trades from Clear or Profit to see P&L, drawdown, and win rate charts.",
+            actions=[
+                ("Open Journal", "Journal"),
+                ("Run Scanner", "Daily Scanner"),
+            ],
+            link_url="http://localhost:8000/board",
+            link_label="Open Structure Deck",
+        )
+        if st.button("Sync journal now", type="primary", key="perf_empty_sync"):
+            with st.spinner("Syncing trades…"):
+                try:
+                    api_post("/journal/sync")
+                    invalidate_cache()
+                    st.rerun()
+                except Exception as exc:
+                    st.error(str(exc))
         return
 
     total_pnl = df["pnl"].sum() if "pnl" in df.columns else 0

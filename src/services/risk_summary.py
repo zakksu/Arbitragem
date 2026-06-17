@@ -1,16 +1,14 @@
-"""Aggregate risk snapshot for dashboard — day P&L, limits, paper mode."""
+"""Aggregate risk snapshot for dashboard — day P&L, limits, paper mode, sleeves."""
 
 from __future__ import annotations
-
-from datetime import datetime, time
 
 from sqlalchemy.orm import Session
 
 from src.config import get_settings
 from src.models import Strategy
-from src.services.kill_switch import status as kill_switch_status
 from src.services.pnl_truth import resolve_day_pnl
 from src.services.risk_profile import get_or_create_profile
+from src.services.trading_sleeves import status as sleeves_status
 
 
 def build_risk_summary(session: Session) -> dict:
@@ -41,8 +39,11 @@ def build_risk_summary(session: Session) -> dict:
     elif loss_used_pct >= 80:
         status = "warning"
 
-    ks = kill_switch_status()
-    can_trade = status != "blocked" and not ks["active"]
+    sleeves = sleeves_status()
+    all_open = sleeves["all_open"]
+    can_trade = status != "blocked" and all_open
+
+    from src.services.trading_orchestrator import orchestrator_should_run
 
     return {
         "paper_trading_mode": settings.paper_trading_mode,
@@ -60,8 +61,14 @@ def build_risk_summary(session: Session) -> dict:
         "max_contracts_default": settings.default_max_contracts,
         "status": status,
         "can_start_new_strategy": can_trade,
-        "kill_switch_active": ks["active"],
-        "kill_switch_reason": ks.get("reason"),
+        "sleeves": sleeves["sleeves"],
+        "sleeves_all_open": all_open,
+        "sleeves_reason": sleeves.get("reason"),
+        "kill_switch_active": not all_open,
+        "kill_switch_reason": sleeves.get("reason") if not all_open else None,
         "can_confirm_ideas": can_trade,
         "can_execute_ideas": can_trade,
+        "autonomy_enabled": settings.autonomy_enabled,
+        "paper_auto": settings.paper_trading_mode and settings.auto_trading_on_sleeves,
+        "orchestrator_active": orchestrator_should_run(),
     }

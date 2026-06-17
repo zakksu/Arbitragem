@@ -16,6 +16,7 @@ from typing import Any
 import numpy as np
 from sqlalchemy.orm import Session
 
+from src.config import get_settings
 from src.integrations.profit_bridge import get_profit_client
 from src.logging_config import get_logger
 from src.models import BacktestRun, Strategy
@@ -102,16 +103,18 @@ class BacktestService:
         stop_ticks = float(params.get("stop_ticks", 5))
         target_ticks = float(params.get("target_ticks", 8))
 
-        returns = self._simulate_returns(bars, seed, stop_ticks, target_ticks)
+        returns, data_source = self._resolve_returns(symbol, bars, seed, stop_ticks, target_ticks)
         metrics = self._compute_metrics(returns)
+        metrics_dict = metrics.to_dict()
+        metrics_dict["data_source"] = data_source
 
         run = BacktestRun(
             strategy_id=strategy.id,
             engine="python",
             symbol=symbol,
             parameters=strategy.parameters,
-            metrics=metrics.to_dict(),
-            notes="Python supplement backtest (replace with real data)",
+            metrics=metrics_dict,
+            notes=f"Python supplement backtest ({data_source})",
         )
         self.session.add(run)
         self.session.commit()
@@ -135,6 +138,37 @@ class BacktestService:
                 "use Python for parameter search only until data is aligned."
             ),
         }
+
+    def _resolve_returns(
+        self,
+        symbol: str,
+        bars: int,
+        seed: int,
+        stop_ticks: float,
+        target_ticks: float,
+    ) -> tuple[np.ndarray, str]:
+        bridge_returns = self._returns_from_bridge(symbol, bars)
+        if bridge_returns is not None:
+            return bridge_returns, "bridge_candles"
+        return self._simulate_returns(bars, seed, stop_ticks, target_ticks), "synthetic"
+
+    def _returns_from_bridge(self, symbol: str, bars: int) -> np.ndarray | None:
+        if not get_settings().walk_forward_use_bridge_candles or not self.profit.is_available():
+            return None
+        try:
+            candles = self.profit.get_session_candles(symbol.upper())
+        except Exception:
+            return None
+        if not candles or len(candles) < 10:
+            return None
+        closes = np.array([float(c.get("close", 0) or 0) for c in candles], dtype=float)
+        closes = closes[closes > 0]
+        if len(closes) < 10:
+            return None
+        rets = np.diff(closes) / closes[:-1]
+        if len(rets) > bars:
+            return rets[-bars:]
+        return rets
 
     @staticmethod
     def _simulate_returns(

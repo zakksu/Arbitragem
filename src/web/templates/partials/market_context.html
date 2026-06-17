@@ -1,0 +1,13 @@
+{% if pulse %}
+<div class="bb-market-context-inner">
+    <p class="bb-pulse-title">{{ pulse.news.headline }}</p>
+    <p class="bb-pulse-body">{{ pulse.news.summary }}</p>
+    <ul class="bb-pulse-events">
+        {% for ev in pulse.calendar.events %}
+        <li><time>{{ ev.time }}</time> {{ ev.label }}</li>
+        {% endfor %}
+    </ul>
+</div>
+{% else %}
+<p class="bb-muted">News unavailable</p>
+{% endif %}

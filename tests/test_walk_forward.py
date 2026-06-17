@@ -55,3 +55,25 @@ def test_pause_strategy(db_session):
     svc.start_strategy(strategy.id)
     paused = svc.pause_strategy(strategy.id)
     assert paused.status == StrategyStatus.PAUSED.value
+
+
+def test_python_backtest_bridge_candles(monkeypatch, db_session):
+    from src.services.backtest import BacktestService
+
+    monkeypatch.setenv("WALK_FORWARD_USE_BRIDGE_CANDLES", "true")
+    get_settings.cache_clear()
+
+    class _Client:
+        def is_available(self):
+            return True
+
+        def get_session_candles(self, _sym):
+            return [{"close": 10.0 + i * 0.1, "volume": 100} for i in range(20)]
+
+    monkeypatch.setattr(
+        "src.services.backtest.get_profit_client",
+        lambda: _Client(),
+    )
+    strategy = StrategyService(db_session).get_or_create_sample()
+    run = BacktestService(db_session).run_python_backtest(strategy, "PETR4", bars=10)
+    assert run.metrics.get("data_source") == "bridge_candles"
