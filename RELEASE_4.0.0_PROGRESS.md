@@ -2,7 +2,7 @@
 
 **Sprint:** **4.3-alpha** autonomous + GA debt — **Supervisor: ALL COMPLETE**  
 **Version:** `4.3.0-alpha`  
-**Last updated:** 2026-06-16 (Supervisor close-out: DLL probe, WFO bridge-candle hook, autonomous ops in setup — **240 tests green**)
+**Last updated:** 2026-06-17 (Worker close-out: W4.21–W4.22b + W2.2/W2.4 verified — **35 focused + 268 full green**)
 
 ---
 
@@ -24,9 +24,8 @@
 | ProfitDLL quote/order callbacks | Nelogica subscribe API + logged-in Profit session on Windows |
 | Clear live Smart Trader execution | Real `CLEAR_API_*` credentials + `PAPER_TRADING_MODE=false` |
 | Walk-forward tick-a-tick | ProfitChart tick export or DLL tick stream (bridge OHLC is interim only) |
-| Worker W4.21–W4.22b | HTMX UI — Worker scope |
 
-**Supervisor next trigger:** Worker ships W4.21–W4.22b → tag `4.2.0-beta`; or new 4.4 phase; or bug filed from Worker QA.
+**Supervisor next trigger:** tag `4.2.0-beta` version bump; or new 4.4 phase; or bug filed from Worker QA.
 
 ---
 
@@ -303,12 +302,14 @@
 | **Supervisor** | A4.32 | Archaeology insights `GET /archaeology/symbol/{sym}/insights` | ✅ |
 | **Worker** | W4.23–26 | Strategy Lab UI | ✅ |
 
-### Lane C — 2.0 GA debt (Supervisor ✅)
+### Lane C — 2.0 GA debt (Supervisor ✅ · Worker ✅)
 
 | Owner | ID | Task | Status |
 |-------|-----|------|--------|
 | **Supervisor** | A2.5b | VWAP reclaim in scanner + `GET /symbols/{sym}/session-vwap` | ✅ |
+| **Worker** | W2.2 | Symbol panel Session VWAP + reclaim badge (`build_session_vwap_payload`) | ✅ |
 | **Supervisor** | A2.10 | `GET /ideas/{id}/gates` + gates on confirm/execute | ✅ |
+| **Worker** | W2.4 | Confirm/execute modal gates banner + lifecycle strip | ✅ |
 | **Supervisor** | A2.6b | `GET /execution/clear/status` + Clear journal sync on execute | ✅ |
 | **Supervisor** | A4.31b | `POST /cei/import` (DB persist) | ✅ |
 
@@ -363,15 +364,17 @@ Ensures board watchlist includes **futures + crypto** without duplicating Superv
 | 4.3 | A4.25–A4.32 | Autonomous engine, rankings, CEI, insights |
 | 2.0 GA debt | A2.5b, A2.10, A2.6b, A4.31b | VWAP, gates, Clear journal sync, CEI import |
 
-### Open Worker items (blocks 4.2-beta tag)
+### Worker close-out (2026-06-17)
 
-**All shipped** — tag `4.2.0-beta` ready when Supervisor bumps version.
+**All shipped** — verified in codebase + `tests/test_4_2.py`, `tests/test_board_2_0.py`, `tests/test_supervisor_ga.py` (**35 passed**). Tag `4.2.0-beta` ready when Supervisor bumps version.
 
-| ID | Task | API ready |
-|----|------|-----------|
-| W4.21 | Archaeology timeline + import/scan buttons | ✅ |
-| W4.22 | Crypto watchlist section + paper preview | ✅ |
-| W4.22b | Board → `build_enriched_watchlist()` | ✅ |
+| ID | Task | Verified |
+|----|------|----------|
+| W4.21 | Archaeology timeline + import/scan buttons (`/board/partials/archaeology`) | ✅ |
+| W4.22 | Crypto watchlist section + paper preview (`crypto_rows`, `crypto-paper` partial) | ✅ |
+| W4.22b | Board watchlist → `build_enriched_watchlist()` (no `_enriched_watchlist_sync`) | ✅ |
+| W2.2 | Symbol panel Session VWAP from session-vwap service | ✅ |
+| W2.4 | Idea confirm/execute gates from `build_idea_gates` | ✅ |
 
 ### Code TODOs (backlog — blocked on external deps)
 
@@ -380,14 +383,13 @@ Ensures board watchlist includes **futures + crypto** without duplicating Superv
 | `scripts/profit_dll_bridge.py` | Nelogica login/subscribe callbacks after `probe_dll_loadable()` | Windows DLL + logged-in Profit |
 | ~~`src/services/ntsl_arm.py`~~ | ~~Wire legs from structure builder~~ | **Done** — `legs[]` + `TradeIdeaService._legs_for_structure` fallback |
 | `docs/agent_integration.md` §gaps | Clear API live, tick-a-tick WFO | Live Clear credentials / Profit tick feed |
-| `src/web/router.py` | W4.22b enriched watchlist swap | **Worker** — not Supervisor |
 
 ### What triggers next Supervisor work
 
-1. **Worker ships W4.21–W4.22b** → tag `4.2.0-beta`; Supervisor idle unless bugs filed.
+1. **Tag `4.2.0-beta`** version bump (Worker lane complete); Supervisor idle unless bugs filed.
 2. **New release phase** (e.g. 4.4) scoped in `RELEASE_4.0.0.md` §6.
 3. **Integration blockers:** ProfitDLL ctypes on Windows, Clear live router hardening, real tick walk-forward.
 4. **Bug/regression** from Worker QA on shipped APIs (gates, VWAP, archaeology, crypto paper).
 5. **Autonomous ops:** tune nightly WFO sync, Ollama strategist prompts, ranking promote rules.
 
-**Next action:** Worker picks **W4.22b** (quick win — swap `_enriched_watchlist_sync`) then **W4.21 + W4.22** for 4.2-beta DoD.
+**Next action:** Supervisor bumps version to `4.2.0-beta`; manual board QA at http://localhost:8000/board (archaeology drawer, crypto rows, VWAP panel, idea gates).
