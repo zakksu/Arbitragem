@@ -1,0 +1,36 @@
+{% if radar %}
+<section class="bb-live-radar bb-accent-rail" id="live-radar" aria-label="Live radar">
+    <div class="bb-lr-head">
+        <strong>Live Radar</strong>
+        {% if radar.all_green %}
+        <span class="bb-pill bb-pill-auto">ALL GREEN</span>
+        {% elif radar.ready_to_scan %}
+        <span class="bb-pill">SCAN OK</span>
+        {% else %}
+        <span class="bb-pill bb-pill-warn">CHECK</span>
+        {% endif %}
+        {% if radar.ready_manual_live %}
+        <span class="bb-pill bb-pill-live">MANUAL LIVE</span>
+        {% endif %}
+    </div>
+    <div class="bb-lr-lamps">
+        {% for key, lamp in radar.lamps.items() %}
+        <span class="bb-lr-lamp bb-lr-{{ lamp.state }}" title="{{ lamp.detail }}">
+            <span class="bb-lr-dot"></span>
+            {{ key|upper }}
+        </span>
+        {% endfor %}
+    </div>
+    {% if radar.outbox and radar.outbox.pending and radar.outbox.chart_trading_hint %}
+    <div class="bb-lr-outbox">
+        <strong>Outbox</strong>
+        <code>{{ radar.outbox.chart_trading_hint }}</code>
+        <button type="button" class="bb-btn-secondary bb-lr-copy"
+                data-hint="{{ radar.outbox.chart_trading_hint }}">Copy</button>
+    </div>
+    {% endif %}
+    {% if radar.blockers %}
+    <p class="bb-muted bb-lr-blockers">{{ radar.blockers|join(' · ') }}</p>
+    {% endif %}
+</section>
+{% endif %}

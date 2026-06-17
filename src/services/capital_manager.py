@@ -27,6 +27,13 @@ def size_quantity_for_idea(idea: dict[str, Any], *, capital_brl: float | None = 
         return fixed
 
     capital = capital_brl if capital_brl is not None else settings.paper_capital_brl
+    sym = str(idea.get("symbol", "")).strip().upper()
+    from src.services.futures_contract_sizer import max_futures_contracts
+
+    fut = max_futures_contracts(sym, capital_brl=capital)
+    if fut.get("is_futures"):
+        return int(fut.get("recommended_contracts") or 1)
+
     enriched = enrich_idea_levels(idea)
     entry = enriched.get("entry_price")
     stop = enriched.get("stop_price")

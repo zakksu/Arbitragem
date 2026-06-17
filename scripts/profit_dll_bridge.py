@@ -67,10 +67,16 @@ def _mode() -> str:
 
 @app.get("/health")
 def health():
+    paper = os.getenv("PAPER_TRADING_MODE", "true").lower() in ("1", "true", "yes")
+    account_profile = os.getenv("PROFIT_LIVE_STYLE", "day") or "day"
+    mode = _mode()
     return {
         "status": "ok",
-        "mode": _mode(),
+        "mode": mode,
+        "dll_mode": mode,
         "version": "3.0.0",
+        "is_paper": paper,
+        "account_profile": account_profile,
         "dll_path": os.getenv("PROFIT_DLL_PATH", "") or _DLL_PROBE.get("path"),
         "dll_probe": _DLL_PROBE,
         "callbacks_wired": False,

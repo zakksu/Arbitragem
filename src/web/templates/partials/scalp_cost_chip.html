@@ -1,0 +1,21 @@
+{% if cost and not cost.skipped %}
+<div class="bb-scalp-cost bb-accent-rail" id="scalp-cost-chip">
+    <div class="bb-sc-head">
+        <strong>Clear / B3 — {{ cost.lot_shares }} shares</strong>
+        {% if cost.ok %}
+        <span class="bb-pill bb-pill-auto">Target OK</span>
+        {% else %}
+        <span class="bb-pill bb-pill-warn">Below breakeven</span>
+        {% endif %}
+    </div>
+    <div class="bb-sc-grid">
+        <span>B3 RT <strong>R$ {{ "%.2f"|format(cost.breakeven.b3_round_trip_brl) }}</strong></span>
+        <span>Breakeven <strong>{{ cost.min_ticks_required }} ticks</strong></span>
+        <span>Target <strong>{{ cost.target_ticks }} ticks</strong></span>
+        <span>Margin ~<strong>R$ {{ "%.0f"|format(cost.breakeven.notional_per_leg_brl / (cost.leverage or 50)) }}</strong></span>
+    </div>
+    {% if cost.message %}
+    <p class="bb-muted">{{ cost.message }}</p>
+    {% endif %}
+</div>
+{% endif %}

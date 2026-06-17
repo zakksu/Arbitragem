@@ -43,5 +43,20 @@ def test_b3_cei_csv_import(db_session, tmp_path):
     assert {r.symbol for r in rows} == {"PETR4"}
 
 
+def test_archaeology_summary(db_session, tmp_path):
+    path = tmp_path / "b3.csv"
+    path.write_text(SAMPLE_CSV, encoding="utf-8")
+    from src.services.archaeology_backtest import build_archaeology_summary
+    from src.services.trade_archaeology import import_trade_csv
+
+    import_trade_csv(db_session, path)
+    db_session.commit()
+
+    body = build_archaeology_summary(db_session)
+    assert body["total_trades"] >= 2
+    assert any(s["symbol"] == "PETR4" for s in body["top_symbols"])
+    assert body["lanes"]["cash"] >= 2
+
+
 def test_preview_excel_requires_file(tmp_path):
     assert preview_excel_rows(tmp_path / "nope.xlsx").get("error") == "file_not_found"

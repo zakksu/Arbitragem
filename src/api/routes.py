@@ -1183,6 +1183,13 @@ def archaeology_symbol_insights(symbol: str, db: Session = Depends(get_db)):
     return build_insights(db, symbol)
 
 
+@router.get("/archaeology/summary")
+def archaeology_summary(limit: int = 15, db: Session = Depends(get_db)):
+    from src.services.archaeology_backtest import build_archaeology_summary
+
+    return build_archaeology_summary(db, limit=min(limit, 50))
+
+
 @router.post("/cei/parse")
 async def cei_parse_upload(file: UploadFile = File(...)):
     """Upload CEI/B3 trade export for parser spike preview."""
@@ -1644,6 +1651,14 @@ def ops_memory():
     from src.services.ops_panel import build_ops_panel
 
     return build_ops_panel()
+
+
+@router.get("/ops/live-radar")
+def ops_live_radar(db: Session = Depends(get_db)):
+    """Stack health lamps — API, bridge, motor, scanner, mind, sleeves."""
+    from src.services.live_radar import build_live_radar
+
+    return build_live_radar(db)
 
 
 @router.get("/symbol-factory/status")

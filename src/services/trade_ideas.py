@@ -371,6 +371,17 @@ class TradeIdeaService:
         if idea_uses_crypto(idea) and not settings.paper_trading_mode:
             raise ValueError("Crypto ideas are paper-only — enable PAPER_TRADING_MODE")
 
+        legs = idea.legs or []
+        if not idea_uses_crypto(idea) and len(legs) <= 1 and not paper_override:
+            from src.services.scalp_cost_gate import scalp_cost_gate
+
+            cost_gate = scalp_cost_gate(self.to_dict(idea))
+            if not cost_gate.get("ok") and not cost_gate.get("skipped"):
+                raise ValueError(
+                    cost_gate.get("message")
+                    or "Target below Clear/B3 breakeven for 100-share lot"
+                )
+
         idea.status = "confirmed"
         idea.confirmed_at = datetime.utcnow()
 

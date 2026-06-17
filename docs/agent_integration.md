@@ -647,6 +647,7 @@ Response includes `autonomous_ops` and wizard step `autonomous_ops`:
 | `/api/v1/golden-path` | GET | Full 7-item checklist + session count |
 | `/api/v1/golden-path/reconcile` | GET | PETR4 P&L reconcile (journal vs Profit) |
 | `/api/v1/ops/memory` | GET | RAM, motor_cycle_ms, motor_cycle_p95_ms, test badge |
+| `/api/v1/ops/live-radar` | GET | Six lamps (api, bridge, motor, scanner, mind, sleeves), `all_green`, `ready_to_scan`, `ready_to_execute` (false until Phase C), `outbox`, `blockers` |
 | `/api/v1/symbol-factory/status` | GET | Factory locked/unlocked, shadow list, Core14 candidates |
 | `/api/v1/symbol-factory/shadow` | POST | `{"symbol":"PRIO3"}` — add shadow symbol (409 if locked) |
 | `/api/v1/symbol-factory/promote` | POST | `{"symbol":"PRIO3"}` — promote after 3 shadow sessions |
@@ -661,7 +662,7 @@ Response includes `autonomous_ops` and wizard step `autonomous_ops`:
 **Scripts:**
 
 - `python scripts/test_worker.py --once` — writes `data/.dev/test_status.json`
-- `python scripts/status_tick.py --json` — includes `golden_path`, `symbol_factory`, `ram_mb`
+- `python scripts/status_tick.py --json` — includes `golden_path`, `symbol_factory`, `ram_mb`, `live_radar`
 
 **Streamlit slim:** `GOLDEN_PATH_MODE=true` or `STREAMLIT_SLIM_MODE=true` limits nav to Home, Performance, Journal, Settings.
 

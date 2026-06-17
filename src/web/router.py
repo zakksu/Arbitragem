@@ -267,6 +267,18 @@ async def board_page(request: Request):
     )
 
 
+@router.get("/board/partials/live-radar", response_class=HTMLResponse)
+async def live_radar_partial(request: Request):
+    from src.services.live_radar import build_live_radar
+
+    radar = await _to_thread(build_live_radar)
+    return TEMPLATES.TemplateResponse(
+        request,
+        "partials/live_radar.html",
+        {"radar": radar},
+    )
+
+
 @router.get("/board/partials/status", response_class=HTMLResponse)
 async def status_partial(request: Request):
     bootstrap = await _fetch_bootstrap(request)
@@ -734,6 +746,19 @@ async def idea_confirm_step_partial(request: Request, idea_id: int):
             return None
 
     brief = await _to_thread(_with_db, _brief)
+
+    def _cost():
+        from src.services.crypto_paper import idea_uses_crypto
+        from src.services.scalp_cost_gate import scalp_cost_gate
+
+        if idea_uses_crypto(idea):
+            return {"skipped": True}
+        legs = idea.get("legs") or []
+        if len(legs) > 1:
+            return {"skipped": True}
+        return scalp_cost_gate(idea)
+
+    cost = await _to_thread(_cost)
     return TEMPLATES.TemplateResponse(
         request,
         "partials/idea_confirm_step.html",
@@ -741,6 +766,7 @@ async def idea_confirm_step_partial(request: Request, idea_id: int):
             "idea": idea,
             "risk_box": risk_box,
             "brief": brief,
+            "cost": cost,
             "cockpit": _risk_cockpit(),
             "risk": await _fetch_risk_summary(request),
             "error": None,

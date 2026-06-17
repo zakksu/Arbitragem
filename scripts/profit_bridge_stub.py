@@ -189,7 +189,9 @@ def health():
     return {
         "status": "ok",
         "mode": "stub",
-        "version": "3.0.0-alpha",
+        "dll_mode": "stub",
+        "is_paper": True,
+        "version": "12.0.0",
         "symbols": "core14+bova",
     }
 

@@ -1,9 +1,15 @@
 # Release 12.0.0 — Live Tomorrow (Clear stocks · 100 lots)
 
-**Version:** `12.0.0-alpha`  
+**Version:** `12.0.0` (GA shipped)  
 **Prerequisite:** [RELEASE_11.0.0.md](../RELEASE_11.0.0.md) scope (Hybrid Cockpit, Live Radar, archaeology)  
 **Broker:** [Clear Corretora](https://corretora.clear.com.br/custos/) + ProfitChart execution  
 **Codename:** First Light
+
+**Shipped in 12.0.0 GA:**
+- Live Radar (`GET /api/v1/ops/live-radar`, board partial, `status_tick.py` mirror)
+- Clear/B3 cost chip on confirm + breakeven gate on `POST /ideas/{id}/confirm`
+- Bridge `/health` exposes `dll_mode`, `is_paper`
+- Crypto watchlist/paper **off by default** (deferred from active scope)
 
 ---
 
@@ -141,9 +147,9 @@ Aligned with external algo research ([Bookmap](https://bookmap.com/blog/key-algo
 | A12.2 | Backend | `GET /costs/scalp/{symbol}` | ✅ |
 | A12.3 | Backend | `MOTOR_FIXED_LOT_SHARES=100` in capital manager | ✅ |
 | A12.4 | Backend | `scripts/premarket_check.py` | ✅ |
-| W12.1 | Worker | Cost chip on confirm step / decision brief | 🔲 |
-| W12.2 | Worker | Live Radar lamps (from 11.0 spec) | 🔲 |
-| A12.5 | Backend | `GET /ops/live-radar` | 🔲 |
+| W12.1 | Worker | Cost chip on confirm step / decision brief | ✅ |
+| W12.2 | Worker | Live Radar lamps (from 11.0 spec) | ✅ |
+| A12.5 | Backend | `GET /ops/live-radar` | ✅ |
 
 ### 12.0-beta — Cost-aware motor (1 week)
 

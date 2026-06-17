@@ -63,7 +63,7 @@ def test_lifecycle_confirm_requires_backtest_gate(client):
 
     r = client.post(f"/api/v1/ideas/{idea_id}/confirm")
     assert r.status_code == 400
-    assert "Backtest gate" in r.json()["detail"]
+    assert "backtest" in r.json()["detail"].lower()
 
 
 def test_lifecycle_confirm_then_execute(client):

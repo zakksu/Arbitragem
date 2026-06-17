@@ -26,7 +26,7 @@ def client(monkeypatch, tmp_path):
 
 
 def test_version_10_0_0():
-    assert __version__ == "12.0.0-alpha"
+    assert __version__ == "12.0.0"
 
 
 def test_theory_cards_from_knowledge(client, tmp_path, monkeypatch):
@@ -47,7 +47,13 @@ def test_idea_brief_endpoint(client):
     from src.models import get_session_factory
 
     session = get_session_factory()()
-    idea = TradeIdea(symbol="PETR4", structure_type="scalp_long", side="long", status="detected")
+    idea = TradeIdea(
+        symbol="PETR4",
+        structure_type="scalp_long",
+        side="long",
+        status="detected",
+        entry_price=38.0,
+    )
     session.add(idea)
     session.commit()
     iid = idea.id
@@ -58,6 +64,9 @@ def test_idea_brief_endpoint(client):
     body = r.json()
     assert "bullets" in body
     assert len(body["bullets"]) <= 5
+    assert "cost" in body
+    assert body["cost"]["symbol"] == "PETR4"
+    assert "breakeven" in body["cost"]
 
 
 def test_patch_proposal_flow(client):

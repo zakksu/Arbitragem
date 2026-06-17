@@ -137,11 +137,11 @@ class Settings(BaseSettings):
     social_signals_enabled: bool = True
 
     # 4.2 — crypto watchlist + trade archaeology
-    crypto_watchlist_enabled: bool = True
-    binance_quotes_enabled: bool = True
+    crypto_watchlist_enabled: bool = False
+    binance_quotes_enabled: bool = False
     binance_api_base: str = "https://api.binance.com"
     archaeology_import_dir: str = str(PROJECT_ROOT / "exports" / "archaeology")
-    crypto_paper_enabled: bool = True
+    crypto_paper_enabled: bool = False
 
     # 7.0 — Golden path (PETR4-only local perfection)
     golden_path_mode: bool = False

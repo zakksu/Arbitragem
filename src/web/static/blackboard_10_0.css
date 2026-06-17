@@ -710,6 +710,82 @@
     margin-bottom: 0.45rem;
 }
 
+/* Live Radar (12.0) */
+.bb-live-radar-slot {
+    margin: 0.25rem 0.5rem 0.35rem;
+}
+
+.bb-live-radar {
+    border: 1px solid var(--arb-border);
+    border-radius: var(--arb-radius);
+    padding: 0.5rem 0.65rem;
+    background: var(--arb-panel);
+    font-size: 0.72rem;
+}
+
+.bb-lr-lamps {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.35rem 0.65rem;
+    margin: 0.35rem 0;
+}
+
+.bb-lr-lamp {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.25rem;
+    font-size: 0.65rem;
+    letter-spacing: 0.03em;
+}
+
+.bb-lr-dot {
+    width: 0.45rem;
+    height: 0.45rem;
+    border-radius: 50%;
+    background: #666;
+}
+
+.bb-lr-green .bb-lr-dot { background: #3dd68c; }
+.bb-lr-yellow .bb-lr-dot { background: #ffb347; }
+.bb-lr-red .bb-lr-dot { background: #ff6b6b; }
+
+.bb-lr-outbox {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.4rem;
+    margin-top: 0.35rem;
+    font-size: 0.68rem;
+}
+
+.bb-lr-outbox code {
+    font-size: 0.65rem;
+    padding: 0.15rem 0.35rem;
+    background: rgba(0, 0, 0, 0.25);
+    border-radius: 3px;
+}
+
+.bb-lr-blockers {
+    font-size: 0.65rem;
+    margin: 0.35rem 0 0;
+}
+
+.bb-scalp-cost {
+    border: 1px solid var(--arb-border);
+    border-radius: var(--arb-radius);
+    padding: 0.45rem 0.55rem;
+    margin: 0.5rem 0;
+    font-size: 0.72rem;
+    background: rgba(0, 0, 0, 0.15);
+}
+
+.bb-sc-grid {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem 1rem;
+    margin-top: 0.35rem;
+}
+
 .bb-lr-patch-row {
     cursor: pointer;
     padding: 0.3rem 0.4rem;

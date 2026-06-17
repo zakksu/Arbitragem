@@ -110,7 +110,7 @@ def test_journal_export_file(client, tmp_path, monkeypatch):
 def test_version_is_4_1_alpha():
     from src import __version__
 
-    assert __version__ == "12.0.0-alpha"
+    assert __version__ == "12.0.0"
 
 
 def test_status_shows_paper_gate_banner(client):

@@ -62,12 +62,30 @@ def build_decision_brief(session: Session, idea_id: int) -> dict[str, Any]:
         summary = "Rule-based brief (Ollama offline)."
 
     conflicts = detect_conflicts(session, idea_id, bullets=bullets)
+
+    cost: dict[str, Any] | None = None
+    price = idea.entry_price
+    if price is None and isinstance(idea.legs, list) and idea.legs:
+        leg0 = idea.legs[0]
+        if isinstance(leg0, dict):
+            price = leg0.get("price") or leg0.get("entry_price")
+    if idea.symbol and price is not None:
+        from src.services.clear_cost_model import cost_summary_for_symbol
+
+        qty = settings.motor_fixed_lot_shares or 100
+        cost = cost_summary_for_symbol(
+            idea.symbol,
+            float(price),
+            quantity=qty,
+            leverage=settings.stock_day_leverage_assumed,
+        )
+
     idea.meta = {
         **meta,
         "decision_brief": {"bullets": bullets, "conflicts": conflicts},
     }
     session.flush()
-    return {
+    payload: dict[str, Any] = {
         "idea_id": idea_id,
         "symbol": idea.symbol,
         "bullets": bullets,
@@ -78,3 +96,6 @@ def build_decision_brief(session: Session, idea_id: int) -> dict[str, Any]:
         "conflicts": conflicts,
         "can_confirm": not any(c.get("severity") == "hard" for c in conflicts),
     }
+    if cost is not None:
+        payload["cost"] = cost
+    return payload
