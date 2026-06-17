@@ -1,0 +1,53 @@
+<div class="bb-replay-player bb-accent-rail" id="replay-player-{{ symbol }}"
+     data-symbol="{{ symbol }}"
+     data-ticks='{{ ticks|tojson }}'
+     data-speed="{{ speed or 8 }}">
+    <div class="bb-rp-head">
+        <div>
+            <strong>Visual Replay</strong>
+            <span class="bb-muted">{{ symbol }} · tick player</span>
+        </div>
+        <div class="bb-rp-controls">
+            <button type="button" class="bb-btn-secondary bb-rp-play" aria-pressed="false">▶ Play</button>
+            <button type="button" class="bb-btn-secondary bb-rp-reset">⟲</button>
+            <label class="bb-rp-speed">
+                Speed
+                <input type="range" class="bb-rp-speed-range" min="1" max="20" value="{{ speed or 8 }}">
+                <em class="bb-rp-speed-val">{{ speed or 8 }}×</em>
+            </label>
+        </div>
+    </div>
+
+    <div class="bb-rp-stage">
+        <canvas class="bb-rp-canvas" width="640" height="160" aria-label="Replay price chart"></canvas>
+        <div class="bb-rp-crosshair"></div>
+    </div>
+
+    <div class="bb-rp-hud">
+        <div class="bb-rp-metric">
+            <span>Tick</span>
+            <strong class="bb-rp-idx">0</strong><em>/ {{ ticks|length }}</em>
+        </div>
+        <div class="bb-rp-metric">
+            <span>Last</span>
+            <strong class="bb-rp-price">—</strong>
+        </div>
+        <div class="bb-rp-metric">
+            <span>Position</span>
+            <strong class="bb-rp-pos">0</strong>
+        </div>
+        <div class="bb-rp-metric">
+            <span>Unrealized</span>
+            <strong class="bb-rp-pnl">R$ 0.00</strong>
+        </div>
+        <div class="bb-rp-event bb-rp-event-slot">
+            <span class="bb-muted">—</span>
+        </div>
+    </div>
+
+    <div class="bb-rp-position-bar">
+        <div class="bb-rp-position-fill"></div>
+    </div>
+
+    <p class="bb-muted bb-rp-disclaimer">Sandbox replay — synthetic fills when bridge has no tick feed.</p>
+</div>

@@ -1,0 +1,79 @@
+{% if mind %}
+<section class="bb-engine-mind" id="engine-mind" aria-label="Engine mind">
+    <header class="bb-em-head">
+        <div class="bb-em-title">
+            <span class="bb-em-pulse{% if mind.active %} is-live{% endif %}"></span>
+            <strong>Engine Mind</strong>
+            <em class="bb-muted">what the motor sees</em>
+        </div>
+        <div class="bb-em-meta">
+            {% if mind.motor_cycle_ms is not none %}
+            <span class="bb-em-chip" title="Last cycle duration">{{ mind.motor_cycle_ms|int }}ms</span>
+            {% endif %}
+            {% if mind.motor_cycle_p95_ms is not none %}
+            <span class="bb-em-chip bb-em-p95" title="p95 cycle">p95 {{ mind.motor_cycle_p95_ms|int }}ms</span>
+            {% endif %}
+            <span class="bb-em-phase bb-em-phase-{{ mind.current_phase|lower }}">{{ mind.current_phase }}</span>
+            {% if mind.current_symbol %}
+            <span class="bb-em-sym">{{ mind.current_symbol }}</span>
+            {% endif %}
+        </div>
+    </header>
+
+    <div class="bb-em-thought bb-accent-rail">
+        <span class="bb-em-thought-label">Thinking</span>
+        <p>{{ mind.thinking }}</p>
+    </div>
+
+    <div class="bb-em-grid">
+        <div class="bb-em-sources">
+            <h4>Sources <em>(max 5)</em></h4>
+            <ul class="bb-em-source-list">
+                {% for src in mind.sources %}
+                <li class="bb-em-source bb-em-src-{{ src.status }}">
+                    <span class="bb-em-src-kind">{{ src.kind }}</span>
+                    <strong>{{ src.label }}</strong>
+                    <span class="bb-em-src-detail">{{ src.detail }}</span>
+                </li>
+                {% else %}
+                <li class="bb-muted">No sources yet</li>
+                {% endfor %}
+            </ul>
+        </div>
+
+        <div class="bb-em-breakdown">
+            <h4>Cycle breakdown</h4>
+            <div class="bb-em-bars">
+                {% for row in mind.phase_breakdown %}
+                <div class="bb-em-bar-row" title="{{ row.phase }} · {{ row.count }}">
+                    <span class="bb-em-bar-label">{{ row.phase }}</span>
+                    <div class="bb-em-bar-track">
+                        <div class="bb-em-bar-fill bb-em-bar-{{ row.phase|lower }}"
+                             style="width: {{ row.pct }}%"></div>
+                    </div>
+                    <span class="bb-em-bar-pct">{{ row.pct }}%</span>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+
+    <div class="bb-em-log-wrap">
+        <h4>Motor log</h4>
+        <ul class="bb-em-log">
+            {% for row in mind.journal %}
+            <li class="bb-motor-{{ row.level }} bb-motor-phase-{{ row.phase|lower }}">
+                <time>{{ row.time }}</time>
+                <span class="bb-motor-phase">{{ row.phase }}</span>
+                {% if row.symbol %}<strong>{{ row.symbol }}</strong>{% endif %}
+                <span>{{ row.message }}</span>
+            </li>
+            {% else %}
+            <li class="bb-muted">No journal entries today</li>
+            {% endfor %}
+        </ul>
+    </div>
+</section>
+{% else %}
+<span class="bb-muted">Engine mind loading…</span>
+{% endif %}

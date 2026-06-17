@@ -6,6 +6,7 @@
     <title>Arbitragem Scalper — Structure Deck</title>
     <link rel="stylesheet" href="/static/blackboard.css">
     <link rel="stylesheet" href="/static/blackboard_4_0.css">
+    <link rel="stylesheet" href="/static/blackboard_10_0.css">
     <script src="https://unpkg.com/htmx.org@2.0.4"></script>
 </head>
 <body class="bb-app">
@@ -99,6 +100,12 @@
             Symbol factory
         </button>
         {% endif %}
+        <div id="engine-mind-slot" class="bb-engine-mind-slot"
+             hx-get="/board/partials/engine-mind"
+             hx-trigger="{% if staged_load %}load delay:200ms, every 8s{% else %}load, every 5s{% endif %}"
+             hx-swap="innerHTML">
+            <span class="bb-muted">Engine mind…</span>
+        </div>
         <div id="trader-desk-slot" class="bb-footer-pulse"
              hx-get="/board/partials/trader-desk"
              hx-trigger="{% if staged_load %}load delay:400ms{% else %}load{% endif %}"
@@ -106,7 +113,7 @@
             <span class="bb-muted">Loading trader desk…</span>
         </div>
         <span class="bb-footer-hint">
-            <kbd>S</kbd> scan · <kbd>C</kbd> cash sleeve · <kbd>1-9</kbd> watchlist · <kbd>R</kbd> refresh · <kbd>Enter</kbd> top idea
+            <kbd>S</kbd> scan · <kbd>C</kbd> cash sleeve · <kbd>1-9</kbd> watchlist · <kbd>R</kbd> refresh · <kbd>M</kbd> mind · <kbd>Enter</kbd> top idea
             {% with key="toolbar.shortcuts" %}
             {% include "partials/help_tip.html" %}
             {% endwith %}
@@ -217,6 +224,206 @@
                 }).observe(el);
             }
             requestAnimationFrame(mount);
+        };
+
+        window.bbMountReplayPlayer = function (root) {
+            if (!root || root.dataset.mounted === "1") return;
+            var ticks = [];
+            try {
+                ticks = JSON.parse(root.dataset.ticks || "[]");
+            } catch (err) { /* ignore */ }
+            if (!ticks.length) return;
+            root.dataset.mounted = "1";
+
+            var canvas = root.querySelector(".bb-rp-canvas");
+            var playBtn = root.querySelector(".bb-rp-play");
+            var resetBtn = root.querySelector(".bb-rp-reset");
+            var speedRange = root.querySelector(".bb-rp-speed-range");
+            var speedVal = root.querySelector(".bb-rp-speed-val");
+            var idxEl = root.querySelector(".bb-rp-idx");
+            var priceEl = root.querySelector(".bb-rp-price");
+            var posEl = root.querySelector(".bb-rp-pos");
+            var pnlEl = root.querySelector(".bb-rp-pnl");
+            var eventSlot = root.querySelector(".bb-rp-event-slot");
+            var posFill = root.querySelector(".bb-rp-position-fill");
+            if (!canvas) return;
+
+            var ctx = canvas.getContext("2d");
+            var dpr = window.devicePixelRatio || 1;
+            var w = canvas.clientWidth || 640;
+            var h = 160;
+            canvas.width = w * dpr;
+            canvas.height = h * dpr;
+            ctx.scale(dpr, dpr);
+
+            var prices = ticks.map(function (t) { return t.price; });
+            var minP = Math.min.apply(null, prices);
+            var maxP = Math.max.apply(null, prices);
+            var pad = (maxP - minP) * 0.12 || 0.5;
+            minP -= pad;
+            maxP += pad;
+
+            function yFor(price) {
+                return h - ((price - minP) / (maxP - minP)) * (h - 12) - 6;
+            }
+            function xFor(i) {
+                return 8 + (i / Math.max(ticks.length - 1, 1)) * (w - 16);
+            }
+
+            var cursor = 0;
+            var playing = false;
+            var rafId = null;
+            var lastTs = 0;
+            var speed = parseInt(root.dataset.speed || "8", 10) || 8;
+
+            function draw(upTo) {
+                ctx.clearRect(0, 0, w, h);
+                ctx.fillStyle = "#0a0c10";
+                ctx.fillRect(0, 0, w, h);
+
+                ctx.strokeStyle = "rgba(255,255,255,0.06)";
+                for (var g = 0; g < 4; g++) {
+                    var gy = 6 + (g / 3) * (h - 12);
+                    ctx.beginPath();
+                    ctx.moveTo(0, gy);
+                    ctx.lineTo(w, gy);
+                    ctx.stroke();
+                }
+
+                ctx.beginPath();
+                ctx.strokeStyle = "#f59e0b";
+                ctx.lineWidth = 2;
+                for (var i = 0; i <= upTo; i++) {
+                    var x = xFor(i);
+                    var y = yFor(ticks[i].price);
+                    if (i === 0) ctx.moveTo(x, y);
+                    else ctx.lineTo(x, y);
+                }
+                ctx.stroke();
+
+                for (var j = 0; j <= upTo; j++) {
+                    if (!ticks[j].event) continue;
+                    var ex = xFor(j);
+                    var ey = yFor(ticks[j].price);
+                    ctx.fillStyle = ticks[j].event === "buy" ? "#3dd68c" : "#ff6b6b";
+                    ctx.beginPath();
+                    ctx.arc(ex, ey, 5, 0, Math.PI * 2);
+                    ctx.fill();
+                }
+
+                if (upTo >= 0) {
+                    var cx = xFor(upTo);
+                    var cy = yFor(ticks[upTo].price);
+                    ctx.strokeStyle = "rgba(245,158,11,0.45)";
+                    ctx.setLineDash([3, 3]);
+                    ctx.beginPath();
+                    ctx.moveTo(cx, 0);
+                    ctx.lineTo(cx, h);
+                    ctx.stroke();
+                    ctx.setLineDash([]);
+                    ctx.fillStyle = "#f59e0b";
+                    ctx.beginPath();
+                    ctx.arc(cx, cy, 4, 0, Math.PI * 2);
+                    ctx.fill();
+                }
+            }
+
+            function hud(i) {
+                var t = ticks[i];
+                if (!t) return;
+                if (idxEl) idxEl.textContent = String(i + 1);
+                if (priceEl) priceEl.textContent = bbFormatPrice(t.price);
+                if (posEl) posEl.textContent = String(t.position || 0);
+                if (pnlEl) {
+                    var pnl = t.pnl || 0;
+                    pnlEl.textContent = "R$ " + pnl.toFixed(2);
+                    pnlEl.style.color = pnl >= 0 ? "#3dd68c" : "#ff6b6b";
+                }
+                if (posFill) {
+                    var pct = Math.min(100, Math.abs(t.position || 0));
+                    posFill.style.width = pct + "%";
+                }
+                if (eventSlot) {
+                    if (t.event === "buy") {
+                        eventSlot.innerHTML = '<span class="bb-rp-buy">▲ BUY</span>';
+                    } else if (t.event === "sell") {
+                        eventSlot.innerHTML = '<span class="bb-rp-sell">▼ SELL</span>';
+                    } else {
+                        eventSlot.innerHTML = '<span class="bb-muted">—</span>';
+                    }
+                }
+            }
+
+            function step(ts) {
+                if (!playing) return;
+                if (!lastTs) lastTs = ts;
+                var dt = ts - lastTs;
+                if (dt >= Math.max(20, 120 / speed)) {
+                    lastTs = ts;
+                    if (cursor < ticks.length - 1) {
+                        cursor++;
+                        draw(cursor);
+                        hud(cursor);
+                    } else {
+                        playing = false;
+                        if (playBtn) {
+                            playBtn.textContent = "▶ Play";
+                            playBtn.setAttribute("aria-pressed", "false");
+                        }
+                        return;
+                    }
+                }
+                rafId = requestAnimationFrame(step);
+            }
+
+            function togglePlay() {
+                playing = !playing;
+                if (playBtn) {
+                    playBtn.textContent = playing ? "⏸ Pause" : "▶ Play";
+                    playBtn.setAttribute("aria-pressed", playing ? "true" : "false");
+                }
+                if (playing) {
+                    lastTs = 0;
+                    rafId = requestAnimationFrame(step);
+                } else if (rafId) {
+                    cancelAnimationFrame(rafId);
+                }
+            }
+
+            function reset() {
+                playing = false;
+                if (rafId) cancelAnimationFrame(rafId);
+                if (playBtn) {
+                    playBtn.textContent = "▶ Play";
+                    playBtn.setAttribute("aria-pressed", "false");
+                }
+                cursor = 0;
+                draw(0);
+                hud(0);
+            }
+
+            if (playBtn) playBtn.addEventListener("click", togglePlay);
+            if (resetBtn) resetBtn.addEventListener("click", reset);
+            if (speedRange) {
+                speedRange.addEventListener("input", function () {
+                    speed = parseInt(speedRange.value, 10) || 8;
+                    root.dataset.speed = String(speed);
+                    if (speedVal) speedVal.textContent = speed + "×";
+                });
+            }
+
+            draw(0);
+            hud(0);
+
+            new ResizeObserver(function () {
+                var next = canvas.clientWidth || w;
+                if (next < 24) return;
+                w = next;
+                canvas.width = w * dpr;
+                canvas.height = h * dpr;
+                ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+                draw(cursor);
+            }).observe(canvas);
         };
 
         window.bbShowToast = function (msg, isError) {
@@ -441,9 +648,12 @@
                 }
                 var panel = evt.detail.target.querySelector(".bb-symbol-panel");
                 if (panel) window.bbMountSymbolChart(panel);
+                var rp = evt.detail.target.querySelector(".bb-replay-player");
+                if (rp) window.bbMountReplayPlayer(rp);
             }
-            if (evt.detail.target.id === "replay-lab-slot" && window.htmx) {
-                htmx.process(evt.detail.target);
+            if (evt.detail.target.id === "replay-player-slot" || evt.detail.target.id === "replay-lab-slot") {
+                var player = evt.detail.target.querySelector(".bb-replay-player");
+                if (player) window.bbMountReplayPlayer(player);
             }
         });
 
@@ -451,6 +661,12 @@
             if (evt.detail.target.id === "symbol-panel") {
                 var panel = evt.detail.target.querySelector(".bb-symbol-panel");
                 if (panel) window.bbMountSymbolChart(panel);
+                var rp = evt.detail.target.querySelector(".bb-replay-player");
+                if (rp) window.bbMountReplayPlayer(rp);
+            }
+            if (evt.detail.target.id === "replay-player-slot") {
+                var player = evt.detail.target.querySelector(".bb-replay-player");
+                if (player) window.bbMountReplayPlayer(player);
             }
         });
 
@@ -503,6 +719,7 @@
                 htmx.trigger("#status-bar", "load");
                 htmx.trigger("#idea-stack", "load");
                 htmx.trigger("#trader-desk-slot", "load");
+                htmx.trigger("#engine-mind-slot", "load");
                 if (window.bbActiveSymbol) {
                     htmx.ajax("GET", "/board/partials/ideas?symbol=" + encodeURIComponent(window.bbActiveSymbol), {
                         target: "#idea-stack",
@@ -539,6 +756,12 @@
                     evt.preventDefault();
                     rows[idx].click();
                 }
+            }
+            if (evt.key === "m" || evt.key === "M") {
+                evt.preventDefault();
+                htmx.trigger("#engine-mind-slot", "load");
+                var mind = document.getElementById("engine-mind");
+                if (mind) mind.scrollIntoView({ behavior: "smooth", block: "nearest" });
             }
             if (evt.key === "Enter" && !evt.target.closest(".bb-watch-row") && !evt.target.closest(".bb-modal")) {
                 var top = document.querySelector(".bb-idea .bb-btn-confirm");

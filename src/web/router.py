@@ -1116,6 +1116,32 @@ async def trade_product_partial(request: Request, symbol: str):
     )
 
 
+@router.get("/board/partials/engine-mind", response_class=HTMLResponse)
+async def engine_mind_partial(request: Request):
+    from src.web.engine_mind import build_engine_mind
+
+    mind = await _to_thread(_with_db, build_engine_mind)
+    return TEMPLATES.TemplateResponse(
+        request,
+        "partials/engine_mind.html",
+        {"mind": mind},
+    )
+
+
+@router.get("/board/partials/replay-player", response_class=HTMLResponse)
+async def replay_player_partial(request: Request):
+    from src.web.replay_player import build_replay_ticks
+
+    sym = (request.query_params.get("symbol") or "PETR4").strip().upper()
+    speed = int(request.query_params.get("speed", "8") or 8)
+    ticks = await _to_thread(build_replay_ticks, sym)
+    return TEMPLATES.TemplateResponse(
+        request,
+        "partials/replay_player.html",
+        {"symbol": sym, "speed": speed, "ticks": ticks},
+    )
+
+
 @router.get("/board/partials/replay-lab", response_class=HTMLResponse)
 async def replay_lab_partial(request: Request):
     sym = (request.query_params.get("symbol") or "PETR4").strip().upper()
