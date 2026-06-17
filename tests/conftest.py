@@ -17,6 +17,7 @@ os.environ.setdefault("SCANNER_OLLAMA_ON_SCAN", "false")
 os.environ.setdefault("JOURNAL_AUTO_ANALYZE", "false")
 os.environ["EXECUTION_BACKEND"] = "paper"
 os.environ["GOLDEN_PATH_MODE"] = "false"
+os.environ["LOW_RAM_MODE"] = "false"
 
 import pytest
 
@@ -31,7 +32,10 @@ def _isolated_sqlite_db(monkeypatch, tmp_path_factory):
 
 
 @pytest.fixture(autouse=True)
-def _reset_settings_cache():
+def _reset_settings_cache(monkeypatch):
+    """Isolate mode flags from developer .env (e.g. GOLDEN_PATH_MODE=true)."""
+    monkeypatch.setenv("GOLDEN_PATH_MODE", "false")
+    monkeypatch.setenv("LOW_RAM_MODE", "false")
     get_settings.cache_clear()
     yield
     get_settings.cache_clear()
