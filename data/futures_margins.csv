@@ -1,0 +1,21 @@
+# B3 day-trade margin reference (config / sizer)
+# Source: B3 Ofício Circular 059/2025 — effective 2026-02-02
+# Verify with broker (XP) before live — corretoras may require more.
+
+symbol_class,margin_brl_b3_min,point_value_brl,tick_points,notes
+WIN,155,0.20,5,Mini Ibovespa — preferred for Filipe history
+WDO,140,10.00,0.5,Mini dollar
+MBR,65,0.20,5,Micro índice — better for accounts < R$2000
+BIT,45,,,Bitcoin fut B3
+ETR,70,,,Ethereum fut B3
+SOL,85,,,Solana fut B3
+GLD,135,,,Ouro fut — skip at R$500 capital
+
+# Filipe R$500 conservative budget
+recommended_max_contracts_capital_500:
+  WIN: 1
+  WDO: 1
+  MBR: 1
+  combined_WIN_WDO: 0  # do not stack until capital > R$1500
+buffer_brl: 100
+daily_loss_limit_brl: 50
