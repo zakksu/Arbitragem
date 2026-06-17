@@ -1,0 +1,15 @@
+// Arbitragem Core17 — b3sa3_covered_call
+// Structure: covered call · Buy stock then Sell OTM call
+// Underlying: B3SA3
+input
+  StopTicks(4);
+  TargetTicks(6);
+var
+  EntryPrice : Float;
+begin
+  EntryPrice := Close;
+// scalp B3SA3 — Buy stock then Sell OTM call
+// BuyAtMarket(100, "B3SA3");
+  SetStopLoss(StopTicks * MinPriceIncrement);
+  SetProfitTarget(TargetTicks * MinPriceIncrement);
+end;

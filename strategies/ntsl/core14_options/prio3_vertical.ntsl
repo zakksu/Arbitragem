@@ -1,0 +1,17 @@
+// Arbitragem Core17 — prio3_vertical
+// Structure: vertical · Bull call vertical spread
+// Underlying: PRIO3
+input
+  StopTicks(5);
+  TargetTicks(10);
+var
+  EntryPrice : Float;
+begin
+  EntryPrice := Close;
+// Leg 1: buy lower strike call on PRIO3
+// BuyAtMarket(1, "PRIOA400");
+// Leg 2: sell higher strike call
+// SellAtMarket(1, "PRIOA400");
+  SetStopLoss(StopTicks * MinPriceIncrement);
+  SetProfitTarget(TargetTicks * MinPriceIncrement);
+end;

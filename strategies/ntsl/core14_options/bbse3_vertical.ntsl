@@ -1,0 +1,17 @@
+// Arbitragem Core17 — bbse3_vertical
+// Structure: vertical · Bull call vertical spread
+// Underlying: BBSE3
+input
+  StopTicks(5);
+  TargetTicks(9);
+var
+  EntryPrice : Float;
+begin
+  EntryPrice := Close;
+// Leg 1: buy lower strike call on BBSE3
+// BuyAtMarket(1, "BBSEA220");
+// Leg 2: sell higher strike call
+// SellAtMarket(1, "BBSEA220");
+  SetStopLoss(StopTicks * MinPriceIncrement);
+  SetProfitTarget(TargetTicks * MinPriceIncrement);
+end;

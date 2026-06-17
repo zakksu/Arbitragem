@@ -1,0 +1,15 @@
+// Arbitragem Core17 — ggbr4_cash_scalp
+// Structure: scalp · VWAP reclaim scalp on underlying
+// Underlying: GGBR4
+input
+  StopTicks(7);
+  TargetTicks(12);
+var
+  EntryPrice : Float;
+begin
+  EntryPrice := Close;
+// scalp GGBR4 — VWAP reclaim scalp on underlying
+// BuyAtMarket(100, "GGBR4");
+  SetStopLoss(StopTicks * MinPriceIncrement);
+  SetProfitTarget(TargetTicks * MinPriceIncrement);
+end;

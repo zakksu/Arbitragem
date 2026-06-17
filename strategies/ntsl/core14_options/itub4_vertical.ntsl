@@ -1,0 +1,17 @@
+// Arbitragem Core17 — itub4_vertical
+// Structure: vertical · Bull call vertical spread
+// Underlying: ITUB4
+input
+  StopTicks(5);
+  TargetTicks(8);
+var
+  EntryPrice : Float;
+begin
+  EntryPrice := Close;
+// Leg 1: buy lower strike call on ITUB4
+// BuyAtMarket(1, "ITUBA340");
+// Leg 2: sell higher strike call
+// SellAtMarket(1, "ITUBA340");
+  SetStopLoss(StopTicks * MinPriceIncrement);
+  SetProfitTarget(TargetTicks * MinPriceIncrement);
+end;

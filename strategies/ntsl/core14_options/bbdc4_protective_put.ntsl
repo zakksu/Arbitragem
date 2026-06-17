@@ -1,0 +1,15 @@
+// Arbitragem Core17 — bbdc4_protective_put
+// Structure: hedge · Long stock + protective put only
+// Underlying: BBDC4
+input
+  StopTicks(8);
+  TargetTicks(7);
+var
+  EntryPrice : Float;
+begin
+  EntryPrice := Close;
+// scalp BBDC4 — Long stock + protective put only
+// BuyAtMarket(100, "BBDC4");
+  SetStopLoss(StopTicks * MinPriceIncrement);
+  SetProfitTarget(TargetTicks * MinPriceIncrement);
+end;

@@ -1,0 +1,17 @@
+// Arbitragem Core17 — abev3_vertical
+// Structure: vertical · Bull call vertical spread
+// Underlying: ABEV3
+input
+  StopTicks(5);
+  TargetTicks(12);
+var
+  EntryPrice : Float;
+begin
+  EntryPrice := Close;
+// Leg 1: buy lower strike call on ABEV3
+// BuyAtMarket(1, "ABEVA140");
+// Leg 2: sell higher strike call
+// SellAtMarket(1, "ABEVA140");
+  SetStopLoss(StopTicks * MinPriceIncrement);
+  SetProfitTarget(TargetTicks * MinPriceIncrement);
+end;

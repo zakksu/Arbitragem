@@ -1,0 +1,15 @@
+// Arbitragem Core17 — abev3_cash_scalp
+// Structure: scalp · VWAP reclaim scalp on underlying
+// Underlying: ABEV3
+input
+  StopTicks(7);
+  TargetTicks(7);
+var
+  EntryPrice : Float;
+begin
+  EntryPrice := Close;
+// scalp ABEV3 — VWAP reclaim scalp on underlying
+// BuyAtMarket(100, "ABEV3");
+  SetStopLoss(StopTicks * MinPriceIncrement);
+  SetProfitTarget(TargetTicks * MinPriceIncrement);
+end;

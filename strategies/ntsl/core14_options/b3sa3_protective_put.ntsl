@@ -1,0 +1,15 @@
+// Arbitragem Core17 — b3sa3_protective_put
+// Structure: hedge · Long stock + protective put only
+// Underlying: B3SA3
+input
+  StopTicks(8);
+  TargetTicks(10);
+var
+  EntryPrice : Float;
+begin
+  EntryPrice := Close;
+// scalp B3SA3 — Long stock + protective put only
+// BuyAtMarket(100, "B3SA3");
+  SetStopLoss(StopTicks * MinPriceIncrement);
+  SetProfitTarget(TargetTicks * MinPriceIncrement);
+end;

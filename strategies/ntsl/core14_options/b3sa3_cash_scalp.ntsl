@@ -1,0 +1,15 @@
+// Arbitragem Core17 — b3sa3_cash_scalp
+// Structure: scalp · VWAP reclaim scalp on underlying
+// Underlying: B3SA3
+input
+  StopTicks(7);
+  TargetTicks(9);
+var
+  EntryPrice : Float;
+begin
+  EntryPrice := Close;
+// scalp B3SA3 — VWAP reclaim scalp on underlying
+// BuyAtMarket(100, "B3SA3");
+  SetStopLoss(StopTicks * MinPriceIncrement);
+  SetProfitTarget(TargetTicks * MinPriceIncrement);
+end;

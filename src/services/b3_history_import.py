@@ -64,6 +64,8 @@ def import_b3_history_excel(session: Session, path: Path) -> dict[str, Any]:
 def preview_excel_rows(path: Path, *, limit: int = 5) -> dict[str, Any]:
     """Lightweight preview without DB write."""
     path = Path(path)
+    if not path.exists():
+        return {"error": "file_not_found"}
     if path.suffix.lower() not in (".xlsx", ".xls"):
         return {"error": "not_excel"}
     df = _read_excel_df(path)

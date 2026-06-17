@@ -24,6 +24,8 @@ tools/cloudflared.exe
 data/*
 !data/.gitkeep
 !data/filipe_core14.csv
+!data/filipe_core17.csv
+!data/core17_options.csv
 !data/ibov_top20.csv
 data/.dev/
 logs/

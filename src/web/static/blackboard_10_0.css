@@ -646,6 +646,24 @@
     background: transparent;
 }
 
+.bb-symbol-theory,
+.bb-opp-theory {
+    margin: 0.5rem 0;
+    padding: 0.4rem 0.55rem;
+    border: 1px solid var(--arb-border);
+    border-radius: var(--arb-radius);
+    font-size: 0.7rem;
+}
+
+.bb-symbol-theory .bb-muted,
+.bb-opp-theory .bb-muted {
+    display: block;
+    margin-bottom: 0.25rem;
+    font-size: 0.62rem;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+}
+
 .bb-decision-brief {
     margin: 0.5rem 0;
     padding: 0.45rem;

@@ -1,0 +1,15 @@
+// Arbitragem Core17 — petr4_covered_call
+// Structure: covered call · Buy stock then Sell OTM call
+// Underlying: PETR4
+input
+  StopTicks(4);
+  TargetTicks(6);
+var
+  EntryPrice : Float;
+begin
+  EntryPrice := Close;
+// scalp PETR4 — Buy stock then Sell OTM call
+// BuyAtMarket(100, "PETR4");
+  SetStopLoss(StopTicks * MinPriceIncrement);
+  SetProfitTarget(TargetTicks * MinPriceIncrement);
+end;

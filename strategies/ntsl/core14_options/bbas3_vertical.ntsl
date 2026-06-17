@@ -1,0 +1,17 @@
+// Arbitragem Core17 — bbas3_vertical
+// Structure: vertical · Bull call vertical spread
+// Underlying: BBAS3
+input
+  StopTicks(5);
+  TargetTicks(6);
+var
+  EntryPrice : Float;
+begin
+  EntryPrice := Close;
+// Leg 1: buy lower strike call on BBAS3
+// BuyAtMarket(1, "BBASA320");
+// Leg 2: sell higher strike call
+// SellAtMarket(1, "BBASA320");
+  SetStopLoss(StopTicks * MinPriceIncrement);
+  SetProfitTarget(TargetTicks * MinPriceIncrement);
+end;

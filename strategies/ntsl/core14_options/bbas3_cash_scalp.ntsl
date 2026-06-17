@@ -1,0 +1,15 @@
+// Arbitragem Core17 — bbas3_cash_scalp
+// Structure: scalp · VWAP reclaim scalp on underlying
+// Underlying: BBAS3
+input
+  StopTicks(7);
+  TargetTicks(8);
+var
+  EntryPrice : Float;
+begin
+  EntryPrice := Close;
+// scalp BBAS3 — VWAP reclaim scalp on underlying
+// BuyAtMarket(100, "BBAS3");
+  SetStopLoss(StopTicks * MinPriceIncrement);
+  SetProfitTarget(TargetTicks * MinPriceIncrement);
+end;

@@ -1,0 +1,15 @@
+// Arbitragem Core17 — abev3_covered_call
+// Structure: covered call · Buy stock then Sell OTM call
+// Underlying: ABEV3
+input
+  StopTicks(4);
+  TargetTicks(11);
+var
+  EntryPrice : Float;
+begin
+  EntryPrice := Close;
+// scalp ABEV3 — Buy stock then Sell OTM call
+// BuyAtMarket(100, "ABEV3");
+  SetStopLoss(StopTicks * MinPriceIncrement);
+  SetProfitTarget(TargetTicks * MinPriceIncrement);
+end;

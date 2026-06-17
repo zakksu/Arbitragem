@@ -1,0 +1,19 @@
+// Arbitragem Core17 — abev3_collar
+// Structure: collar · Long stock + protective put + short call
+// Underlying: ABEV3
+input
+  StopTicks(6);
+  TargetTicks(6);
+var
+  EntryPrice : Float;
+begin
+  EntryPrice := Close;
+// Leg 1: long ABEV3
+// BuyAtMarket(100, "ABEV3");
+// Leg 2: protective put
+// BuyAtMarket(1, "ABEVM130");
+// Leg 3: short OTM call
+// SellAtMarket(1, "ABEVA140");
+  SetStopLoss(StopTicks * MinPriceIncrement);
+  SetProfitTarget(TargetTicks * MinPriceIncrement);
+end;

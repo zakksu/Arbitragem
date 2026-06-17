@@ -1,0 +1,15 @@
+// Arbitragem Core17 — ggbr4_covered_call
+// Structure: covered call · Buy stock then Sell OTM call
+// Underlying: GGBR4
+input
+  StopTicks(4);
+  TargetTicks(9);
+var
+  EntryPrice : Float;
+begin
+  EntryPrice := Close;
+// scalp GGBR4 — Buy stock then Sell OTM call
+// BuyAtMarket(100, "GGBR4");
+  SetStopLoss(StopTicks * MinPriceIncrement);
+  SetProfitTarget(TargetTicks * MinPriceIncrement);
+end;

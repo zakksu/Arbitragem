@@ -1,0 +1,19 @@
+// Arbitragem Core17 — bbdc4_collar
+// Structure: collar · Long stock + protective put + short call
+// Underlying: BBDC4
+input
+  StopTicks(6);
+  TargetTicks(12);
+var
+  EntryPrice : Float;
+begin
+  EntryPrice := Close;
+// Leg 1: long BBDC4
+// BuyAtMarket(100, "BBDC4");
+// Leg 2: protective put
+// BuyAtMarket(1, "BBDCM140");
+// Leg 3: short OTM call
+// SellAtMarket(1, "BBDCA150");
+  SetStopLoss(StopTicks * MinPriceIncrement);
+  SetProfitTarget(TargetTicks * MinPriceIncrement);
+end;

@@ -1,0 +1,19 @@
+// Arbitragem Core17 — bbas3_collar
+// Structure: collar · Long stock + protective put + short call
+// Underlying: BBAS3
+input
+  StopTicks(6);
+  TargetTicks(7);
+var
+  EntryPrice : Float;
+begin
+  EntryPrice := Close;
+// Leg 1: long BBAS3
+// BuyAtMarket(100, "BBAS3");
+// Leg 2: protective put
+// BuyAtMarket(1, "BBASM300");
+// Leg 3: short OTM call
+// SellAtMarket(1, "BBASA320");
+  SetStopLoss(StopTicks * MinPriceIncrement);
+  SetProfitTarget(TargetTicks * MinPriceIncrement);
+end;

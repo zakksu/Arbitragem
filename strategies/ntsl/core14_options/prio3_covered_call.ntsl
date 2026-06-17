@@ -1,0 +1,15 @@
+// Arbitragem Core17 — prio3_covered_call
+// Structure: covered call · Buy stock then Sell OTM call
+// Underlying: PRIO3
+input
+  StopTicks(4);
+  TargetTicks(9);
+var
+  EntryPrice : Float;
+begin
+  EntryPrice := Close;
+// scalp PRIO3 — Buy stock then Sell OTM call
+// BuyAtMarket(100, "PRIO3");
+  SetStopLoss(StopTicks * MinPriceIncrement);
+  SetProfitTarget(TargetTicks * MinPriceIncrement);
+end;

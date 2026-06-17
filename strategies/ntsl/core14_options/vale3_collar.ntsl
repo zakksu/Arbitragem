@@ -1,0 +1,19 @@
+// Arbitragem Core17 — vale3_collar
+// Structure: collar · Long stock + protective put + short call
+// Underlying: VALE3
+input
+  StopTicks(6);
+  TargetTicks(6);
+var
+  EntryPrice : Float;
+begin
+  EntryPrice := Close;
+// Leg 1: long VALE3
+// BuyAtMarket(100, "VALE3");
+// Leg 2: protective put
+// BuyAtMarket(1, "VALEM640");
+// Leg 3: short OTM call
+// SellAtMarket(1, "VALEA680");
+  SetStopLoss(StopTicks * MinPriceIncrement);
+  SetProfitTarget(TargetTicks * MinPriceIncrement);
+end;

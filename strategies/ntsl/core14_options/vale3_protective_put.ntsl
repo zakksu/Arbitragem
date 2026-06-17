@@ -1,0 +1,15 @@
+// Arbitragem Core17 — vale3_protective_put
+// Structure: hedge · Long stock + protective put only
+// Underlying: VALE3
+input
+  StopTicks(8);
+  TargetTicks(8);
+var
+  EntryPrice : Float;
+begin
+  EntryPrice := Close;
+// scalp VALE3 — Long stock + protective put only
+// BuyAtMarket(100, "VALE3");
+  SetStopLoss(StopTicks * MinPriceIncrement);
+  SetProfitTarget(TargetTicks * MinPriceIncrement);
+end;

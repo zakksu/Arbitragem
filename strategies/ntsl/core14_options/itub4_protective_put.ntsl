@@ -1,0 +1,15 @@
+// Arbitragem Core17 — itub4_protective_put
+// Structure: hedge · Long stock + protective put only
+// Underlying: ITUB4
+input
+  StopTicks(8);
+  TargetTicks(11);
+var
+  EntryPrice : Float;
+begin
+  EntryPrice := Close;
+// scalp ITUB4 — Long stock + protective put only
+// BuyAtMarket(100, "ITUB4");
+  SetStopLoss(StopTicks * MinPriceIncrement);
+  SetProfitTarget(TargetTicks * MinPriceIncrement);
+end;

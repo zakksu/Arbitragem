@@ -1,0 +1,19 @@
+// Arbitragem Core17 — ggbr4_collar
+// Structure: collar · Long stock + protective put + short call
+// Underlying: GGBR4
+input
+  StopTicks(6);
+  TargetTicks(11);
+var
+  EntryPrice : Float;
+begin
+  EntryPrice := Close;
+// Leg 1: long GGBR4
+// BuyAtMarket(100, "GGBR4");
+// Leg 2: protective put
+// BuyAtMarket(1, "GGBRM190");
+// Leg 3: short OTM call
+// SellAtMarket(1, "GGBRA200");
+  SetStopLoss(StopTicks * MinPriceIncrement);
+  SetProfitTarget(TargetTicks * MinPriceIncrement);
+end;

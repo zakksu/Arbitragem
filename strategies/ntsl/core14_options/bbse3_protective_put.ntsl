@@ -1,0 +1,15 @@
+// Arbitragem Core17 — bbse3_protective_put
+// Structure: hedge · Long stock + protective put only
+// Underlying: BBSE3
+input
+  StopTicks(8);
+  TargetTicks(12);
+var
+  EntryPrice : Float;
+begin
+  EntryPrice := Close;
+// scalp BBSE3 — Long stock + protective put only
+// BuyAtMarket(100, "BBSE3");
+  SetStopLoss(StopTicks * MinPriceIncrement);
+  SetProfitTarget(TargetTicks * MinPriceIncrement);
+end;

@@ -1,0 +1,17 @@
+// Arbitragem Core17 — ggbr4_vertical
+// Structure: vertical · Bull call vertical spread
+// Underlying: GGBR4
+input
+  StopTicks(5);
+  TargetTicks(10);
+var
+  EntryPrice : Float;
+begin
+  EntryPrice := Close;
+// Leg 1: buy lower strike call on GGBR4
+// BuyAtMarket(1, "GGBRA200");
+// Leg 2: sell higher strike call
+// SellAtMarket(1, "GGBRA200");
+  SetStopLoss(StopTicks * MinPriceIncrement);
+  SetProfitTarget(TargetTicks * MinPriceIncrement);
+end;

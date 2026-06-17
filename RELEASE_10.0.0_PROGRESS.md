@@ -41,6 +41,10 @@ Board partials: `/board/partials/engine-mind`, `learning-rail`, `decision-queue`
 pytest tests/test_10_0_ga.py tests/test_10_0_ui_ga.py tests/test_engine_mind_10_0.py tests/test_knowledge_store.py tests/test_replay_engine_10.py -q
 ```
 
+**Latest polish (post-GA):** knowledge bootstrap on `dev.py setup`, `structure`/`learn` layout presets, theory chips on trade product + symbol panel + opportunity rail, `knowledge_enabled` in resource profile, `docs/agent_integration.md` §10.0 GA.
+
+Full suite: **327 passed** (includes 3 new tests).
+
 ---
 
 ## Manual GA bar (Filipe)
@@ -50,4 +54,4 @@ pytest tests/test_10_0_ga.py tests/test_10_0_ui_ga.py tests/test_engine_mind_10_
 - [ ] ≥1 approved patch from real journal data
 - [ ] Stack RSS ≤ 1.5 GB under real load
 
-See [RELEASE_10.0_VISION.md](RELEASE_10.0_VISION.md) for 11.x follow-ups (live graduation per symbol, GPU embed batch).
+See [docs/RELEASE_11.0_SCOPE.md](docs/RELEASE_11.0_SCOPE.md) — B3 archaeology import, Core17 NTSL pack (50), board mockups.

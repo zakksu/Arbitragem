@@ -1,0 +1,15 @@
+// Arbitragem Core17 — ggbr4_protective_put
+// Structure: hedge · Long stock + protective put only
+// Underlying: GGBR4
+input
+  StopTicks(8);
+  TargetTicks(6);
+var
+  EntryPrice : Float;
+begin
+  EntryPrice := Close;
+// scalp GGBR4 — Long stock + protective put only
+// BuyAtMarket(100, "GGBR4");
+  SetStopLoss(StopTicks * MinPriceIncrement);
+  SetProfitTarget(TargetTicks * MinPriceIncrement);
+end;

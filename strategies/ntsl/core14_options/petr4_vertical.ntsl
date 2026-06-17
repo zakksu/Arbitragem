@@ -1,0 +1,17 @@
+// Arbitragem Core17 — petr4_vertical
+// Structure: vertical · Bull call vertical spread
+// Underlying: PETR4
+input
+  StopTicks(5);
+  TargetTicks(7);
+var
+  EntryPrice : Float;
+begin
+  EntryPrice := Close;
+// Leg 1: buy lower strike call on PETR4
+// BuyAtMarket(1, "PETRA360");
+// Leg 2: sell higher strike call
+// SellAtMarket(1, "PETRA360");
+  SetStopLoss(StopTicks * MinPriceIncrement);
+  SetProfitTarget(TargetTicks * MinPriceIncrement);
+end;

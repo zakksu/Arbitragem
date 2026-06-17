@@ -1,0 +1,15 @@
+// Arbitragem Core17 — petr4_protective_put
+// Structure: hedge · Long stock + protective put only
+// Underlying: PETR4
+input
+  StopTicks(8);
+  TargetTicks(10);
+var
+  EntryPrice : Float;
+begin
+  EntryPrice := Close;
+// scalp PETR4 — Long stock + protective put only
+// BuyAtMarket(100, "PETR4");
+  SetStopLoss(StopTicks * MinPriceIncrement);
+  SetProfitTarget(TargetTicks * MinPriceIncrement);
+end;

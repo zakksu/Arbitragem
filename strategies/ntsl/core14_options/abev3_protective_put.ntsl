@@ -1,0 +1,15 @@
+// Arbitragem Core17 — abev3_protective_put
+// Structure: hedge · Long stock + protective put only
+// Underlying: ABEV3
+input
+  StopTicks(8);
+  TargetTicks(8);
+var
+  EntryPrice : Float;
+begin
+  EntryPrice := Close;
+// scalp ABEV3 — Long stock + protective put only
+// BuyAtMarket(100, "ABEV3");
+  SetStopLoss(StopTicks * MinPriceIncrement);
+  SetProfitTarget(TargetTicks * MinPriceIncrement);
+end;

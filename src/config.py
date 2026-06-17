@@ -200,6 +200,9 @@ class Settings(BaseSettings):
         root_ntsl = PROJECT_ROOT / "exports" / "ntsl"
         if root_ntsl.exists() and root_ntsl not in paths:
             paths.append(root_ntsl)
+        pack_ntsl = PROJECT_ROOT / "strategies" / "ntsl"
+        if pack_ntsl.exists() and pack_ntsl not in paths:
+            paths.append(pack_ntsl)
         if self.profitchart_strategies_dir:
             pc = Path(self.profitchart_strategies_dir)
             if pc.exists():

@@ -1,0 +1,15 @@
+// Arbitragem Core17 — prio3_protective_put
+// Structure: hedge · Long stock + protective put only
+// Underlying: PRIO3
+input
+  StopTicks(8);
+  TargetTicks(6);
+var
+  EntryPrice : Float;
+begin
+  EntryPrice := Close;
+// scalp PRIO3 — Long stock + protective put only
+// BuyAtMarket(100, "PRIO3");
+  SetStopLoss(StopTicks * MinPriceIncrement);
+  SetProfitTarget(TargetTicks * MinPriceIncrement);
+end;

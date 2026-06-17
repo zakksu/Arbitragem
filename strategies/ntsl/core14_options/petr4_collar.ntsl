@@ -1,0 +1,19 @@
+// Arbitragem Core17 — petr4_collar
+// Structure: collar · Long stock + protective put + short call
+// Underlying: PETR4
+input
+  StopTicks(6);
+  TargetTicks(8);
+var
+  EntryPrice : Float;
+begin
+  EntryPrice := Close;
+// Leg 1: long PETR4
+// BuyAtMarket(100, "PETR4");
+// Leg 2: protective put
+// BuyAtMarket(1, "PETRM360");
+// Leg 3: short OTM call
+// SellAtMarket(1, "PETRA360");
+  SetStopLoss(StopTicks * MinPriceIncrement);
+  SetProfitTarget(TargetTicks * MinPriceIncrement);
+end;
