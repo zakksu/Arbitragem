@@ -61,11 +61,121 @@ Insights land in `data/.dev/b3_history_insights.json` (per-symbol archaeology + 
 | 4 | `mockup_11_0_archaeology.png` | **Archaeology wall** — 5-year timeline, futures vs cash vs options lanes |
 | 5 | `mockup_11_0_strategy_lab.png` | **Strategy Lab grid** — 50 NTSL cards, sector filters, scan/index UX |
 
-**Recommendation:** Ship **#1** as default desktop; expose **#4** as `/board?layout=archaeology` preset when history imported; **#3** for `LOW_RAM_MODE` phone preview.
+**Recommendation (updated):** Ship the **Hybrid Cockpit** below — one layout that keeps the best of all five mockups. Archaeology and Strategy Lab become **presets**, not separate products.
 
 ---
 
-## Core17 symbol policy
+## Live trading — what you see where (today)
+
+**Short answer:** You do **not** need ProfitChart open to know the scanner/motor/mind is running. Your **confirmation surface is the board** at http://127.0.0.1:8000/board. ProfitChart is a **data + execution terminal**, not a remote-controlled UI puppet.
+
+### What ProfitChart is (and is not)
+
+| | Today (pre–Phase C) | After Phase C (DLL orders wired) |
+|---|---------------------|----------------------------------|
+| **Quotes / chains** | Bridge reads via DLL or stub | Same — Profit must be running for live quotes |
+| **Scanner / motor / mind** | Runs in Arbitragem API — **invisible in Profit** | Same — logic stays on the board |
+| **Paper execute** | Sim auto-fill in bridge (`is_paper=true`) | N/A on sim account |
+| **Live execute** | Ticket → `data/profit_outbox/next_order.json` + **Chart Trading hint** (`C Mercado · 100 · PETR4`) — **you click in Profit** | DLL may place orders; Profit still shows fills/positions natively |
+| **NTSL strategies** | Export to `exports/profit/` → **manual import** in Profit Editor | Optional auto-arm (Phase C deliverable) |
+
+ProfitChart will **not** visibly “be driven” like a macro recorder. You will see **your normal Profit UI** plus **our hints/outbox**. The agent’s brain (radar, scanner, engine mind) lives on the **blackboard**.
+
+### “Is it on?” — 30-second checklist (board)
+
+Look at the **status bar** (top of board):
+
+| Signal | Green means |
+|--------|-------------|
+| **Paper** / **Live** pill | Mode matches intent (`PAPER_TRADING_MODE` in `.env`) |
+| **Profit OK** | Bridge reachable at `:9100` |
+| **Scanner** `(N)` | Universe loaded (14–17 symbols; `1` in golden path) |
+| **MOTOR** pill | Orchestrator active — auto scan/execute when sleeves ON |
+| **CASH / OPT / PAIR** sleeves | Green = sleeve open (paused = grey) |
+| **GATE OK** | Risk cockpit not blocking confirms |
+
+Then scroll to **Engine Mind** (footer):
+
+| Signal | Meaning |
+|--------|---------|
+| Pulsing dot + phase (`SCAN`, `IDEATE`, …) | Motor cycle running |
+| Sources list (max 5) | What the mind used this cycle (quotes, knowledge, …) |
+| Recent cycles | Timestamped phase log |
+
+**CLI equivalent:**
+
+```powershell
+python scripts/status_tick.py --json
+# api.ok, motor.active, sleeves, degraded, knowledge, replay_training
+```
+
+### When you *do* need ProfitChart visible
+
+1. **Live ticket execution** — pending order in outbox; companion shows hint; you confirm in Chart Trading.  
+2. **NTSL arm/replay** — import strategy from `exports/profit/` or Strategy Store export.  
+3. **P&L truth reconcile** — compare board Day P&L vs Profit account (Phase C gate #4).  
+4. **Option chain sanity** — refresh strikes in `core17_options.csv` against real chain.
+
+### ProfitChart Companion panel (board)
+
+Already on board: **Bridge ON**, **ProfitChart ✓** (when `PROFITCHART_EXE` set), entry/stop/target levels to copy beside your chart. This is the “side-by-side” mirror — not remote control.
+
+---
+
+## Hybrid Cockpit — north-star layout (11.0 UI)
+
+Merges the best of all five mockups into **one default desktop** + two presets.
+
+```
+┌─────────────────────────────────────────────────────────────────────────────┐
+│ STATUS: Paper/Live · Profit OK · Scanner(17) · MOTOR · Sleeves · GATE     │  ← #1 Command Center bar
+│ [Learning rail: patches | briefing spark | degraded banner if any]          │  ← #2 top strip
+├──────────┬──────────────────────────────────────────────┬───────────────────┤
+│ WATCHLIST│  SYMBOL PANEL + ProfitChart Companion levels │  IDEA STACK        │  ← #1 center
+│ Core17   │  Trade product + theory chips                │  Decision queue    │  ← #3 confirm/brief
+│ grad badges│  Archaeology chip (your history)           │  Confirm → brief  │
+├──────────┴──────────────────────────────────────────────┴───────────────────┤
+│ STRATEGY LAB strip (collapsible): 50 NTSL cards · sector filter · Scan      │  ← #5
+├─────────────────────────────────────────────────────────────────────────────┤
+│ ENGINE MIND: phase · sources · cycle bars · recent log                      │  ← #1 footer
+└─────────────────────────────────────────────────────────────────────────────┘
+
+Presets (layout switcher):
+  • default     — Hybrid above
+  • archaeology — #4 timeline hero replaces Strategy Lab strip
+  • golden      — #3 mobile: PETR4-only, hide watchlist extras, large confirm
+  • learn       — #2 expanded: learning rail + patch drawer full width
+```
+
+### Elements kept from each mockup
+
+| Mockup | Kept in hybrid |
+|--------|----------------|
+| #1 Command Center | 3-column grid, status KPIs, engine mind footer |
+| #2 Learning rail | Top collapsible strip: patches + daily briefing mini-charts |
+| #3 Golden mobile | `golden` preset: single-symbol, decision brief modal, progress ring |
+| #4 Archaeology | Symbol “your history” chip + `archaeology` preset timeline |
+| #5 Strategy Lab | Bottom collapsible NTSL grid linked to Strategy Store scan |
+
+---
+
+## Live Radar — new 11.0 feature (scoped)
+
+A single **“systems green”** strip so you never guess.
+
+| ID | Owner | Task |
+|----|-------|------|
+| W11.6 | Worker | **Live Radar** widget: 6 lamps (API, Bridge, Motor, Scanner, Mind, Sleeves) — all green = trading stack live |
+| W11.7 | Worker | **Outbox ticker** — last ticket + Chart Trading hint + link to `next_order.json` |
+| A11.13 | Backend | `GET /ops/live-radar` aggregates health + orchestrator + bridge mode + last_cycle_age_sec |
+| W11.8 | Worker | Audible/ping optional when MOTOR transitions idle→active (off by default) |
+| A11.14 | Backend | Bridge reports `dll_mode: stub|loaded|callbacks_wired` in `/health` |
+
+**Rule for Filipe:** If **Live Radar** is all green and **MOTOR** pill shows, the stack is working — ProfitChart only needed when executing a live ticket or arming NTSL.
+
+---
+
+## Release 11.0 phases (proposed)
 
 | Tier | Symbols | Role |
 |------|---------|------|
@@ -97,9 +207,10 @@ Insights land in `data/.dev/b3_history_insights.json` (per-symbol archaeology + 
 | A11.1 | Backend | FIFO round-trip P&L on archaeology rows (replace signed-valor proxy) |
 | A11.2 | Backend | Futures lane (`WIN*`, `WDO*`) separate from equities in timeline API |
 | A11.3 | Backend | `GET /archaeology/summary` — top symbols, win rate, net flow |
-| A11.4 | Worker | Board layout preset **archaeology** (mockup #4) |
+| A11.4 | Worker | Board layout presets: **default (hybrid)**, archaeology, golden, learn |
 | A11.5 | Worker | Symbol panel “your history” chip when `has_live_history` |
 | A11.6 | Both | Ingest insights into knowledge RAG (`ingest_knowledge.py --path insights`) |
+| W11.6 | Worker | Live Radar widget + outbox ticker (see above) |
 
 ### 11.0-beta — Strategy Forge (2 weeks)
 
@@ -107,7 +218,7 @@ Insights land in `data/.dev/b3_history_insights.json` (per-symbol archaeology + 
 |----|-------|------|
 | A11.7 | Backend | Replay top-10 archaeology symbols (VALE3, WIN roll) |
 | A11.8 | Backend | NTSL pack version tag + `strategy_store` diff on regenerate |
-| W11.1 | Worker | Strategy Lab grid UI (mockup #5) |
+| W11.1 | Worker | Strategy Lab strip in hybrid layout (mockup #5) |
 | W11.2 | Worker | Per-structure filter + link to replay player |
 | W11.3 | Worker | Trade product → pick NTSL from store by structure match |
 | A11.9 | Backend | Options chain refresh job (Profit bridge → update `core17_options.csv`) |
@@ -147,11 +258,11 @@ Insights land in `data/.dev/b3_history_insights.json` (per-symbol archaeology + 
 
 ## Suggested next actions (Filipe)
 
-1. Run import CLI on your xlsx (already mapped).  
-2. Board → Archaeology panel → confirm timeline populates.  
-3. Strategy Store → **Scan** → verify 50 strategies.  
-4. Pick favorite board mockup (#1–#5) for 11.0-alpha UI sprint.  
-5. Refresh `core17_options.csv` strikes in Profit for one symbol (PETR4) as pilot.
+1. **Morning ritual:** open board only → check Live Radar (when shipped) or status bar MOTOR + Profit OK.  
+2. Keep ProfitChart open **only when** placing live tickets or arming NTSL.  
+3. `python scripts/status_tick.py --json` before session — motor.active should be true.  
+4. Strategy Store → **Scan** → verify 50 strategies indexed.  
+5. Pick hybrid default; use **golden** preset on phone/low-RAM days.
 
 ---
 
