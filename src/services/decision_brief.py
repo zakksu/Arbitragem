@@ -62,6 +62,11 @@ def build_decision_brief(session: Session, idea_id: int) -> dict[str, Any]:
         summary = "Rule-based brief (Ollama offline)."
 
     conflicts = detect_conflicts(session, idea_id, bullets=bullets)
+    idea.meta = {
+        **meta,
+        "decision_brief": {"bullets": bullets, "conflicts": conflicts},
+    }
+    session.flush()
     return {
         "idea_id": idea_id,
         "symbol": idea.symbol,
