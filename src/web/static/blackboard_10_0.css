@@ -625,6 +625,150 @@
     padding-left: 1rem;
 }
 
+/* Theory cards + decision brief */
+.bb-theory-chips {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.35rem;
+    margin: 0.35rem 0;
+}
+
+.bb-theory-chip {
+    font-size: 0.65rem;
+    padding: 0.15rem 0.4rem;
+    border: 1px solid var(--arb-border);
+    border-radius: 3px;
+    background: rgba(139, 92, 246, 0.12);
+}
+
+.bb-theory-none {
+    opacity: 0.7;
+    background: transparent;
+}
+
+.bb-decision-brief {
+    margin: 0.5rem 0;
+    padding: 0.45rem;
+    border: 1px solid var(--arb-border);
+    border-radius: 4px;
+    font-size: 0.74rem;
+}
+
+.bb-db-brief-bullets {
+    margin: 0.35rem 0 0;
+    padding-left: 1.1rem;
+}
+
+.bb-conflict-hard {
+    color: #ff6b6b;
+    font-size: 0.68rem;
+    margin-top: 0.25rem;
+}
+
+.bb-conflict-warning {
+    color: #ffb347;
+    font-size: 0.68rem;
+}
+
+/* Learning rail */
+.bb-learning-rail-slot,
+.bb-decision-queue-slot {
+    margin: 0.35rem 0;
+}
+
+.bb-learning-rail {
+    border: 1px solid var(--arb-border);
+    border-radius: var(--arb-radius);
+    padding: 0.55rem;
+    background: var(--arb-panel);
+    font-size: 0.72rem;
+}
+
+.bb-lr-head {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.5rem;
+    margin-bottom: 0.45rem;
+}
+
+.bb-lr-patch-row {
+    cursor: pointer;
+    padding: 0.3rem 0.4rem;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.bb-patch-diff {
+    font-size: 0.65rem;
+    max-height: 6rem;
+    overflow: auto;
+}
+
+/* Graduation badge */
+.bb-grad-badge {
+    font-size: 0.58rem;
+    padding: 0.1rem 0.3rem;
+    margin-left: 0.25rem;
+    border: 1px solid var(--arb-border);
+    border-radius: 3px;
+    color: var(--arb-muted);
+}
+
+.bb-grad-ok {
+    color: #3dd68c;
+    border-color: rgba(61, 214, 140, 0.4);
+}
+
+/* Degraded banner */
+.bb-degraded-banner {
+    flex: 1 1 100%;
+    padding: 0.35rem 0.5rem;
+    margin-bottom: 0.25rem;
+    background: rgba(255, 179, 71, 0.12);
+    border: 1px solid rgba(255, 179, 71, 0.35);
+    border-radius: 4px;
+    font-size: 0.72rem;
+}
+
+.bb-ops-degraded strong {
+    color: #ffb347;
+}
+
+/* Decision queue */
+.bb-decision-queue {
+    border: 1px solid var(--arb-border);
+    border-radius: var(--arb-radius);
+    padding: 0.55rem;
+    font-size: 0.72rem;
+}
+
+.bb-dq-list {
+    margin: 0;
+    padding: 0;
+    list-style: none;
+}
+
+.bb-dq-row {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.35rem;
+    width: 100%;
+    text-align: left;
+    padding: 0.35rem 0.45rem;
+    margin-bottom: 0.25rem;
+    border: 1px solid var(--arb-border);
+    border-radius: 4px;
+    background: rgba(0, 0, 0, 0.15);
+    cursor: pointer;
+}
+
+.bb-dq-rank {
+    font-weight: 700;
+    color: var(--arb-accent);
+    min-width: 1.2rem;
+}
+
 /* 10.0 — Daily briefing + knowledge library */
 
 .bb-daily-briefing-slot,

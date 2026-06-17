@@ -26,4 +26,16 @@
         <em>({{ tests.count }})</em>
         {% endif %}
     </span>
+    {% if ops.knowledge and ops.knowledge.enabled %}
+    <span class="bb-ops-chip" title="Knowledge corpus">
+        Corpus
+        <strong>{{ ops.knowledge.chunks or 0 }}</strong>
+        <em>{{ ops.knowledge.db_mb or 0 }} MB</em>
+    </span>
+    {% endif %}
+    {% if ops.degraded %}
+    <span class="bb-ops-chip bb-ops-degraded" title="Stack degraded">
+        Mode <strong>DEG</strong>
+    </span>
+    {% endif %}
 </div>

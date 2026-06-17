@@ -1,0 +1,9 @@
+{% if health and health.degraded %}
+<div class="bb-degraded-banner" role="alert">
+    <strong>Degraded mode</strong>
+    <span>Some services offline — motor may pause auto-execute. Check Profit bridge.</span>
+    {% if health.circuit_breakers %}
+    <em class="bb-muted">{{ health.circuit_breakers|length }} breaker(s) tracked</em>
+    {% endif %}
+</div>
+{% endif %}

@@ -120,6 +120,7 @@ def main() -> int:
 
     if args.json:
         knowledge = _get("http://127.0.0.1:8000/api/v1/knowledge/status")
+        healing = _get("http://127.0.0.1:8000/api/v1/self-healing/health")
         replay_training = _read_json_file("replay_training_status.json")
         payload = {
             "timestamp": now,
@@ -130,6 +131,9 @@ def main() -> int:
             "golden_path": golden_path,
             "symbol_factory": symbol_factory,
             "knowledge": knowledge,
+            "degraded": healing.get("degraded") if healing else False,
+            "circuits": healing.get("circuit_breakers") if healing else None,
+            "self_healing": healing,
             "replay_training": replay_training,
             "ram_mb": ram_mb,
             "resource_profile": resource_profile,

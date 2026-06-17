@@ -1,0 +1,28 @@
+<section class="bb-decision-queue bb-accent-rail" id="decision-queue">
+    <header>
+        <strong>Decision queue</strong>
+        <em class="bb-muted">ranked ideas · click for brief</em>
+    </header>
+    <ol class="bb-dq-list">
+        {% for item in queue %}
+        <li>
+            <button type="button" class="bb-dq-row"
+                    hx-get="/board/partials/ideas/{{ item.id }}/confirm-step"
+                    hx-target="body"
+                    hx-swap="beforeend">
+                <span class="bb-dq-rank">{{ loop.index }}</span>
+                <strong>{{ item.symbol }}</strong>
+                <span class="bb-idea-status-tag bb-status-{{ item.status }}">{{ item.status }}</span>
+                {% if item.idea_score is defined %}
+                <em>score {{ item.idea_score }}</em>
+                {% endif %}
+                {% if item.theory_card_count %}
+                <span class="bb-theory-chip">{{ item.theory_card_count }} cards</span>
+                {% endif %}
+            </button>
+        </li>
+        {% else %}
+        <li class="bb-muted">Queue empty — run scan or enable sleeves.</li>
+        {% endfor %}
+    </ol>
+</section>

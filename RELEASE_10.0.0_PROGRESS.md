@@ -1,134 +1,53 @@
 # Release 10.0.0 — Progress (Eternal Golden Path)
 
-
-
-**Version:** `10.0.0-alpha`  
-
-**Agent 1 (Backend):** Replay + Strategy Store + Knowledge + Self-healing — **COMPLETE**
-
-
+**Version:** `10.0.0` **GA**  
+**Agent 1 (Backend):** COMPLETE  
+**Agent 2 (UI):** COMPLETE
 
 ---
 
+## Shipped — alpha through GA
 
+| Phase | Backend | UI |
+|-------|---------|-----|
+| **Alpha** | Replay engine, strategy store, knowledge FTS, engine mind, self-healing | Engine Mind, Replay Player, Companion, Briefing, Strategy Store, Knowledge library |
+| **Beta** | Theory cards, decision brief, conflict detector, rule distill | Brief on confirm, theory chips, conflict block |
+| **RC** | Patch proposals, outcome ranker, paper graduation | Learning rail, patch drawer, graduation badges |
+| **GA** | Motor universe, poison guard, health registry | Theory Deck layout, decision queue, degraded banner, ops corpus |
 
-## Shipped
+---
 
-
-
-| ID | Component | Status |
-
-|----|-----------|--------|
-
-| A10.R1 | `ReplaySession` / `ReplayFill` models | ✅ |
-
-| A10.R2 | `replay_engine.py` — tick sim + **bridge fill import** | ✅ |
-
-| A10.R3 | Parallel `ThreadPoolExecutor` training cycle | ✅ |
-
-| A10.R4 | Scheduler `replay_training` job | ✅ |
-
-| A10.S1 | `strategy_store.py` + `ntsl_parser.py` | ✅ |
-
-| A10.K1 | `knowledge/replay_ingest.py` — replay + NTSL → FTS | ✅ |
-
-| A10.K2 | Knowledge API ingest endpoints | ✅ |
-
-| A10.M1 | `engine_mind.py` + circuit breaker snapshot | ✅ |
-
-| A10.H1 | `self_healing/circuit_breaker.py` | ✅ |
-
-| A10.J1 | `b3_history_import.py` + `POST /archaeology/import/excel` | ✅ |
-
-| A10.API | Full API surface (see below) | ✅ |
-
-| A10.T1 | `tests/test_replay_engine_10.py` (13+ tests) | ✅ |
-
-
-
-## API
-
-
+## API surface
 
 ```http
-
 POST /api/v1/replay/run
-
-GET  /api/v1/replay/sessions
-
-GET  /api/v1/replay/{job_id}
-
-POST /api/v1/replay/training/run
-
-POST /api/v1/strategy-store/scan
-
-GET  /api/v1/strategy-store
-
 GET  /api/v1/engine/mind
-
-POST /api/v1/knowledge/ingest/replays
-
-POST /api/v1/knowledge/ingest/strategies
-
 GET  /api/v1/knowledge/search?q=
-
-POST /api/v1/archaeology/import/excel
-
-GET  /api/v1/self-healing/breakers
-
+POST /api/v1/ideas/{id}/brief
+GET  /api/v1/autonomous/patches
+POST /api/v1/autonomous/patches/{id}/approve
+GET  /api/v1/symbols/{sym}/graduation
+GET  /api/v1/self-healing/health
+GET  /api/v1/daily-briefing
 ```
 
+Board partials: `/board/partials/engine-mind`, `learning-rail`, `decision-queue`, `replay-player`, `profitchart-companion`, `strategy-store`, `daily-briefing`, `knowledge-library`.
 
+---
 
-## Config
+## Tests
 
-
-
-```env
-
-REPLAY_TRAINING_ENABLED=true
-
-REPLAY_PARALLEL_WORKERS=2
-
-PROFITCHART_STRATEGIES_DIR=C:/Nelogica/Profit/Estrategias
-
-KNOWLEDGE_ENABLED=true
-
-RESOURCE_RAM_FRACTION=0.8
-
-RESOURCE_GPU_FRACTION=0.4
-
+```powershell
+pytest tests/test_10_0_ga.py tests/test_10_0_ui_ga.py tests/test_engine_mind_10_0.py tests/test_knowledge_store.py tests/test_replay_engine_10.py -q
 ```
 
+---
 
+## Manual GA bar (Filipe)
 
-## Agent 2 (UI) — **COMPLETE** (10.0-alpha cockpit)
+- [ ] 5 green B3 golden-path sessions
+- [ ] Decision briefs feel simpler than 4.0 symbol report
+- [ ] ≥1 approved patch from real journal data
+- [ ] Stack RSS ≤ 1.5 GB under real load
 
-| ID | Component | Status |
-|----|-----------|--------|
-| W10.EM | Engine Mind footer — sources, cycle breakdown, API merge, 3s poll | ✅ |
-| W10.RP | Visual Replay Player — run replay, fill markers, sessions list | ✅ |
-| W10.PC | ProfitChart Companion — level overlays + copy | ✅ |
-| W10.SS | Strategy Store panel — scan NTSL + detail drawer | ✅ |
-| W10.DB | Daily briefing — golden path bar, P&L spark, replay bars | ✅ |
-| W10.KL | Knowledge library search panel (golden path) | ✅ |
-| W10.T2 | `tests/test_engine_mind_10_0.py` (11 tests) | ✅ |
-
-## Agent 1 backlog — cleared
-
-
-
-All items from the first 10.0 increment are done. Next phase (Worker / integration):
-
-
-
-- Worker W10.x knowledge library UI
-
-- Real ProfitDLL tick stream (replace stub bridge fills)
-
-- GPU embedding batch during knowledge ingest (`KNOWLEDGE_GPU_EMBED`)
-
-
-
-See [RELEASE_10.0_VISION.md](RELEASE_10.0_VISION.md).
-
+See [RELEASE_10.0_VISION.md](RELEASE_10.0_VISION.md) for 11.x follow-ups (live graduation per symbol, GPU embed batch).

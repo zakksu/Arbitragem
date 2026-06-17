@@ -2,7 +2,8 @@
         hx-get="/board/partials/status"
         hx-trigger="every 30s"
         hx-swap="outerHTML">
-    <div class="bb-logo">Arbitragem Scalper <span>Structure Deck</span></div>
+    {% include "partials/degraded_banner.html" %}
+    <div class="bb-logo">Arbitragem Scalper <span>Theory Deck</span></div>
 
     {% if bootstrap %}
     <div class="bb-status-item">

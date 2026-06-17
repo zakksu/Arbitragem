@@ -3,7 +3,7 @@
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>Arbitragem Scalper — Structure Deck</title>
+    <title>Arbitragem Scalper — Theory Deck</title>
     <link rel="stylesheet" href="/static/blackboard.css">
     <link rel="stylesheet" href="/static/blackboard_4_0.css">
     <link rel="stylesheet" href="/static/blackboard_10_0.css">
@@ -49,6 +49,18 @@
          hx-trigger="load delay:450ms"
          hx-swap="innerHTML">
         <span class="bb-muted">Strategy store…</span>
+    </div>
+    <div id="learning-rail-slot" class="bb-learning-rail-slot"
+         hx-get="/board/partials/learning-rail"
+         hx-trigger="load delay:550ms, every 120s"
+         hx-swap="innerHTML">
+        <span class="bb-muted">Learning loop…</span>
+    </div>
+    <div id="decision-queue-slot" class="bb-decision-queue-slot"
+         hx-get="/board/partials/decision-queue"
+         hx-trigger="load delay:600ms, every 60s"
+         hx-swap="innerHTML">
+        <span class="bb-muted">Decision queue…</span>
     </div>
     {% endif %}
 

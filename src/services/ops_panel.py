@@ -135,6 +135,20 @@ def build_ops_panel() -> dict[str, Any]:
     orch = orchestrator_status()
     rss = float(memory.get("rss_mb") or 0)
     budget = res_profile.effective_ram_budget_mb
+    knowledge: dict[str, Any] = {}
+    health: dict[str, Any] = {}
+    try:
+        from src.services.knowledge.store import knowledge_status
+
+        knowledge = knowledge_status()
+    except Exception:
+        pass
+    try:
+        from src.services.self_healing.health_registry import health_snapshot
+
+        health = health_snapshot()
+    except Exception:
+        pass
     return {
         "motor_cycle_ms": round(motor_ms, 0) if motor_ms is not None else None,
         "motor_cycle_p95_ms": motor_cycle_p95_ms(),
@@ -145,4 +159,7 @@ def build_ops_panel() -> dict[str, Any]:
         "ram_budget_mb": budget,
         "ram_over_budget": bool(memory.get("available") and rss > budget),
         "resource_profile": profile_snapshot(settings),
+        "knowledge": knowledge,
+        "health": health,
+        "degraded": bool(health.get("degraded")),
     }

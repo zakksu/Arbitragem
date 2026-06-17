@@ -1,0 +1,37 @@
+{% if brief %}
+<section class="bb-decision-brief bb-accent-rail" id="decision-brief-{{ brief.idea_id }}">
+    <header class="bb-db-brief-head">
+        <strong>Decision brief</strong>
+        <em class="bb-muted">≤5 bullets · grounded</em>
+        {% if brief.no_corpus_match %}
+        <span class="bb-pill">rules-only</span>
+        {% else %}
+        <span class="bb-pill bb-pill-auto">{{ brief.theory_card_count }} card(s)</span>
+        {% endif %}
+    </header>
+
+    {% with cards=brief.theory_cards %}
+    {% include "partials/theory_card_chips.html" %}
+    {% endwith %}
+
+    <ul class="bb-db-brief-bullets">
+        {% for b in brief.bullets %}
+        <li>{{ b }}</li>
+        {% endfor %}
+    </ul>
+
+    {% if brief.conflicts %}
+    <div class="bb-db-conflicts">
+        {% for c in brief.conflicts %}
+        <div class="bb-conflict bb-conflict-{{ c.severity }}">
+            <strong>{{ c.severity|upper }}</strong> — {{ c.message }}
+        </div>
+        {% endfor %}
+    </div>
+    {% endif %}
+
+    {% if not brief.can_confirm %}
+    <p class="bb-proof bb-proof-warn">Hard conflict — fix gates or skip this idea.</p>
+    {% endif %}
+</section>
+{% endif %}

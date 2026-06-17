@@ -1,0 +1,24 @@
+{% if patch %}
+<article class="bb-patch-review bb-accent-rail">
+    <header>
+        <strong>Patch #{{ patch.id }}</strong> · {{ patch.symbol }}
+        <span class="bb-pill">{{ patch.status }}</span>
+    </header>
+    {% if patch.evidence %}
+    <p class="bb-muted">Evidence: WR {{ patch.evidence.win_rate_pct }}% · P&L R$ {{ patch.evidence.total_pnl }}</p>
+    {% endif %}
+    {% if patch.diff %}
+    <pre class="bb-patch-diff">{{ patch.diff|tojson(indent=2) }}</pre>
+    {% endif %}
+    <div class="bb-patch-actions">
+        <button type="button" class="bb-btn-primary"
+                hx-post="/board/partials/patches/{{ patch.id }}/approve"
+                hx-target="#learning-rail-slot"
+                hx-swap="innerHTML">Approve</button>
+        <button type="button" class="bb-btn-secondary"
+                hx-post="/board/partials/patches/{{ patch.id }}/reject"
+                hx-target="#learning-rail-slot"
+                hx-swap="innerHTML">Reject</button>
+    </div>
+</article>
+{% endif %}

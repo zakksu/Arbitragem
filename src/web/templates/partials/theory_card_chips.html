@@ -1,0 +1,13 @@
+{% if cards %}
+<div class="bb-theory-chips" aria-label="Theory cards">
+    {% for card in cards[:3] %}
+    <span class="bb-theory-chip" title="{{ card.excerpt or '' }}">
+        <em>{{ card.title or 'Theory' }}</em>
+        {% if card.source_uri %}<span class="bb-muted">{{ card.source_uri|truncate(28) }}</span>{% endif %}
+    </span>
+    {% endfor %}
+    {% if cards|length == 0 %}
+    <span class="bb-theory-chip bb-theory-none">No corpus match</span>
+    {% endif %}
+</div>
+{% endif %}

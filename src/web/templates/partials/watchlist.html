@@ -25,6 +25,11 @@
                 {% if row.sector and row.asset_class != 'crypto' %}
                 <span class="bb-sector">{{ row.sector }}</span>
                 {% endif %}
+                {% if row.graduated %}
+                <span class="bb-grad-badge bb-grad-ok" title="Paper graduated">GRAD</span>
+                {% elif row.graduation_gates_ok is defined %}
+                <span class="bb-grad-badge" title="Graduation gates">{{ row.graduation_gates_ok }}/{{ row.graduation_gates_total }}</span>
+                {% endif %}
             </td>
             <td class="bb-score" style="text-align:right">
                 <strong class="{% if (row.watch_score or row.idea_score or 0) >= 60 %}bb-score-high{% elif (row.watch_score or row.idea_score or 0) >= 40 %}bb-score-mid{% else %}bb-score-low{% endif %}">

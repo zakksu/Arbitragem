@@ -1,0 +1,44 @@
+<section class="bb-learning-rail bb-accent-rail" id="learning-rail">
+    <header class="bb-lr-head">
+        <strong>Learning loop</strong>
+        <em class="bb-muted">what we learned · pending patches</em>
+        <button type="button" class="bb-btn-secondary"
+                hx-post="/board/partials/learning-rail/generate"
+                hx-target="#learning-rail-slot"
+                hx-swap="innerHTML">
+            Propose patches
+        </button>
+    </header>
+
+    {% if rail.outcomes %}
+    <div class="bb-lr-outcomes">
+        <h4>Outcome rank (7d)</h4>
+        <ul>
+            {% for o in rail.outcomes %}
+            <li>
+                <strong>{{ o.symbol }}</strong> · {{ o.source }}
+                · WR {{ o.win_rate_pct }}% · R$ {{ "%.2f"|format(o.total_pnl) }}
+            </li>
+            {% endfor %}
+        </ul>
+    </div>
+    {% endif %}
+
+    <div class="bb-lr-patches">
+        <h4>Pending patches ({{ rail.patches|length }})</h4>
+        <ul class="bb-lr-patch-list">
+            {% for p in rail.patches %}
+            <li class="bb-lr-patch-row"
+                hx-get="/board/partials/patches/{{ p.id }}"
+                hx-target="#patch-review-slot"
+                hx-swap="innerHTML">
+                <strong>{{ p.symbol }}</strong> · {{ p.pattern or 'threshold' }}
+                <em>{{ p.status }}</em>
+            </li>
+            {% else %}
+            <li class="bb-muted">No pending patches — run propose or wait for journal data.</li>
+            {% endfor %}
+        </ul>
+    </div>
+    <div id="patch-review-slot" class="bb-lr-review"></div>
+</section>

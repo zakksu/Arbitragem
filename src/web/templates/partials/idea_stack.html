@@ -41,6 +41,9 @@
                 {% endwith %}
             </span>
             {% endif %}
+            {% if idea.meta and idea.meta.theory_card_count %}
+            <span class="bb-theory-chip" title="Theory cards">{{ idea.meta.theory_card_count }} cards</span>
+            {% endif %}
         </div>
         <div class="bb-idea-type">
             {% set side = (idea.side or "")|lower %}

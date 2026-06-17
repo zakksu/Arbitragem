@@ -74,6 +74,16 @@ def build_enriched_watchlist(session: Session) -> dict[str, Any]:
     ideas = [svc.to_dict(i) for i in svc.list_ideas(limit=res_profile.watchlist_ideas_limit)]
     risk_profile = get_or_create_profile(session)
     enriched = enrich_watchlist_rows(rows, ideas, cost_per_trade_brl=risk_profile.cost_per_trade_brl)
+    from src.services.paper_graduation import graduation_status
+
+    for row in enriched:
+        if row.get("asset_class") in ("future", "crypto", "futures"):
+            continue
+        g = graduation_status(session, row["symbol"])
+        row["graduated"] = g.get("graduated", False)
+        gates = g.get("gates") or {}
+        row["graduation_gates_ok"] = sum(1 for v in gates.values() if v)
+        row["graduation_gates_total"] = len(gates) or 4
     futures = [r for r in enriched if r.get("asset_class") == "future"]
     crypto = [r for r in enriched if r.get("asset_class") == "crypto"]
     return {

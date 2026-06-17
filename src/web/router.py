@@ -279,10 +279,13 @@ async def status_partial(request: Request):
         return build_paper_validation(session)
 
     validation = await _to_thread(_with_db, _validation)
+    from src.services.self_healing.health_registry import health_snapshot
+
+    health = await _to_thread(health_snapshot)
     return TEMPLATES.TemplateResponse(
         request,
         "partials/status_bar.html",
-        {"bootstrap": bootstrap, "risk": risk, "cockpit": cockpit, "validation": validation},
+        {"bootstrap": bootstrap, "risk": risk, "cockpit": cockpit, "validation": validation, "health": health},
     )
 
 
@@ -707,12 +710,23 @@ async def idea_confirm_step_partial(request: Request, idea_id: int):
     idea = enrich_idea_levels(dict(idea))
     idea["fill_preview"] = estimate_paper_fills(idea)
     risk_box = idea_risk_summary(idea)
+
+    def _brief(session):
+        from src.services.decision_brief import build_decision_brief
+
+        try:
+            return build_decision_brief(session, idea_id)
+        except ValueError:
+            return None
+
+    brief = await _to_thread(_with_db, _brief)
     return TEMPLATES.TemplateResponse(
         request,
         "partials/idea_confirm_step.html",
         {
             "idea": idea,
             "risk_box": risk_box,
+            "brief": brief,
             "cockpit": _risk_cockpit(),
             "risk": await _fetch_risk_summary(request),
             "error": None,
@@ -1113,6 +1127,129 @@ async def trade_product_partial(request: Request, symbol: str):
         request,
         "partials/trade_product.html",
         {"product": product},
+    )
+
+
+@router.get("/board/partials/learning-rail", response_class=HTMLResponse)
+async def learning_rail_partial(request: Request):
+    from src.services.outcome_ranker import rank_outcomes
+    from src.services.patch_proposals import list_proposals
+
+    def _load(session):
+        return {
+            "patches": list_proposals(session, status="pending"),
+            "outcomes": rank_outcomes(session, limit=5),
+        }
+
+    rail = await _to_thread(_with_db, _load)
+    return TEMPLATES.TemplateResponse(
+        request,
+        "partials/learning_rail.html",
+        {"rail": rail},
+    )
+
+
+@router.post("/board/partials/learning-rail/generate", response_class=HTMLResponse)
+async def learning_rail_generate(request: Request):
+    from src.services.outcome_ranker import rank_outcomes
+    from src.services.patch_proposals import generate_patch_proposals, list_proposals
+
+    def _gen(session):
+        generate_patch_proposals(session)
+        return {
+            "patches": list_proposals(session, status="pending"),
+            "outcomes": rank_outcomes(session, limit=5),
+        }
+
+    rail = await _to_thread(_with_db, _gen)
+    return TEMPLATES.TemplateResponse(
+        request,
+        "partials/learning_rail.html",
+        {"rail": rail},
+    )
+
+
+@router.get("/board/partials/patches/{proposal_id}", response_class=HTMLResponse)
+async def patch_review_partial(request: Request, proposal_id: int):
+    from src.models import PatchProposal
+
+    def _load(session):
+        row = session.get(PatchProposal, proposal_id)
+        if not row:
+            return None
+        from src.services.patch_proposals import proposal_to_dict
+
+        return proposal_to_dict(row)
+
+    patch = await _to_thread(_with_db, _load)
+    return TEMPLATES.TemplateResponse(
+        request,
+        "partials/patch_review.html",
+        {"patch": patch},
+    )
+
+
+@router.post("/board/partials/patches/{proposal_id}/approve", response_class=HTMLResponse)
+async def patch_approve_partial(request: Request, proposal_id: int):
+    from src.services.outcome_ranker import rank_outcomes
+    from src.services.patch_proposals import approve_proposal, list_proposals
+
+    def _approve(session):
+        approve_proposal(session, proposal_id)
+        return {
+            "patches": list_proposals(session, status="pending"),
+            "outcomes": rank_outcomes(session, limit=5),
+        }
+
+    rail = await _to_thread(_with_db, _approve)
+    return TEMPLATES.TemplateResponse(
+        request,
+        "partials/learning_rail.html",
+        {"rail": rail},
+    )
+
+
+@router.post("/board/partials/patches/{proposal_id}/reject", response_class=HTMLResponse)
+async def patch_reject_partial(request: Request, proposal_id: int):
+    from src.services.outcome_ranker import rank_outcomes
+    from src.services.patch_proposals import list_proposals, reject_proposal
+
+    def _reject(session):
+        reject_proposal(session, proposal_id, reason="board reject")
+        return {
+            "patches": list_proposals(session, status="pending"),
+            "outcomes": rank_outcomes(session, limit=5),
+        }
+
+    rail = await _to_thread(_with_db, _reject)
+    return TEMPLATES.TemplateResponse(
+        request,
+        "partials/learning_rail.html",
+        {"rail": rail},
+    )
+
+
+@router.get("/board/partials/decision-queue", response_class=HTMLResponse)
+async def decision_queue_partial(request: Request):
+    def _queue(session):
+        from src.services.trade_ideas import TradeIdeaService
+
+        svc = TradeIdeaService(session)
+        ideas = svc.list_ideas(limit=12)
+        out = []
+        for idea in ideas:
+            d = svc.to_dict(idea)
+            meta = d.get("meta") or {}
+            d["theory_card_count"] = meta.get("theory_card_count", 0)
+            out.append(d)
+        out.sort(key=lambda x: x.get("idea_score") or 0, reverse=True)
+        return out[:8]
+
+    queue = await _to_thread(_with_db, _queue)
+    return TEMPLATES.TemplateResponse(
+        request,
+        "partials/decision_queue.html",
+        {"queue": queue or []},
     )
 
 

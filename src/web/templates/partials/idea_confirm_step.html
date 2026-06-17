@@ -92,6 +92,10 @@
         </div>
         {% endif %}
 
+        {% if brief %}
+        {% include "partials/decision_brief.html" %}
+        {% endif %}
+
         <form id="idea-confirm-form" class="bb-confirm-form">
             {% if idea.status != 'backtested' or not idea.backtest_proof %}
             <label class="bb-check-label">
@@ -113,6 +117,7 @@
             <button type="button" class="bb-btn-secondary"
                     onclick="document.getElementById('idea-modal').remove()">Cancel</button>
             {% if not risk or risk.can_confirm_ideas %}
+            {% if not brief or brief.can_confirm %}
             <button type="button" class="bb-btn-confirm"
                     hx-post="/board/partials/ideas/{{ idea.id }}/confirm"
                     hx-include="#idea-confirm-form"
@@ -120,6 +125,7 @@
                     hx-swap="outerHTML">
                 Confirm →
             </button>
+            {% endif %}
             {% endif %}
         </div>
     </div>
