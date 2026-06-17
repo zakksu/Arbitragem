@@ -45,10 +45,10 @@ def test_board_layouts_list_and_activate():
     assert active["preset"] == "options_hedge"
 
 
-def test_kill_switch_rejects_pending_ideas():
-    from src.services.kill_switch import set_active
+def test_pause_all_closes_sleeves_without_rejecting_ideas():
+    from src.services.trading_sleeves import set_all
 
-    set_active(False)
+    set_all(True)
     session = get_session_factory()()
     idea = TradeIdea(
         symbol="PETR4",
@@ -65,11 +65,11 @@ def test_kill_switch_rejects_pending_ideas():
 
     r = _client().post("/api/v1/strategies/pause-all")
     assert r.status_code == 200
-    assert r.json().get("rejected_ideas", 0) >= 1
+    assert r.json().get("rejected_ideas", 0) == 0
 
     session = get_session_factory()()
     updated = session.get(TradeIdea, idea_id)
-    assert updated.status == "rejected"
+    assert updated.status == "detected"
     session.close()
 
 
@@ -153,6 +153,6 @@ def test_confirm_logs_system_event():
 def test_version_is_4_0_beta():
     from src import __version__
 
-    assert __version__ == "4.0.0"
+    assert __version__ == "7.0.0"
     r = _client().get("/api/v1/health/live")
-    assert r.json()["version"] == "4.0.0"
+    assert r.json()["version"] == "7.0.0"

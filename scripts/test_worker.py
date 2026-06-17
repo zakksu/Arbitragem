@@ -16,7 +16,11 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 STATUS_DIR = ROOT / "data" / ".dev"
 STATUS_PATH = STATUS_DIR / "test_status.json"
-DEFAULT_TESTS = ["tests/test_golden_path_petr4.py", "tests/test_golden_path_mode.py"]
+DEFAULT_TESTS = [
+    "tests/test_golden_path_petr4.py",
+    "tests/test_golden_path_mode.py",
+    "tests/test_symbol_factory.py",
+]
 DEFAULT_INTERVAL = 300
 
 
