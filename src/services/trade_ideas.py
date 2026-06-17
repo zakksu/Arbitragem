@@ -116,6 +116,12 @@ class TradeIdeaService:
                 legs=legs,
                 scan_result_id=scan.id,
             )
+            from src.services.theory_cards import attach_cards_to_idea_meta, build_theory_cards
+
+            cards = build_theory_cards(
+                symbol=scan.symbol, structure_type=structure, tags=tags, limit=3
+            )
+            idea.meta = attach_cards_to_idea_meta(None, cards)
             self.session.add(idea)
             created.append(idea)
 
@@ -327,6 +333,18 @@ class TradeIdeaService:
             raise ValueError(f"Idea already {idea.status}")
         if idea.status not in ("detected", "backtested"):
             raise ValueError(f"Cannot confirm idea in status '{idea.status}'")
+
+        from src.services.conflict_detector import detect_conflicts
+
+        meta = idea.meta or {}
+        brief_meta = meta.get("decision_brief") if isinstance(meta.get("decision_brief"), dict) else {}
+        bullets = brief_meta.get("bullets") if isinstance(brief_meta.get("bullets"), list) else None
+        hard_conflicts = [
+            c for c in detect_conflicts(self.session, idea_id, bullets=bullets)
+            if c.get("severity") == "hard"
+        ]
+        if hard_conflicts:
+            raise ValueError(hard_conflicts[0].get("message") or "Decision brief conflicts with gates")
 
         if not paper_override and not self.passes_backtest_gate(idea.backtest_proof):
             settings = get_settings()
@@ -846,6 +864,8 @@ class TradeIdeaService:
             "created_at": idea.created_at.isoformat() if idea.created_at else None,
             "confirmed_at": idea.confirmed_at.isoformat() if idea.confirmed_at else None,
             "executed_at": idea.executed_at.isoformat() if idea.executed_at else None,
+            "meta": idea.meta,
+            "theory_cards": (idea.meta or {}).get("theory_cards", []),
         }
         idea_dict["idea_score"] = score_idea(idea_dict)
         from src.services.idea_levels import enrich_idea_levels

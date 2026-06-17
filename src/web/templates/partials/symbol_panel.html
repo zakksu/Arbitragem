@@ -100,6 +100,15 @@
     </div>
     {% endif %}
 
+    {% if theory_cards is defined and theory_cards %}
+    <div class="bb-symbol-theory bb-accent-rail">
+        <span class="bb-muted">Pattern theory</span>
+        {% with cards=theory_cards %}
+        {% include "partials/theory_card_chips.html" %}
+        {% endwith %}
+    </div>
+    {% endif %}
+
     <div class="bb-chart-wrap bb-accent-rail" id="chart-{{ symbol }}"
          data-last="{{ quote.last if quote else 0 }}"
          data-candles='{{ candles|tojson if candles else "[]" }}'

@@ -26,23 +26,36 @@ def main() -> int:
     path = Path(args.path)
     results: list[dict] = []
 
+    suffixes = (".md", ".txt", ".ntsl", ".vtt", ".pdf")
     if path.is_dir():
         for fp in sorted(path.rglob("*")):
-            if fp.suffix.lower() in (".md", ".txt", ".ntsl", ".vtt"):
-                results.append(ingest_file(fp, tags=tags, symbols=symbols))
+            if fp.suffix.lower() in suffixes:
+                results.append(ingest_file(fp, tags=tags, symbols=symbols, offline=True))
     else:
-        results.append(ingest_file(path, tags=tags, symbols=symbols))
+        results.append(ingest_file(path, tags=tags, symbols=symbols, offline=True))
 
     ok = sum(1 for r in results if r.get("ok"))
+    skipped = sum(1 for r in results if r.get("skipped"))
     total_chunks = sum(int(r.get("chunks") or 0) for r in results)
     status = knowledge_status()
 
     if args.json:
         import json
 
-        print(json.dumps({"ingested": ok, "files": len(results), "chunks": total_chunks, "status": status}, indent=2))
+        print(
+            json.dumps(
+                {
+                    "ingested": ok,
+                    "skipped": skipped,
+                    "files": len(results),
+                    "chunks": total_chunks,
+                    "status": status,
+                },
+                indent=2,
+            )
+        )
     else:
-        print(f"[ingest] {ok}/{len(results)} files · {total_chunks} chunks")
+        print(f"[ingest] {ok}/{len(results)} files · {total_chunks} chunks · {skipped} skipped")
         print(f"[ingest] corpus: {status['chunks']} chunks, {status['db_mb']} MB")
 
     return 0 if ok > 0 or total_chunks > 0 else 1

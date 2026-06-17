@@ -716,4 +716,66 @@ Real-time motor state: `phase`, `sources`, `cycle_breakdown`, `resources` (RAM/G
 
 `GET /self-healing/breakers` — circuit breaker states (`replay_training`, etc.).
 
+---
+
+### 10.0.0 GA — Theory Deck + Decision Brief + Learning Rail
+
+#### Decision brief + theory cards
+
+| Endpoint | Method | Purpose |
+|----------|--------|---------|
+| `POST /api/v1/ideas/{id}/brief` | POST | Build decision brief + conflict scan for confirm step |
+| `GET /board/partials/ideas/{id}/confirm-step` | GET | Includes `decision_brief.html` + `theory_card_chips.html` |
+| `GET /board/partials/symbol/{sym}/trade-product` | GET | Trade product thesis + theory chips from structure/tags |
+| `GET /board/partials/symbol/{sym}` | GET | Symbol panel; theory chips when top idea has patterns |
+
+Theory cards come from `build_theory_cards()` → FTS `search_chunks()` on `data/knowledge.db`.
+
+#### Patch proposals + learning rail
+
+| Endpoint | Method | Purpose |
+|----------|--------|---------|
+| `GET /api/v1/patches` | GET | Pending patch proposals |
+| `POST /api/v1/patches/{id}/approve` | POST | Approve patch |
+| `POST /api/v1/patches/{id}/reject` | POST | Reject patch |
+| `GET /board/partials/learning-rail` | GET | Learning rail shell |
+| `POST /board/partials/learning-rail/generate` | POST | Generate new patch proposals |
+| `GET /board/partials/patches/{id}` | GET | Patch review card |
+| `GET /board/partials/decision-queue` | GET | Pending decisions queue |
+
+#### Graduation + health
+
+| Endpoint | Purpose |
+|----------|---------|
+| `GET /api/v1/graduation/{symbol}` | Paper graduation gates per symbol |
+| `GET /api/v1/self-healing/health` | Degraded services snapshot |
+| `GET /board/partials/watchlist` | `bb-grad` badge when gates pass |
+
+`scripts/status_tick.py --json` adds `degraded`, `circuits`, `self_healing`.
+
+#### Board partials (10.0 GA)
+
+| Partial | Purpose |
+|---------|---------|
+| `GET /board/partials/engine-mind` | Motor phase + cycle breakdown (`M` shortcut) |
+| `GET /board/partials/replay-player` | Visual replay canvas per symbol |
+| `GET /board/partials/knowledge-library` | FTS search UI |
+| `GET /board/partials/daily-briefing` | Morning briefing bullets |
+| `GET /board/partials/strategy-store` | NTSL strategy index |
+| `GET /board/partials/profitchart-companion` | ProfitChart sidecar stub |
+| `GET /board/partials/degraded-banner` | Self-healing degraded chip (status bar) |
+| `GET /board/partials/opportunity-rail` | Pair z-scores + scanner theory chips |
+
+#### Layout presets
+
+`BoardLayoutService.DEFAULT_PRESETS`: `scalp`, `structure`, `learn` (+ legacy `options_hedge`, `pairs`).
+
+`POST /api/v1/board/layout/{preset}` · `GET /board/partials/layout-presets`
+
+#### Knowledge bootstrap
+
+`scripts/dev.py setup` calls `bootstrap_corpus_if_empty()` — ingests `docs/STRUCTURES.md` when corpus empty.
+
+`profile_snapshot()` includes `knowledge_enabled` for `/ops/memory` and status tick.
+
 

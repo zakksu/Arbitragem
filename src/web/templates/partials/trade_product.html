@@ -33,6 +33,11 @@
             {% endfor %}
         </div>
         {% endif %}
+        {% if theory_cards is defined %}
+        {% with cards=theory_cards %}
+        {% include "partials/theory_card_chips.html" %}
+        {% endwith %}
+        {% endif %}
         {% if product.odds %}
         <div class="bb-tp-odds">
             {% with key="trade.odds" %}

@@ -71,3 +71,19 @@ def test_daily_briefing_partial(client):
     r = client.get("/board/partials/daily-briefing")
     assert r.status_code == 200
     assert "Daily briefing" in r.text
+
+
+def test_bootstrap_corpus_if_empty(monkeypatch, tmp_path):
+    from src.config import get_settings
+    from src.services.knowledge.bootstrap import bootstrap_corpus_if_empty
+
+    get_settings.cache_clear()
+    monkeypatch.setenv("GOLDEN_PATH_MODE", "true")
+    monkeypatch.setenv("KNOWLEDGE_DB_PATH", str(tmp_path / "boot.db"))
+
+    out = bootstrap_corpus_if_empty()
+    assert out.get("skipped") is not True or out.get("reason") != "knowledge_disabled"
+    if out.get("ingested", 0) > 0:
+        assert out["chunks"] >= 1
+        again = bootstrap_corpus_if_empty()
+        assert again.get("reason") == "corpus_exists"

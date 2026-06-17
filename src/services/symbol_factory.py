@@ -182,3 +182,19 @@ def record_shadow_session(symbol: str) -> None:
             changed = True
     if changed:
         _save_state(state)
+
+
+def apply_patch_to_symbol(symbol: str, diff: dict[str, Any]) -> None:
+    """Apply approved patch diff to symbol factory clone config."""
+    sym = symbol.strip().upper()
+    state = _load_state()
+    patches = state.setdefault("symbol_patches", {})
+    current = patches.get(sym, {})
+    current.update(diff or {})
+    patches[sym] = current
+    _save_state(state)
+
+
+def get_symbol_patch_config(symbol: str) -> dict[str, Any]:
+    state = _load_state()
+    return dict((state.get("symbol_patches") or {}).get(symbol.strip().upper(), {}))

@@ -70,3 +70,16 @@ def test_watchlist_graduation_badge(client: TestClient):
     r = client.get("/board/partials/watchlist")
     assert r.status_code == 200
     assert "bb-grad" in r.text or "GRAD" in r.text
+
+
+def test_opportunity_rail_partial(client: TestClient):
+    r = client.get("/board/partials/opportunity-rail")
+    assert r.status_code == 200
+    assert "bb-opportunity-rail" in r.text
+
+
+def test_board_layout_structure_preset():
+    from src.services.board_layout import DEFAULT_PRESETS
+
+    assert "structure" in DEFAULT_PRESETS
+    assert "learn" in DEFAULT_PRESETS

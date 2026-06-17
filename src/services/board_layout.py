@@ -8,6 +8,8 @@ from src.models import BoardLayout
 
 DEFAULT_PRESETS: dict[str, dict] = {
     "scalp": {"watch_w": "220px", "board_w": "1fr", "ideas_w": "300px"},
+    "structure": {"watch_w": "200px", "board_w": "1.2fr", "ideas_w": "340px"},
+    "learn": {"watch_w": "240px", "board_w": "1fr", "ideas_w": "320px"},
     "options_hedge": {"watch_w": "200px", "board_w": "1.2fr", "ideas_w": "340px"},
     "pairs": {"watch_w": "240px", "board_w": "1fr", "ideas_w": "280px"},
 }

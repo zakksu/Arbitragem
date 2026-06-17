@@ -364,6 +364,19 @@ async def symbol_partial(request: Request, symbol: str):
         except (asyncio.TimeoutError, Exception):
             pass
 
+    theory_cards: list = []
+    if top_idea:
+        from src.services.theory_cards import build_theory_cards
+
+        idea_meta = top_idea.get("meta") or {}
+        pattern_tags = idea_meta.get("pattern_tags") or idea_meta.get("patterns") or []
+        theory_cards = await _to_thread(
+            build_theory_cards,
+            symbol=sym,
+            structure_type=top_idea.get("structure_type"),
+            tags=pattern_tags if isinstance(pattern_tags, list) else [],
+        )
+
     return TEMPLATES.TemplateResponse(
         request,
         "partials/symbol_panel.html",
@@ -380,6 +393,7 @@ async def symbol_partial(request: Request, symbol: str):
             "is_crypto": crypto_sym,
             "top_idea": top_idea,
             "session_vwap": session_vwap,
+            "theory_cards": theory_cards,
         },
     )
 
@@ -813,10 +827,28 @@ async def sector_strip_partial(request: Request):
 async def opportunity_rail_partial(request: Request):
     data = await _fetch_json(request, "/api/v1/signals/opportunity-rail")
     rail = data if isinstance(data, dict) else {"signals": [], "sector_heat": {}}
+    pattern_theory_cards: list = []
+    try:
+        insights_data = await _fetch_json(request, "/api/v1/scanner/insights?limit=3")
+        insights = (insights_data or {}).get("insights") or []
+        if insights:
+            from src.services.theory_cards import build_theory_cards
+
+            top = insights[0]
+            sym = (top.get("symbol") or "PETR4").strip().upper()
+            tags = top.get("pattern_tags") or []
+            pattern_theory_cards = await _to_thread(
+                build_theory_cards,
+                symbol=sym,
+                structure_type=tags[0] if tags else None,
+                tags=tags[:3] if isinstance(tags, list) else [],
+            )
+    except Exception:
+        pass
     return TEMPLATES.TemplateResponse(
         request,
         "partials/opportunity_rail.html",
-        {"rail": rail},
+        {"rail": rail, "pattern_theory_cards": pattern_theory_cards},
     )
 
 
@@ -1117,16 +1149,27 @@ async def pulse_rail_legacy_partial(request: Request):
 async def trade_product_partial(request: Request, symbol: str):
     sym = symbol.strip().upper()
     product = None
+    theory_cards: list = []
     try:
         data = await _fetch_json(request, f"/api/v1/symbols/{sym}/trade-product")
         if isinstance(data, dict):
             product = data
+            from src.services.theory_cards import build_theory_cards
+
+            st = product.get("structure_type") or ""
+            tags = product.get("economics_tags") or []
+            theory_cards = await _to_thread(
+                build_theory_cards,
+                symbol=sym,
+                structure_type=st,
+                tags=tags if isinstance(tags, list) else [],
+            )
     except Exception:
         pass
     return TEMPLATES.TemplateResponse(
         request,
         "partials/trade_product.html",
-        {"product": product},
+        {"product": product, "theory_cards": theory_cards},
     )
 
 

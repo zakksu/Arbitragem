@@ -153,6 +153,6 @@ def test_confirm_logs_system_event():
 def test_version_is_4_0_beta():
     from src import __version__
 
-    assert __version__ == "10.0.0-alpha"
+    assert __version__ == "10.0.0"
     r = _client().get("/api/v1/health/live")
-    assert r.json()["version"] == "10.0.0-alpha"
+    assert r.json()["version"] == "10.0.0"

@@ -78,11 +78,20 @@ def ingest_text(
     title: str = "",
     tags: list[str] | None = None,
     symbols: list[str] | None = None,
+    offline: bool = False,
 ) -> dict[str, Any]:
     """Chunk + index text. Runs offline only — not for motor hot path."""
     settings = get_settings()
-    if not settings.knowledge_runtime_enabled:
+    if not offline and not settings.knowledge_runtime_enabled:
         return {"ok": False, "reason": "knowledge_disabled"}
+    if offline and not settings.knowledge_enabled:
+        return {"ok": False, "reason": "knowledge_disabled"}
+
+    from src.services.knowledge.poison_guard import validate_ingest_text
+
+    guard = validate_ingest_text(text, source_uri=source_uri)
+    if not guard.get("ok"):
+        return guard
 
     init_knowledge_db()
     tag_json = json.dumps(tags or [])
@@ -107,11 +116,14 @@ def ingest_text(
             "SELECT id FROM knowledge_chunks WHERE source_uri = ?", (source_uri,)
         ).fetchall()
         for (rid,) in old_ids:
-            conn.execute(
-                "INSERT INTO knowledge_fts(knowledge_fts, rowid, chunk_text, source_uri, title) "
-                "VALUES('delete', ?, '', '', '')",
-                (rid,),
-            )
+            try:
+                conn.execute(
+                    "INSERT INTO knowledge_fts(knowledge_fts, rowid, chunk_text, source_uri, title) "
+                    "VALUES('delete', ?, '', '', '')",
+                    (rid,),
+                )
+            except sqlite3.OperationalError:
+                pass
         conn.execute("DELETE FROM knowledge_chunks WHERE source_uri = ?", (source_uri,))
         added = 0
         for piece in pieces:
@@ -133,20 +145,53 @@ def ingest_text(
     return {"ok": True, "source_uri": source_uri, "chunks": added}
 
 
-def ingest_file(path: Path, *, tags: list[str] | None = None, symbols: list[str] | None = None) -> dict[str, Any]:
-    if not path.is_file():
-        return {"ok": False, "reason": "not_found", "path": str(path)}
+def _read_file_text(path: Path) -> tuple[str | None, str | None]:
+    """Return (text, skip_reason). skip_reason set when file is intentionally skipped."""
     suffix = path.suffix.lower()
     if suffix in (".md", ".txt", ".ntsl", ".vtt"):
-        text = path.read_text(encoding="utf-8", errors="replace")
-    else:
-        return {"ok": False, "reason": "unsupported_type", "path": str(path)}
+        return path.read_text(encoding="utf-8", errors="replace"), None
+    if suffix == ".pdf":
+        for mod_name in ("pypdf", "PyPDF2"):
+            try:
+                mod = __import__(mod_name)
+                reader_cls = getattr(mod, "PdfReader", None)
+                if reader_cls is None:
+                    continue
+                reader = reader_cls(str(path))
+                pages = [page.extract_text() or "" for page in reader.pages]
+                text = "\n".join(pages).strip()
+                if text:
+                    return text, None
+                return None, "pdf_empty"
+            except ImportError:
+                return None, "pdf_library_missing"
+            except Exception as exc:
+                return None, f"pdf_read_error:{exc.__class__.__name__}"
+        return None, "pdf_library_missing"
+    return None, "unsupported_type"
+
+
+def ingest_file(
+    path: Path,
+    *,
+    tags: list[str] | None = None,
+    symbols: list[str] | None = None,
+    offline: bool = False,
+) -> dict[str, Any]:
+    if not path.is_file():
+        return {"ok": False, "reason": "not_found", "path": str(path)}
+    text, skip_reason = _read_file_text(path)
+    if skip_reason:
+        return {"ok": False, "reason": skip_reason, "path": str(path), "skipped": True}
+    if not text:
+        return {"ok": False, "reason": "empty_text", "path": str(path)}
     return ingest_text(
         source_uri=str(path.resolve()),
         text=text,
         title=path.name,
         tags=tags,
         symbols=symbols,
+        offline=offline,
     )
 
 

@@ -1,4 +1,12 @@
 <div class="bb-opportunity-rail" data-source="{{ rail.source or 'stub' }}">
+    {% if pattern_theory_cards is defined and pattern_theory_cards %}
+    <div class="bb-opp-theory">
+        <span class="bb-muted">Scanner theory</span>
+        {% with cards=pattern_theory_cards %}
+        {% include "partials/theory_card_chips.html" %}
+        {% endwith %}
+    </div>
+    {% endif %}
     {% for sig in rail.signals or [] %}
     <div class="bb-opp-chip {% if sig.z_score|abs > 1 %}bb-opp-hot{% endif %}" title="{{ sig.symbols|join(', ') }}">
         <span class="bb-opp-label">{{ sig.label }}</span>

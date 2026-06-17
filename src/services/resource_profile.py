@@ -97,7 +97,10 @@ def get_resource_profile(settings: Any | None = None) -> ResourceProfile:
 
 def profile_snapshot(settings: Any | None = None) -> dict[str, Any]:
     """JSON-safe summary for /ops/memory and status_tick."""
-    prof = get_resource_profile(settings)
+    from src.config import get_settings
+
+    cfg = settings or get_settings()
+    prof = get_resource_profile(cfg)
     return {
         "low_ram_mode": prof.low_ram,
         "effective_ram_budget_mb": prof.effective_ram_budget_mb,
@@ -111,7 +114,8 @@ def profile_snapshot(settings: Any | None = None) -> dict[str, Any]:
         "max_optimization_workers": prof.max_optimization_workers,
         "orchestrator_interval_sec": prof.orchestrator_interval_sec,
         "background_tests": prof.background_tests,
-        "replay_workers": get_settings().effective_replay_workers,
+        "replay_workers": cfg.effective_replay_workers,
+        "knowledge_enabled": cfg.knowledge_enabled,
         "compute": detect_compute_device(),
     }
 

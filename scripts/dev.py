@@ -187,6 +187,19 @@ def cmd_setup(_: argparse.Namespace) -> int:
         check=True,
     )
 
+    print("[dev] Bootstrapping knowledge corpus (if empty)...")
+    subprocess.run(
+        [
+            str(py),
+            "-c",
+            "from src.services.knowledge.bootstrap import bootstrap_corpus_if_empty; "
+            "bootstrap_corpus_if_empty()",
+        ],
+        cwd=ROOT,
+        env=_env(),
+        check=False,
+    )
+
     _auto_detect_profit_dll(env_file)
 
     print("[dev] Setup complete.")

@@ -243,10 +243,27 @@ class TradeIdea(Base):
     rationale_tags: Mapped[list | None] = mapped_column(JSON, nullable=True)
     legs: Mapped[list | None] = mapped_column(JSON, nullable=True)
     backtest_proof: Mapped[dict | None] = mapped_column(JSON, nullable=True)
+    meta: Mapped[dict | None] = mapped_column(JSON, nullable=True)
     scan_result_id: Mapped[int | None] = mapped_column(ForeignKey("scan_results.id"), nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
     confirmed_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
     executed_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
+
+
+class PatchProposal(Base):
+    """Self-learning config patch — human approve before apply (10.0-rc)."""
+
+    __tablename__ = "patch_proposals"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    symbol: Mapped[str] = mapped_column(String(32), index=True)
+    pattern: Mapped[str | None] = mapped_column(String(80), nullable=True)
+    status: Mapped[str] = mapped_column(String(20), default="pending", index=True)
+    diff: Mapped[dict | None] = mapped_column(JSON, nullable=True)
+    evidence: Mapped[dict | None] = mapped_column(JSON, nullable=True)
+    theory_card_ids: Mapped[list | None] = mapped_column(JSON, nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+    resolved_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
 
 
 class RiskProfile(Base):
@@ -385,6 +402,8 @@ def init_db() -> None:
                 alters.append(
                     "ALTER TABLE trade_ideas ADD COLUMN structure_type VARCHAR(40) DEFAULT 'scalp'"
                 )
+            if "meta" not in existing:
+                alters.append("ALTER TABLE trade_ideas ADD COLUMN meta JSON")
             with engine.connect() as conn:
                 for stmt in alters:
                     conn.execute(text(stmt))

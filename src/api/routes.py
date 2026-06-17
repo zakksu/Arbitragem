@@ -1323,6 +1323,104 @@ def self_healing_breakers():
     return {"breakers": all_breakers_snapshot()}
 
 
+@router.get("/self-healing/health")
+def self_healing_health():
+    from src.services.self_healing.health_registry import health_snapshot
+
+    return health_snapshot()
+
+
+@router.post("/ideas/{idea_id}/brief")
+def idea_decision_brief(idea_id: int, db: Session = Depends(get_db)):
+    from src.services.decision_brief import build_decision_brief
+
+    try:
+        return build_decision_brief(db, idea_id)
+    except ValueError as exc:
+        raise HTTPException(404, str(exc)) from exc
+
+
+@router.get("/ideas/{idea_id}/theory-cards")
+def idea_theory_cards(idea_id: int, db: Session = Depends(get_db)):
+    from src.models import TradeIdea
+    from src.services.theory_cards import build_theory_cards
+
+    idea = db.get(TradeIdea, idea_id)
+    if not idea:
+        raise HTTPException(404, "Idea not found")
+    meta = idea.meta or {}
+    cards = meta.get("theory_cards") or build_theory_cards(
+        symbol=idea.symbol, structure_type=idea.structure_type, tags=idea.rationale_tags
+    )
+    return {"idea_id": idea_id, "cards": cards, "count": len(cards)}
+
+
+@router.get("/autonomous/outcomes")
+def autonomous_outcomes(symbol: str | None = None, db: Session = Depends(get_db)):
+    from src.services.outcome_ranker import rank_outcomes
+
+    return {"outcomes": rank_outcomes(db, symbol=symbol)}
+
+
+@router.get("/autonomous/patches")
+def autonomous_patches_list(status: str = "pending", db: Session = Depends(get_db)):
+    from src.services.patch_proposals import list_proposals
+
+    return {"proposals": list_proposals(db, status=status or None)}
+
+
+@router.post("/autonomous/patches/generate")
+def autonomous_patches_generate(symbol: str | None = None, db: Session = Depends(get_db)):
+    from src.services.patch_proposals import generate_patch_proposals
+
+    return {"created": generate_patch_proposals(db, symbol=symbol)}
+
+
+@router.post("/autonomous/patches/{proposal_id}/approve")
+def autonomous_patch_approve(proposal_id: int, db: Session = Depends(get_db)):
+    from src.services.patch_proposals import approve_proposal
+
+    try:
+        return approve_proposal(db, proposal_id)
+    except ValueError as exc:
+        raise HTTPException(400, str(exc)) from exc
+
+
+@router.post("/autonomous/patches/{proposal_id}/reject")
+def autonomous_patch_reject(
+    proposal_id: int,
+    reason: str = "",
+    db: Session = Depends(get_db),
+):
+    from src.services.patch_proposals import reject_proposal
+
+    try:
+        return reject_proposal(db, proposal_id, reason=reason)
+    except ValueError as exc:
+        raise HTTPException(400, str(exc)) from exc
+
+
+@router.get("/symbols/{symbol}/graduation")
+def symbol_graduation(symbol: str, db: Session = Depends(get_db)):
+    from src.services.paper_graduation import graduation_status
+
+    return graduation_status(db, symbol)
+
+
+@router.get("/motor/universe")
+def motor_universe(db: Session = Depends(get_db)):
+    from src.services.motor_universe import motor_universe_policy
+
+    return motor_universe_policy(db)
+
+
+@router.get("/knowledge/distill")
+def knowledge_distill():
+    from src.services.rule_distillation import distill_candidate_axioms
+
+    return distill_candidate_axioms()
+
+
 @router.get("/daily-briefing")
 def daily_briefing_api(db: Session = Depends(get_db)):
     from src.services.daily_briefing import build_daily_briefing

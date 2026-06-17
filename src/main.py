@@ -37,6 +37,11 @@ async def _orchestrator_loop() -> None:
         else:
             interval = max(20, settings.effective_orchestrator_interval_sec)
         if orchestrator_should_run() and motor_session_open():
+            from src.services.self_healing.health_registry import is_degraded
+
+            if is_degraded():
+                await asyncio.sleep(interval)
+                continue
             session = get_session_factory()()
             try:
                 await asyncio.to_thread(run_trader_cycle, session)
@@ -51,6 +56,12 @@ async def _orchestrator_loop() -> None:
 async def lifespan(app: FastAPI):
     setup_logging()
     init_db()
+    try:
+        from src.services.knowledge.bootstrap import bootstrap_corpus_if_empty
+
+        await asyncio.to_thread(bootstrap_corpus_if_empty)
+    except Exception:
+        pass
     session = get_session_factory()()
     try:
         StrategyService(session).get_or_create_sample()
@@ -59,11 +70,31 @@ async def lifespan(app: FastAPI):
     start_scheduler()
     settings = get_settings()
     motor_task = None
+    health_task = None
     if settings.autonomy_enabled or (
         settings.paper_trading_mode and settings.auto_trading_on_sleeves
     ):
         motor_task = asyncio.create_task(_orchestrator_loop())
+
+    async def _health_loop() -> None:
+        from src.services.self_healing.health_registry import run_health_probe
+
+        await asyncio.sleep(12)
+        while True:
+            try:
+                await asyncio.to_thread(run_health_probe)
+            except Exception:
+                pass
+            await asyncio.sleep(30)
+
+    health_task = asyncio.create_task(_health_loop())
     yield
+    if health_task:
+        health_task.cancel()
+        try:
+            await health_task
+        except asyncio.CancelledError:
+            pass
     if motor_task:
         motor_task.cancel()
         try:
