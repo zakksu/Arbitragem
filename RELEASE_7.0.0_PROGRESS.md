@@ -4,7 +4,7 @@ Scope: [RELEASE_7.0_LOCAL.md](RELEASE_7.0_LOCAL.md) · GA: [RELEASE_7.0.0.md](RE
 
 **Version:** `7.0.0`
 
-**Regression (2026-06-17):** `268 passed` — full `pytest tests/ -q` green after version assertion sync (`7.0.0-beta` → `7.0.0`). Futures/crypto watchlist, setup status, IBOV scanner, golden path mode — all passing.
+**Regression (2026-06-17):** `284 passed` — full `pytest tests/ -q` green (low-RAM + conftest isolation). RAM benchmark peak **200.2 MB** (< 500 MB scanner target).
 
 **Dev:** `GOLDEN_PATH_MODE=true` in `.env` (see `.env.example`) → PETR4-only universe, slim Streamlit, symbol factory footer on board.
 
@@ -113,7 +113,7 @@ Scope: [RELEASE_7.0_LOCAL.md](RELEASE_7.0_LOCAL.md) · GA: [RELEASE_7.0.0.md](RE
 - [x] `psutil` in requirements.txt
 - [x] Version bump `7.0.0` in `src/__init__.py`
 - [x] Background test worker includes golden path + symbol factory tests
-- [x] Full regression green — **268 passed** (2026-06-17)
+- [x] Full regression green — **284 passed** (2026-06-17)
 
 ### Manual / operational only (cannot automate in CI)
 
@@ -148,5 +148,5 @@ Scope: [RELEASE_7.0_LOCAL.md](RELEASE_7.0_LOCAL.md) · GA: [RELEASE_7.0.0.md](RE
 - [x] `scripts/benchmark_ram.py` — peak RSS imports + golden path evaluate
 - [x] Tests — `tests/test_resource_profile.py`, `tests/test_low_ram_mode.py`
 - [x] Optional CUDA probe via `detect_compute_device()` (torch not required)
-- [ ] Core scanner loop peak < 500 MB — **run `python scripts/benchmark_ram.py`**
+- [x] Core scanner loop peak < 500 MB — **200.2 MB** (`python scripts/benchmark_ram.py`, 2026-06-17)
 
