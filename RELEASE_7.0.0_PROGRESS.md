@@ -150,3 +150,7 @@ Scope: [RELEASE_7.0_LOCAL.md](RELEASE_7.0_LOCAL.md) · GA: [RELEASE_7.0.0.md](RE
 - [x] Optional CUDA probe via `detect_compute_device()` (torch not required)
 - [x] Core scanner loop peak < 500 MB — **200.2 MB** (`python scripts/benchmark_ram.py`, 2026-06-17)
 
+## Future (post-7.0 GA)
+
+Long-range product vision: **[RELEASE_10.0_VISION.md](RELEASE_10.0_VISION.md)** — grounded knowledge (RAG + theory cards), autonomous engine 2.0, self-healing stack, self-learning loop with human-approved patches. Assumes **8.x** multi-symbol scale and **9.x** observability/engine hardening before 10.0-alpha.
+
