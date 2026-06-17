@@ -10,7 +10,7 @@
         <strong>—</strong>
         {% endif %}
     </span>
-    <span class="bb-ops-chip" title="Process RSS (API worker)">
+    <span class="bb-ops-chip" title="Stack RSS (process + children)">
         RAM
         {% if mem.available %}
         <strong>{{ mem.rss_mb|int }} MB</strong>
