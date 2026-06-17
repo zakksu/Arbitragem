@@ -1116,6 +1116,79 @@ async def trade_product_partial(request: Request, symbol: str):
     )
 
 
+@router.get("/board/partials/profitchart-companion", response_class=HTMLResponse)
+async def profitchart_companion_partial(request: Request):
+    from src.web.profitchart_companion import build_profitchart_companion
+
+    sym = (request.query_params.get("symbol") or "PETR4").strip().upper()
+
+    def _ctx(session):
+        from src.services.trade_ideas import TradeIdeaService
+        from src.services.vwap import build_session_vwap_payload
+
+        ideas = TradeIdeaService(session).list_ideas(limit=1, symbol=sym)
+        top = TradeIdeaService(session).to_dict(ideas[0]) if ideas else None
+        vwap = build_session_vwap_payload(sym)
+        quote = _fast_quote(sym)
+        return build_profitchart_companion(sym, quote=quote, top_idea=top, session_vwap=vwap)
+
+    companion = await _to_thread(_with_db, _ctx)
+    return TEMPLATES.TemplateResponse(
+        request,
+        "partials/profitchart_companion.html",
+        {"companion": companion},
+    )
+
+
+@router.get("/board/partials/strategy-store", response_class=HTMLResponse)
+async def strategy_store_partial(request: Request):
+    from src.services.strategy_store import list_stored_strategies
+
+    def _load(session):
+        return {
+            "strategies": list_stored_strategies(session, limit=40),
+            "scan_result": None,
+        }
+
+    store = await _to_thread(_with_db, _load)
+    return TEMPLATES.TemplateResponse(
+        request,
+        "partials/strategy_store.html",
+        {"store": store},
+    )
+
+
+@router.post("/board/partials/strategy-store/scan", response_class=HTMLResponse)
+async def strategy_store_scan_partial(request: Request):
+    from src.services.strategy_store import list_stored_strategies, scan_strategy_directories
+
+    def _scan(session):
+        result = scan_strategy_directories(session)
+        return {
+            "strategies": list_stored_strategies(session, limit=40),
+            "scan_result": result,
+        }
+
+    store = await _to_thread(_with_db, _scan)
+    return TEMPLATES.TemplateResponse(
+        request,
+        "partials/strategy_store.html",
+        {"store": store},
+    )
+
+
+@router.get("/board/partials/strategy-store/{stored_id}", response_class=HTMLResponse)
+async def strategy_store_detail_partial(request: Request, stored_id: int):
+    from src.services.strategy_store import get_stored_strategy
+
+    detail = await _to_thread(_with_db, get_stored_strategy, stored_id)
+    return TEMPLATES.TemplateResponse(
+        request,
+        "partials/strategy_store_detail.html",
+        {"detail": detail},
+    )
+
+
 @router.get("/board/partials/engine-mind", response_class=HTMLResponse)
 async def engine_mind_partial(request: Request):
     from src.web.engine_mind import build_engine_mind
@@ -1128,18 +1201,76 @@ async def engine_mind_partial(request: Request):
     )
 
 
+@router.get("/board/partials/daily-briefing", response_class=HTMLResponse)
+async def daily_briefing_partial(request: Request):
+    from src.services.daily_briefing import build_daily_briefing
+
+    briefing = await _to_thread(_with_db, build_daily_briefing)
+    return TEMPLATES.TemplateResponse(
+        request,
+        "partials/daily_briefing.html",
+        {"briefing": briefing},
+    )
+
+
+@router.get("/board/partials/knowledge-library", response_class=HTMLResponse)
+async def knowledge_library_partial(request: Request):
+    from src.services.knowledge.store import knowledge_status, search_chunks
+
+    q = (request.query_params.get("q") or "").strip()
+    sym = (request.query_params.get("symbol") or "PETR4").strip().upper()
+    status = await _to_thread(knowledge_status)
+    results = await _to_thread(search_chunks, q, symbol=sym, limit=8) if q else []
+    return TEMPLATES.TemplateResponse(
+        request,
+        "partials/knowledge_library.html",
+        {"status": status, "results": results, "query": q, "symbol": sym},
+    )
+
+
 @router.get("/board/partials/replay-player", response_class=HTMLResponse)
 async def replay_player_partial(request: Request):
-    from src.web.replay_player import build_replay_ticks
+    from src.web.replay_player import build_replay_player_context
 
     sym = (request.query_params.get("symbol") or "PETR4").strip().upper()
     speed = int(request.query_params.get("speed", "8") or 8)
-    ticks = await _to_thread(build_replay_ticks, sym)
-    return TEMPLATES.TemplateResponse(
-        request,
-        "partials/replay_player.html",
-        {"symbol": sym, "speed": speed, "ticks": ticks},
-    )
+    job_id = (request.query_params.get("job_id") or "").strip() or None
+
+    def _load(session):
+        return build_replay_player_context(session, sym, speed=speed, job_id=job_id)
+
+    ctx = await _to_thread(_with_db, _load)
+    return TEMPLATES.TemplateResponse(request, "partials/replay_player.html", ctx)
+
+
+@router.post("/board/partials/replay-player/run", response_class=HTMLResponse)
+async def replay_player_run(request: Request):
+    from src.services.replay_engine import start_replay
+    from src.web.replay_player import build_replay_player_context
+
+    form = await request.form()
+    sym = str(form.get("symbol", "PETR4")).strip().upper()
+    strategy = str(form.get("strategy", "scalp_default")).strip()
+    speed = int(form.get("speed", 8) or 8)
+
+    def _run(session):
+        run = start_replay(
+            strategy=strategy,
+            symbol=sym,
+            speed=float(speed),
+            mode="sandbox",
+            session=session,
+        )
+        return build_replay_player_context(
+            session,
+            sym,
+            speed=speed,
+            job_id=run.get("job_id"),
+            last_run=run,
+        )
+
+    ctx = await _to_thread(_with_db, _run)
+    return TEMPLATES.TemplateResponse(request, "partials/replay_player.html", ctx)
 
 
 @router.get("/board/partials/replay-lab", response_class=HTMLResponse)

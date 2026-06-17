@@ -151,6 +151,67 @@ class Settings(BaseSettings):
     symbol_factory_max_per_week: int = 1
     arbitragem_bg_tests: bool = True
 
+    # 10.0 — Eternal Golden Path (replay training + strategy store + engine mind)
+    replay_training_enabled: bool = True
+    replay_training_interval_min: int = 30
+    replay_parallel_workers: int = 2
+    replay_max_bars_per_session: int = 120
+    replay_feed_journal: bool = True
+    replay_feed_wfo: bool = True
+    replay_ollama_summary: bool = True
+    strategy_store_enabled: bool = True
+    profitchart_strategies_dir: str = ""
+    strategy_store_extra_dirs: str = ""
+    resource_ram_fraction: float = 0.8
+    resource_gpu_fraction: float = 0.4
+    engine_mind_enabled: bool = True
+    knowledge_enabled: bool = True
+    knowledge_max_chunks: int = 10000
+    knowledge_db_path: str = ""
+    knowledge_force_enabled: bool = False
+
+    @property
+    def knowledge_runtime_enabled(self) -> bool:
+        if not self.knowledge_enabled:
+            return False
+        # 10.0 mastery path: allow corpus on golden path even when low-RAM trims other features
+        if self.golden_path_mode:
+            return True
+        if self.low_ram_enabled and not self.knowledge_force_enabled:
+            return False
+        return True
+
+    @property
+    def effective_replay_workers(self) -> int:
+        """Cap parallel replay jobs — uses up to ~80% host policy via worker count."""
+        base = max(1, self.replay_parallel_workers)
+        if self.low_ram_enabled:
+            return 1
+        return base
+
+    @property
+    def strategy_store_scan_paths(self) -> list:
+        from pathlib import Path
+
+        paths: list[Path] = []
+        export_ntsl = Path(self.profit_export_dir) / "ntsl"
+        if export_ntsl.exists():
+            paths.append(export_ntsl)
+        root_ntsl = PROJECT_ROOT / "exports" / "ntsl"
+        if root_ntsl.exists() and root_ntsl not in paths:
+            paths.append(root_ntsl)
+        if self.profitchart_strategies_dir:
+            pc = Path(self.profitchart_strategies_dir)
+            if pc.exists():
+                paths.append(pc)
+        for part in self.strategy_store_extra_dirs.split(","):
+            p = part.strip()
+            if p:
+                extra = Path(p)
+                if extra.exists() and extra not in paths:
+                    paths.append(extra)
+        return paths
+
     @property
     def golden_path_symbol(self) -> str:
         return "PETR4"

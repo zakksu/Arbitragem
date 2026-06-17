@@ -293,6 +293,64 @@ class MotorJournal(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, index=True)
 
 
+class ReplaySession(Base):
+    """ProfitChart / tick-sim replay training session (10.0)."""
+
+    __tablename__ = "replay_sessions"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    job_id: Mapped[str] = mapped_column(String(32), unique=True, index=True)
+    symbol: Mapped[str] = mapped_column(String(32), index=True)
+    strategy_name: Mapped[str] = mapped_column(String(120), default="scalp_default")
+    status: Mapped[str] = mapped_column(String(20), default="queued", index=True)
+    speed: Mapped[float] = mapped_column(Float, default=10.0)
+    mode: Mapped[str] = mapped_column(String(20), default="sandbox")
+    source: Mapped[str] = mapped_column(String(20), default="tick_sim")
+    progress_pct: Mapped[float] = mapped_column(Float, default=0.0)
+    fill_count: Mapped[int] = mapped_column(Integer, default=0)
+    message: Mapped[str | None] = mapped_column(Text, nullable=True)
+    metrics: Mapped[dict | None] = mapped_column(JSON, nullable=True)
+    strategy_id: Mapped[int | None] = mapped_column(ForeignKey("strategies.id"), nullable=True)
+    started_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+    completed_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
+
+
+class ReplayFill(Base):
+    """Individual simulated fill inside a replay session."""
+
+    __tablename__ = "replay_fills"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    session_id: Mapped[int] = mapped_column(ForeignKey("replay_sessions.id"), index=True)
+    symbol: Mapped[str] = mapped_column(String(32), index=True)
+    side: Mapped[str] = mapped_column(String(10))
+    quantity: Mapped[int] = mapped_column(Integer, default=100)
+    price: Mapped[float] = mapped_column(Float)
+    pnl: Mapped[float | None] = mapped_column(Float, nullable=True)
+    tick_index: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    executed_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+    raw_payload: Mapped[dict | None] = mapped_column(JSON, nullable=True)
+
+
+class StoredStrategy(Base):
+    """Indexed ProfitChart NTSL strategy from disk (10.0 strategy store)."""
+
+    __tablename__ = "stored_strategies"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    name: Mapped[str] = mapped_column(String(160), index=True)
+    file_path: Mapped[str] = mapped_column(String(512), unique=True)
+    content_hash: Mapped[str] = mapped_column(String(64), index=True)
+    ntsl_code: Mapped[str | None] = mapped_column(Text, nullable=True)
+    extracted_logic: Mapped[dict | None] = mapped_column(JSON, nullable=True)
+    tags: Mapped[list | None] = mapped_column(JSON, nullable=True)
+    symbols: Mapped[list | None] = mapped_column(JSON, nullable=True)
+    source_dir: Mapped[str | None] = mapped_column(String(512), nullable=True)
+    strategy_id: Mapped[int | None] = mapped_column(ForeignKey("strategies.id"), nullable=True)
+    last_scanned_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+
+
 def get_engine():
     settings = get_settings()
     connect_args = {}

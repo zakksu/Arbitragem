@@ -341,6 +341,18 @@ def _start_test_worker() -> int | None:
     return proc.pid
 
 
+def _start_replay_training_worker() -> int | None:
+    if os.getenv("ARBITRAGEM_BG_REPLAY", "1") == "0":
+        return None
+    worker = ROOT / "scripts" / "replay_training_worker.py"
+    if not worker.exists():
+        return None
+    py = str(_python())
+    print("[dev] Starting background replay training worker (non-blocking)...")
+    proc = _start_process("replay_training_worker", [py, str(worker)], "replay_training_worker.log")
+    return proc.pid
+
+
 def _start_process(name: str, args: list[str], log_name: str) -> subprocess.Popen:
     log_path = LOG_DIR / log_name
     log_file = open(log_path, "a", encoding="utf-8")
@@ -426,6 +438,7 @@ def cmd_start(args: argparse.Namespace) -> int:
         "dashboard_pid": ui_proc.pid,
         "profit_bridge_pid": bridge_pid or 0,
         "test_worker_pid": _start_test_worker() or 0,
+        "replay_training_worker_pid": _start_replay_training_worker() or 0,
         "started_at": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
     }
     _save_state(state)
@@ -511,7 +524,7 @@ def cmd_status(args: argparse.Namespace) -> int:
 def cmd_stop(_: argparse.Namespace) -> int:
     state = _load_state()
     stopped = False
-    for key in ("api_pid", "dashboard_pid", "profit_bridge_pid", "test_worker_pid"):
+    for key in ("api_pid", "dashboard_pid", "profit_bridge_pid", "test_worker_pid", "replay_training_worker_pid"):
         pid = int(state.get(key, 0) or 0)
         if pid and _pid_alive(pid):
             print(f"[dev] Stopping PID {pid} ({key})...")

@@ -186,6 +186,10 @@
          hx-trigger="load"
          hx-swap="innerHTML"></div>
     {% else %}
+    <div id="profitchart-companion-slot"
+         hx-get="/board/partials/profitchart-companion?symbol={{ symbol }}"
+         hx-trigger="load"
+         hx-swap="innerHTML"></div>
     <div id="replay-player-slot"
          hx-get="/board/partials/replay-player?symbol={{ symbol }}"
          hx-trigger="load"

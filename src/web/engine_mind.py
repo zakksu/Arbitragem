@@ -7,6 +7,7 @@ from typing import Any
 
 from sqlalchemy.orm import Session
 
+from src.autonomous.engine_mind import get_engine_mind
 from src.services.autonomy import autonomy_status
 from src.services.motor_journal import PHASES, list_today
 from src.services.ops_panel import get_motor_cycle_ms, motor_cycle_p95_ms
@@ -14,9 +15,11 @@ from src.services.risk_cockpit import build_risk_cockpit
 from src.services.trading_orchestrator import orchestrator_status
 
 
-def _sources(session: Session, orch: dict[str, Any], auto: dict[str, Any]) -> list[dict[str, Any]]:
+def _motor_sources(session: Session, backend: dict[str, Any]) -> list[dict[str, Any]]:
     """At most 5 decision sources for the mind panel."""
     cockpit = build_risk_cockpit(session)
+    orch = orchestrator_status()
+    auto = autonomy_status()
     sources: list[dict[str, Any]] = []
 
     sources.append(
@@ -39,7 +42,18 @@ def _sources(session: Session, orch: dict[str, Any], auto: dict[str, Any]) -> li
             "detail": f"{open_n}/3 sleeves open",
         }
     )
-    if orch.get("last_scan_ran"):
+    toggles = backend.get("sources") or {}
+    if toggles.get("replay_training"):
+        sources.append(
+            {
+                "id": "replay",
+                "label": "Replay training",
+                "kind": "train",
+                "status": "ok",
+                "detail": f"{backend.get('resources', {}).get('replay_workers', 1)} worker(s)",
+            }
+        )
+    elif orch.get("last_scan_ran"):
         sources.append(
             {
                 "id": "scan",
@@ -47,6 +61,16 @@ def _sources(session: Session, orch: dict[str, Any], auto: dict[str, Any]) -> li
                 "kind": "scan",
                 "status": "ok",
                 "detail": f"+{orch.get('last_ideas_generated') or 0} ideas last cycle",
+            }
+        )
+    if toggles.get("strategy_store"):
+        sources.append(
+            {
+                "id": "strategies",
+                "label": "Strategy store",
+                "kind": "ntsl",
+                "status": "ok",
+                "detail": "NTSL index active",
             }
         )
     last_auto = orch.get("last_autonomy") or {}
@@ -61,7 +85,7 @@ def _sources(session: Session, orch: dict[str, Any], auto: dict[str, Any]) -> li
                 "detail": f"{len(actions)} action(s) last tick",
             }
         )
-    if orch.get("motor_session_open"):
+    elif orch.get("motor_session_open"):
         sources.append(
             {
                 "id": "session",
@@ -84,40 +108,67 @@ def _sources(session: Session, orch: dict[str, Any], auto: dict[str, Any]) -> li
     return sources[:5]
 
 
+def _merge_breakdown(journal_counts: Counter[str], backend: dict[str, Any]) -> list[dict[str, Any]]:
+    backend_bd = backend.get("cycle_breakdown") or {}
+    merged: Counter[str] = Counter(journal_counts)
+    for phase, count in backend_bd.items():
+        merged[phase.upper()] += int(count)
+    total = sum(merged.values()) or 1
+    rows = [
+        {
+            "phase": p,
+            "count": merged.get(p, 0),
+            "pct": round(100.0 * merged.get(p, 0) / total, 1),
+        }
+        for p in PHASES
+        if merged.get(p, 0) > 0
+    ]
+    if not rows:
+        for phase, count in backend_bd.items():
+            rows.append(
+                {
+                    "phase": phase.upper(),
+                    "count": count,
+                    "pct": round(100.0 * count / total, 1),
+                }
+            )
+    if not rows:
+        rows = [{"phase": "OBSERVE", "count": 0, "pct": 100.0}]
+    return rows[:8]
+
+
 def build_engine_mind(session: Session) -> dict[str, Any]:
+    backend = get_engine_mind().snapshot()
     orch = orchestrator_status()
     auto = autonomy_status()
     journal = list_today(session, limit=40)
 
     counts = Counter(r.get("phase") or "OBSERVE" for r in journal)
-    total = sum(counts.values()) or 1
-    phase_breakdown = [
-        {
-            "phase": p,
-            "count": counts.get(p, 0),
-            "pct": round(100.0 * counts.get(p, 0) / total, 1),
-        }
-        for p in PHASES
-        if counts.get(p, 0) > 0
-    ]
-    if not phase_breakdown:
-        phase_breakdown = [{"phase": "OBSERVE", "count": 0, "pct": 100.0}]
+    phase_breakdown = _merge_breakdown(counts, backend)
 
     current = journal[-1] if journal else None
     thinking = current["message"] if current else "Standing by — enable sleeves to start motor."
-    if orch.get("last_errors"):
+    if backend.get("last_error"):
+        thinking = f"Engine: {backend['last_error']}"
+    elif orch.get("last_errors"):
         thinking = f"Last issue: {orch['last_errors'][0]}"
+
+    backend_phase = (backend.get("phase") or "idle").upper()
+    current_phase = current["phase"] if current else backend_phase
 
     return {
         "orchestrator": orch,
         "autonomy": auto,
+        "backend": backend,
         "journal": journal[-12:],
+        "recent_cycles": backend.get("recent_cycles") or [],
         "phase_breakdown": phase_breakdown,
-        "sources": _sources(session, orch, auto),
-        "current_phase": current["phase"] if current else "OBSERVE",
+        "sources": _motor_sources(session, backend),
+        "current_phase": current_phase,
         "current_symbol": current.get("symbol") if current else None,
         "thinking": thinking[:240],
         "motor_cycle_ms": get_motor_cycle_ms(),
         "motor_cycle_p95_ms": motor_cycle_p95_ms(),
-        "active": bool(orch.get("active")),
+        "active": bool(orch.get("active")) or backend_phase not in ("IDLE", "ERROR"),
+        "resources": backend.get("resources") or {},
     }

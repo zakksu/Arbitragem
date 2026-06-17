@@ -1,0 +1,24 @@
+{% if detail %}
+<article class="bb-ss-drawer bb-accent-rail">
+    <header>
+        <strong>{{ detail.name }}</strong>
+        <button type="button" class="bb-btn-secondary"
+                onclick="document.getElementById('strategy-store-detail').innerHTML=''">✕</button>
+    </header>
+    {% if detail.extracted_logic %}
+    <dl class="bb-ss-meta">
+        {% if detail.extracted_logic.summary %}
+        <dt>Summary</dt><dd>{{ detail.extracted_logic.summary }}</dd>
+        {% endif %}
+        {% if detail.extracted_logic.order_ops %}
+        <dt>Order ops</dt><dd>{{ detail.extracted_logic.order_ops|join(', ') }}</dd>
+        {% endif %}
+        {% if detail.extracted_logic.structure_hints %}
+        <dt>Structure</dt><dd>{{ detail.extracted_logic.structure_hints|join(', ') }}</dd>
+        {% endif %}
+    </dl>
+    {% endif %}
+    <pre class="bb-ss-code">{{ (detail.ntsl_code or '')[:1200] }}{% if detail.ntsl_code and detail.ntsl_code|length > 1200 %}…{% endif %}</pre>
+    <p class="bb-muted">{{ detail.file_path }}</p>
+</article>
+{% endif %}

@@ -13,6 +13,10 @@
             {% if mind.motor_cycle_p95_ms is not none %}
             <span class="bb-em-chip bb-em-p95" title="p95 cycle">p95 {{ mind.motor_cycle_p95_ms|int }}ms</span>
             {% endif %}
+            {% if mind.resources %}
+            <span class="bb-em-chip" title="RAM budget">{{ mind.resources.ram_budget_mb or '—' }}MB</span>
+            <span class="bb-em-chip" title="Replay workers">×{{ mind.resources.replay_workers or 1 }}</span>
+            {% endif %}
             <span class="bb-em-phase bb-em-phase-{{ mind.current_phase|lower }}">{{ mind.current_phase }}</span>
             {% if mind.current_symbol %}
             <span class="bb-em-sym">{{ mind.current_symbol }}</span>
@@ -57,6 +61,22 @@
             </div>
         </div>
     </div>
+
+    {% if mind.recent_cycles %}
+    <div class="bb-em-cycles">
+        <h4>Recent engine cycles</h4>
+        <ul class="bb-em-cycle-list">
+            {% for c in mind.recent_cycles[:6] %}
+            <li>
+                <span class="bb-em-phase">{{ c.phase }}</span>
+                {% if c.symbol %}<strong>{{ c.symbol }}</strong>{% endif %}
+                <em>{{ c.ago_sec }}s ago</em>
+                {% if c.duration_ms %}<span>{{ c.duration_ms|int }}ms</span>{% endif %}
+            </li>
+            {% endfor %}
+        </ul>
+    </div>
+    {% endif %}
 
     <div class="bb-em-log-wrap">
         <h4>Motor log</h4>

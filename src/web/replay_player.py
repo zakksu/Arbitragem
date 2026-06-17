@@ -1,11 +1,15 @@
-"""Visual replay tick stream — session candles → animated player frames (10.0 UI)."""
+"""Visual replay tick stream — session candles + replay engine fills (10.0 UI)."""
 
 from __future__ import annotations
 
 import hashlib
 from typing import Any
 
+from sqlalchemy.orm import Session
+
 from src.integrations.profit_bridge import get_profit_client
+from src.services.replay_engine import get_replay, list_recent_sessions
+from src.services.strategy_store import list_stored_strategies
 
 
 def _synthetic_ticks(symbol: str, *, n: int = 90) -> list[dict[str, Any]]:
@@ -39,7 +43,41 @@ def _synthetic_ticks(symbol: str, *, n: int = 90) -> list[dict[str, Any]]:
     return ticks
 
 
-def build_replay_ticks(symbol: str, *, limit: int = 120) -> list[dict[str, Any]]:
+def _apply_fills(ticks: list[dict[str, Any]], fills: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    if not fills or not ticks:
+        return ticks
+    by_idx: dict[int, dict[str, Any]] = {}
+    for f in fills:
+        idx = f.get("tick_index")
+        if idx is None:
+            continue
+        by_idx[int(idx)] = f
+
+    position = 0
+    entry = 0.0
+    out: list[dict[str, Any]] = []
+    for t in ticks:
+        row = dict(t)
+        fill = by_idx.get(int(row["i"]))
+        if fill:
+            side = (fill.get("side") or "").lower()
+            if side in ("buy", "cover"):
+                row["event"] = "buy"
+                position = int(fill.get("quantity") or 100)
+                entry = float(fill.get("price") or row["price"])
+            elif side in ("sell", "short"):
+                row["event"] = "sell"
+                position = 0
+        row["position"] = position
+        if position and entry:
+            row["pnl"] = round((float(row["price"]) - entry) * position, 2)
+        else:
+            row["pnl"] = float(fill.get("pnl") or 0) if fill else 0.0
+        out.append(row)
+    return out
+
+
+def build_replay_ticks(symbol: str, *, limit: int = 120, fills: list[dict[str, Any]] | None = None) -> list[dict[str, Any]]:
     """Build tick frames from bridge session candles or synthetic walk."""
     sym = symbol.strip().upper()
     candles = get_profit_client().get_session_candles(sym, bars=limit) or []
@@ -48,7 +86,8 @@ def build_replay_ticks(symbol: str, *, limit: int = 120) -> list[dict[str, Any]]
     entry_price = 0.0
 
     if len(candles) < 3:
-        return _synthetic_ticks(sym, n=min(limit, 90))
+        ticks = _synthetic_ticks(sym, n=min(limit, 90))
+        return _apply_fills(ticks, fills or [])
 
     for i, bar in enumerate(candles[:limit]):
         try:
@@ -61,13 +100,14 @@ def build_replay_ticks(symbol: str, *, limit: int = 120) -> list[dict[str, Any]]
             continue
 
         event = None
-        if i == len(candles) // 3 and position == 0:
-            event = "buy"
-            position = 100
-            entry_price = close
-        elif i == (2 * len(candles)) // 3 and position > 0:
-            event = "sell"
-            position = 0
+        if not fills:
+            if i == len(candles) // 3 and position == 0:
+                event = "buy"
+                position = 100
+                entry_price = close
+            elif i == (2 * len(candles)) // 3 and position > 0:
+                event = "sell"
+                position = 0
 
         unrealized = round((close - entry_price) * position, 2) if position and entry_price else 0.0
         ticks.append(
@@ -82,4 +122,39 @@ def build_replay_ticks(symbol: str, *, limit: int = 120) -> list[dict[str, Any]]
             }
         )
 
-    return ticks if ticks else _synthetic_ticks(sym, n=min(limit, 90))
+    ticks = ticks if ticks else _synthetic_ticks(sym, n=min(limit, 90))
+    return _apply_fills(ticks, fills or [])
+
+
+def build_replay_player_context(
+    session: Session,
+    symbol: str,
+    *,
+    speed: int = 8,
+    job_id: str | None = None,
+    last_run: dict[str, Any] | None = None,
+) -> dict[str, Any]:
+    sym = symbol.strip().upper()
+    fills: list[dict[str, Any]] = []
+    run = last_run
+    if job_id:
+        run = get_replay(job_id, session=session) or run
+    if run:
+        fills = run.get("fills") or []
+
+    strategies = list_stored_strategies(session, limit=30)
+    sessions = list_recent_sessions(session, limit=8)
+    default_strategy = "scalp_default"
+    if strategies:
+        default_strategy = strategies[0]["name"]
+
+    return {
+        "symbol": sym,
+        "speed": speed,
+        "ticks": build_replay_ticks(sym, fills=fills),
+        "strategies": strategies,
+        "sessions": sessions,
+        "default_strategy": default_strategy,
+        "last_run": run,
+        "job_id": job_id or (run.get("job_id") if run else None),
+    }

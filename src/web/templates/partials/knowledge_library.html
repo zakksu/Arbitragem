@@ -1,0 +1,39 @@
+{% if status %}
+<section class="bb-knowledge-library bb-accent-rail" id="knowledge-library">
+    <header class="bb-kl-head">
+        <strong>Knowledge library</strong>
+        <span class="bb-pill{% if status.enabled %} bb-pill-auto{% endif %}">
+            {{ status.chunks }} chunks · {{ status.db_mb }} MB
+        </span>
+    </header>
+    {% if not status.enabled %}
+    <p class="bb-muted">Knowledge disabled (enable KNOWLEDGE_ENABLED or golden path mode).</p>
+    {% else %}
+    <form class="bb-kl-search"
+          hx-get="/board/partials/knowledge-library"
+          hx-target="#knowledge-library-slot"
+          hx-swap="innerHTML"
+          hx-trigger="submit">
+        <input type="search" name="q" placeholder="Search corpus (VWAP, auction, PETR4…)" value="{{ query or '' }}" />
+        <input type="hidden" name="symbol" value="{{ symbol or 'PETR4' }}" />
+        <button type="submit" class="bb-btn-secondary">Search</button>
+    </form>
+    <p class="bb-muted bb-kl-hint">
+        Ingest offline: <code>python scripts/ingest_knowledge.py --path docs/STRUCTURES.md</code>
+    </p>
+    {% if results %}
+    <ul class="bb-kl-results">
+        {% for row in results %}
+        <li>
+            <strong>{{ row.title or row.source_uri }}</strong>
+            <p>{{ row.excerpt }}…</p>
+            {% if row.tags %}<em>{{ row.tags|join(', ') }}</em>{% endif %}
+        </li>
+        {% endfor %}
+    </ul>
+    {% elif query %}
+    <p class="bb-muted">No matches for “{{ query }}”.</p>
+    {% endif %}
+    {% endif %}
+</section>
+{% endif %}

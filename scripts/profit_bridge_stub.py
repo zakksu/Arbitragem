@@ -393,6 +393,84 @@ def trades_today():
     return {"trades": trades}
 
 
+_REPLAY_JOBS: dict[str, dict] = {}
+
+
+def _synthetic_replay_fills(symbol: str, *, bars: int = 40) -> list[dict]:
+    """Tick-style fills from stub candles — bridge replay training."""
+    sym = symbol.upper()
+    seed = _symbol_seed(sym)
+    last = _quote_for(sym)["last"]
+    fills: list[dict] = []
+    price = last * 0.995
+    for i in range(0, bars, 8):
+        entry = round(price + (seed % 10) / 100.0, 2)
+        exit_p = round(entry + (1 if i % 16 == 0 else -1) * 0.08, 2)
+        pnl = round((exit_p - entry) * 100, 2)
+        fills.append(
+            {
+                "side": "buy",
+                "price": entry,
+                "quantity": 100,
+                "tick_index": i,
+                "event": "entry_long",
+            }
+        )
+        fills.append(
+            {
+                "side": "sell",
+                "price": exit_p,
+                "quantity": 100,
+                "pnl": pnl,
+                "tick_index": i + 4,
+                "event": "exit_long",
+            }
+        )
+        price = exit_p
+    return fills
+
+
+@app.post("/replay/run")
+def replay_run(payload: dict):
+    sym = str(payload.get("symbol", "PETR4")).upper()
+    job_id = str(uuid.uuid4())[:8]
+    speed = float(payload.get("speed") or 10)
+    fills = _synthetic_replay_fills(sym)
+    wins = sum(1 for f in fills if f.get("pnl") and f["pnl"] > 0)
+    closed = sum(1 for f in fills if f.get("event", "").startswith("exit"))
+    total_pnl = sum(float(f.get("pnl") or 0) for f in fills)
+    metrics = {
+        "symbol": sym,
+        "strategy": payload.get("strategy", "scalp_default"),
+        "fills": len(fills),
+        "round_trips": closed,
+        "wins": wins,
+        "total_pnl": round(total_pnl, 2),
+        "win_rate_pct": round(wins / closed * 100, 1) if closed else 0,
+        "engine": "profit_bridge_stub",
+        "speed": speed,
+    }
+    job = {
+        "job_id": job_id,
+        "status": "completed",
+        "symbol": sym,
+        "progress_pct": 100,
+        "fills": fills,
+        "metrics": metrics,
+        "message": "Stub tick replay complete",
+    }
+    _REPLAY_JOBS[job_id] = job
+    return job
+
+
+@app.get("/replay/{job_id}")
+def replay_status(job_id: str):
+    job = _REPLAY_JOBS.get(job_id)
+    if not job:
+        return {"status": "not_found", "job_id": job_id}
+    return job
+
+
 @app.post("/backtest/run")
 def run_backtest(payload: dict):
     sym = str(payload.get("symbol", "PETR4")).upper()

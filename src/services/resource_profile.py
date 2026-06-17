@@ -111,6 +111,7 @@ def profile_snapshot(settings: Any | None = None) -> dict[str, Any]:
         "max_optimization_workers": prof.max_optimization_workers,
         "orchestrator_interval_sec": prof.orchestrator_interval_sec,
         "background_tests": prof.background_tests,
+        "replay_workers": get_settings().effective_replay_workers,
         "compute": detect_compute_device(),
     }
 

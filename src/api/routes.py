@@ -1136,6 +1136,31 @@ async def archaeology_import(file: UploadFile = File(...), db: Session = Depends
         raise HTTPException(400, f"CSV saved but import failed: {exc}") from exc
 
 
+@router.post("/archaeology/import/excel")
+async def archaeology_import_excel(file: UploadFile = File(...), db: Session = Depends(get_db)):
+    """Upload B3 trade history Excel (.xlsx) — full Filipe history import."""
+    import re
+
+    from src.config import get_settings
+    from src.services.b3_history_import import import_b3_history_excel
+
+    if not file.filename or not file.filename.lower().endswith((".xlsx", ".xls")):
+        raise HTTPException(400, "Only .xlsx or .xls files are accepted")
+    content = await file.read()
+    if len(content) > 25 * 1024 * 1024:
+        raise HTTPException(400, "File too large (max 25MB)")
+    settings = get_settings()
+    dest_dir = settings.archaeology_import_path
+    dest_dir.mkdir(parents=True, exist_ok=True)
+    safe = re.sub(r"[^\w.\-]", "_", file.filename) or "history.xlsx"
+    dest = dest_dir / safe
+    dest.write_bytes(content)
+    try:
+        return import_b3_history_excel(db, dest)
+    except Exception as exc:
+        raise HTTPException(400, f"Excel import failed: {exc}") from exc
+
+
 @router.post("/archaeology/scan")
 def archaeology_scan(db: Session = Depends(get_db)):
     from src.services.trade_archaeology import scan_archaeology_dir
@@ -1220,15 +1245,113 @@ def pulse_rail():
 
 
 @router.post("/replay/run")
-def replay_run(payload: ReplayRunRequest):
-    from src.services.replay_lab import start_replay
+def replay_run(payload: ReplayRunRequest, db: Session = Depends(get_db)):
+    from src.services.replay_engine import start_replay
 
     return start_replay(
         strategy=payload.strategy,
         symbol=payload.symbol,
         speed=payload.speed,
         mode=payload.mode,
+        session=db,
     )
+
+
+@router.get("/replay/sessions")
+def replay_sessions(limit: int = 20, db: Session = Depends(get_db)):
+    from src.services.replay_engine import list_recent_sessions
+
+    return {"sessions": list_recent_sessions(db, limit=min(limit, 50))}
+
+
+@router.get("/replay/{job_id}")
+def replay_session_detail(job_id: str, db: Session = Depends(get_db)):
+    from src.services.replay_engine import get_replay
+
+    row = get_replay(job_id, session=db)
+    if not row:
+        raise HTTPException(404, "Replay session not found")
+    return row
+
+
+@router.post("/replay/training/run")
+def replay_training_run(db: Session = Depends(get_db)):
+    from src.services.replay_engine import run_training_cycle
+
+    return run_training_cycle(db)
+
+
+@router.get("/engine/mind")
+def engine_mind_status():
+    from src.autonomous.engine_mind import get_engine_mind
+
+    return get_engine_mind().snapshot()
+
+
+@router.get("/knowledge/status")
+def knowledge_status_api():
+    from src.services.knowledge.store import knowledge_status
+
+    return knowledge_status()
+
+
+@router.get("/knowledge/search")
+def knowledge_search_api(q: str, symbol: str | None = None, tags: str | None = None, limit: int = 8):
+    from src.services.knowledge.store import search_chunks
+
+    return {"query": q, "results": search_chunks(q, symbol=symbol, tags=tags, limit=limit)}
+
+
+@router.post("/knowledge/ingest/replays")
+def knowledge_ingest_replays(limit: int = 20, db: Session = Depends(get_db)):
+    from src.services.knowledge.replay_ingest import ingest_recent_replays
+
+    return ingest_recent_replays(db, limit=min(limit, 50))
+
+
+@router.post("/knowledge/ingest/strategies")
+def knowledge_ingest_strategies(limit: int = 50, db: Session = Depends(get_db)):
+    from src.services.knowledge.replay_ingest import ingest_all_stored_strategies
+
+    return ingest_all_stored_strategies(db, limit=min(limit, 100))
+
+
+@router.get("/self-healing/breakers")
+def self_healing_breakers():
+    from src.services.self_healing import all_breakers_snapshot
+
+    return {"breakers": all_breakers_snapshot()}
+
+
+@router.get("/daily-briefing")
+def daily_briefing_api(db: Session = Depends(get_db)):
+    from src.services.daily_briefing import build_daily_briefing
+
+    return build_daily_briefing(db)
+
+
+@router.post("/strategy-store/scan")
+def strategy_store_scan(db: Session = Depends(get_db)):
+    from src.services.strategy_store import scan_strategy_directories
+
+    return scan_strategy_directories(db)
+
+
+@router.get("/strategy-store")
+def strategy_store_list(limit: int = 50, db: Session = Depends(get_db)):
+    from src.services.strategy_store import list_stored_strategies
+
+    return {"strategies": list_stored_strategies(db, limit=min(limit, 100))}
+
+
+@router.get("/strategy-store/{stored_id}")
+def strategy_store_detail(stored_id: int, db: Session = Depends(get_db)):
+    from src.services.strategy_store import get_stored_strategy
+
+    row = get_stored_strategy(db, stored_id)
+    if not row:
+        raise HTTPException(404, "Stored strategy not found")
+    return row
 
 
 @router.get("/kpi/history")

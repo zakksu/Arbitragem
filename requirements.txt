@@ -18,6 +18,7 @@ pandas>=2.2.3
 # Backtesting & optimization (Python supplement layer)
 numpy>=2.1.0
 scipy>=1.14.0
+openpyxl>=3.1.5
 
 # Dev / test
 pytest>=8.3.0

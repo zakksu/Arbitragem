@@ -1,0 +1,55 @@
+{% if companion %}
+<section class="bb-pc-companion bb-accent-rail" id="profitchart-companion" data-symbol="{{ companion.symbol }}">
+    <header class="bb-pc-head">
+        <div>
+            <strong>ProfitChart Companion</strong>
+            <span class="bb-muted">mirror levels side-by-side</span>
+        </div>
+        <div class="bb-pc-badges">
+            <span class="bb-pill{% if companion.bridge_online %} bb-pill-auto{% endif %}">
+                Bridge {% if companion.bridge_online %}ON{% else %}off{% endif %}
+            </span>
+            {% if companion.profitchart_exe %}
+            <span class="bb-pill bb-pill-paper" title="{{ companion.profitchart_exe }}">ProfitChart ✓</span>
+            {% else %}
+            <span class="bb-pill">Set PROFITCHART_EXE</span>
+            {% endif %}
+        </div>
+    </header>
+
+    {% if companion.last is not none %}
+    <div class="bb-pc-last">
+        <span>Last</span>
+        <strong>{{ "%.2f"|format(companion.last) }}</strong>
+    </div>
+    {% endif %}
+
+    <div class="bb-pc-levels" role="list">
+        {% for lv in companion.levels %}
+        <div class="bb-pc-level" role="listitem" style="--pc-color: {{ lv.color }}">
+            <span class="bb-pc-level-label">{{ lv.label }}</span>
+            <strong class="bb-pc-level-price">{{ "%.2f"|format(lv.price) }}</strong>
+            {% if lv.dist_pct is not none %}
+            <em>{{ "%+.2f"|format(lv.dist_pct) }}%</em>
+            {% endif %}
+            <div class="bb-pc-level-bar">
+                <div class="bb-pc-level-fill" style="width: {{ [lv.dist_pct|abs, 35]|min * 2.8 }}%"></div>
+            </div>
+        </div>
+        {% else %}
+        <p class="bb-muted">No levels — confirm an idea or load trade product for overlays.</p>
+        {% endfor %}
+    </div>
+
+    <div class="bb-pc-actions">
+        <button type="button" class="bb-btn-secondary bb-pc-copy"
+                data-levels='{{ companion.levels|tojson }}'>
+            Copy levels
+        </button>
+        {% if companion.profitchart_exe %}
+        <span class="bb-muted bb-pc-hint">Co-start: dev.py launches Profit when configured.</span>
+        {% endif %}
+    </div>
+    <p class="bb-muted bb-pc-disclaimer">{{ companion.hint }}</p>
+</section>
+{% endif %}

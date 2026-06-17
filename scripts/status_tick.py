@@ -85,6 +85,18 @@ def _test_status() -> dict:
         return {"state": "red", "message": "Invalid test_status.json"}
 
 
+def _read_json_file(name: str) -> dict | None:
+    from pathlib import Path
+
+    path = Path(__file__).resolve().parents[1] / "data" / ".dev" / name
+    if not path.exists():
+        return None
+    try:
+        return json.loads(path.read_text(encoding="utf-8"))
+    except (json.JSONDecodeError, OSError):
+        return None
+
+
 def main() -> int:
     parser = argparse.ArgumentParser(description="Arbitragem status tick")
     parser.add_argument("--json", action="store_true", help="Machine-readable JSON output")
@@ -107,6 +119,8 @@ def main() -> int:
         resource_profile = None
 
     if args.json:
+        knowledge = _get("http://127.0.0.1:8000/api/v1/knowledge/status")
+        replay_training = _read_json_file("replay_training_status.json")
         payload = {
             "timestamp": now,
             "api": {"ok": health is not None, "health": health},
@@ -115,6 +129,8 @@ def main() -> int:
             "test_status": test_status,
             "golden_path": golden_path,
             "symbol_factory": symbol_factory,
+            "knowledge": knowledge,
+            "replay_training": replay_training,
             "ram_mb": ram_mb,
             "resource_profile": resource_profile,
         }

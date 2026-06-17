@@ -664,3 +664,56 @@ Response includes `autonomous_ops` and wizard step `autonomous_ops`:
 - `python scripts/status_tick.py --json` — includes `golden_path`, `symbol_factory`, `ram_mb`
 
 **Streamlit slim:** `GOLDEN_PATH_MODE=true` or `STREAMLIT_SLIM_MODE=true` limits nav to Home, Performance, Journal, Settings.
+
+---
+
+### 10.0-alpha — Replay Training + Strategy Store + Engine Mind
+
+#### `POST /replay/run`
+
+Runs one replay session (tick-sim or Profit bridge when available). Persists `ReplaySession` + fills; feeds journal, `BacktestRun`, optional WFO + Ollama.
+
+```json
+{ "strategy": "scalp_default", "symbol": "PETR4", "speed": 10, "mode": "sandbox" }
+```
+
+Response includes `job_id`, `status`, `source` (`tick_sim` | `profit_bridge`), `metrics`, `fill_count`.
+
+#### `GET /replay/sessions` · `GET /replay/{job_id}`
+
+List recent sessions or fetch fills for one job.
+
+#### `POST /replay/training/run`
+
+Scheduler/manual trigger — scans strategy store, runs parallel replays per `REPLAY_PARALLEL_WORKERS`.
+
+#### Strategy store
+
+| Endpoint | Method | Purpose |
+|----------|--------|---------|
+| `/api/v1/strategy-store/scan` | POST | Index `*.ntsl` from export dirs + `PROFITCHART_STRATEGIES_DIR` |
+| `/api/v1/strategy-store` | GET | List indexed strategies with extracted logic summary |
+| `/api/v1/strategy-store/{id}` | GET | Full NTSL + `extracted_logic` JSON |
+
+#### `GET /engine/mind`
+
+Real-time motor state: `phase`, `sources`, `cycle_breakdown`, `resources` (RAM/GPU fractions, replay workers).
+
+**Config:** see `.env.example` §10.0 (`REPLAY_TRAINING_*`, `STRATEGY_STORE_*`, `RESOURCE_RAM_FRACTION`).
+
+#### Knowledge ingest (replay + NTSL)
+
+| Endpoint | Purpose |
+|----------|---------|
+| `POST /knowledge/ingest/replays` | Index recent replay metrics into FTS |
+| `POST /knowledge/ingest/strategies` | Index stored NTSL strategies |
+
+#### B3 Excel history
+
+`POST /archaeology/import/excel` — upload `.xlsx` trade history (requires `openpyxl`).
+
+#### Self-healing
+
+`GET /self-healing/breakers` — circuit breaker states (`replay_training`, etc.).
+
+

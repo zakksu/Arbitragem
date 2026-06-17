@@ -1,0 +1,55 @@
+{% if briefing %}
+<section class="bb-daily-briefing bb-accent-rail" id="daily-briefing">
+    <header class="bb-db-head">
+        <strong>Daily briefing</strong>
+        <em class="bb-muted">{{ briefing.symbol }} · {{ briefing.generated_at[:16] }}</em>
+        {% if briefing.golden_path %}
+        <span class="bb-pill{% if briefing.golden_path.all_green %} bb-pill-auto{% endif %}">
+            Trust {{ briefing.golden_path.trust_score_pct or 0 }}%
+        </span>
+        {% endif %}
+    </header>
+
+    {% if briefing.charts %}
+    <div class="bb-db-charts">
+        {% if briefing.charts.golden_pct is not none %}
+        <div class="bb-db-chart bb-db-golden" title="Golden path progress">
+            <span>Golden path</span>
+            <div class="bb-db-bar-track">
+                <div class="bb-db-bar-fill bb-db-fill-golden" style="width: {{ briefing.charts.golden_pct }}%"></div>
+            </div>
+            <em>{{ briefing.charts.golden_pct|int }}%</em>
+        </div>
+        {% endif %}
+        {% if briefing.charts.pnl_spark %}
+        <div class="bb-db-chart bb-db-spark">
+            <span>Day P&amp;L curve</span>
+            <svg class="bb-db-spark-svg" viewBox="0 0 120 32" preserveAspectRatio="none">
+                <polyline class="bb-db-spark-line"
+                          points="{{ briefing.charts.pnl_spark_points }}"/>
+            </svg>
+            <em>R$ {{ "%.2f"|format(briefing.charts.pnl_end or 0) }}</em>
+        </div>
+        {% endif %}
+        {% if briefing.charts.replay_bars %}
+        <div class="bb-db-chart bb-db-replays">
+            <span>Replays</span>
+            <div class="bb-db-replay-bars">
+                {% for bar in briefing.charts.replay_bars %}
+                <div class="bb-db-replay-bar" style="height: {{ bar.pct }}%" title="{{ bar.label }}: {{ bar.count }}"></div>
+                {% endfor %}
+            </div>
+        </div>
+        {% endif %}
+    </div>
+    {% endif %}
+
+    <ul class="bb-db-bullets">
+        {% for b in briefing.bullets %}
+        <li class="bb-db-{{ b.level }}">{{ b.text }}</li>
+        {% endfor %}
+    </ul>
+</section>
+{% else %}
+<span class="bb-muted">Briefing unavailable</span>
+{% endif %}

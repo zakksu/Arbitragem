@@ -1,0 +1,46 @@
+{% if store %}
+<section class="bb-strategy-store bb-accent-rail" id="strategy-store">
+    <header class="bb-ss-head">
+        <div>
+            <strong>Strategy Store</strong>
+            <em class="bb-muted">NTSL insights · {{ store.strategies|length }} indexed</em>
+        </div>
+        <button type="button" class="bb-btn-secondary"
+                hx-post="/board/partials/strategy-store/scan"
+                hx-target="#strategy-store-slot"
+                hx-swap="innerHTML">
+            Scan NTSL
+        </button>
+    </header>
+
+    {% if store.scan_result and store.scan_result.indexed is defined %}
+    <p class="bb-ss-scan-msg">
+        Scanned {{ store.scan_result.indexed }} file(s)
+        {% if store.scan_result.errors %} · {{ store.scan_result.errors|length }} error(s){% endif %}
+    </p>
+    {% endif %}
+
+    <ul class="bb-ss-list">
+        {% for s in store.strategies %}
+        <li class="bb-ss-row"
+            hx-get="/board/partials/strategy-store/{{ s.id }}"
+            hx-target="#strategy-store-detail"
+            hx-swap="innerHTML">
+            <strong>{{ s.name }}</strong>
+            {% if s.summary %}<span class="bb-ss-summary">{{ s.summary[:100] }}</span>{% endif %}
+            <div class="bb-ss-tags">
+                {% for tag in (s.tags or [])[:4] %}
+                <em>{{ tag }}</em>
+                {% endfor %}
+                {% for sym in (s.symbols or [])[:3] %}
+                <span class="bb-ss-sym">{{ sym }}</span>
+                {% endfor %}
+            </div>
+        </li>
+        {% else %}
+        <li class="bb-muted">No strategies indexed — run scan or set PROFITCHART_STRATEGIES_DIR.</li>
+        {% endfor %}
+    </ul>
+    <div id="strategy-store-detail" class="bb-ss-detail"></div>
+</section>
+{% endif %}

@@ -32,6 +32,24 @@
          hx-swap="innerHTML">
         <div class="bb-golden-path bb-gp-loading"><span class="bb-loading"></span> Golden path…</div>
     </div>
+    <div id="daily-briefing-slot" class="bb-daily-briefing-slot"
+         hx-get="/board/partials/daily-briefing"
+         hx-trigger="load delay:120ms, every 120s"
+         hx-swap="innerHTML">
+        <span class="bb-muted">Daily briefing…</span>
+    </div>
+    <div id="knowledge-library-slot" class="bb-knowledge-slot"
+         hx-get="/board/partials/knowledge-library"
+         hx-trigger="load delay:300ms"
+         hx-swap="innerHTML">
+        <span class="bb-muted">Knowledge library…</span>
+    </div>
+    <div id="strategy-store-slot" class="bb-strategy-store-slot"
+         hx-get="/board/partials/strategy-store"
+         hx-trigger="load delay:450ms"
+         hx-swap="innerHTML">
+        <span class="bb-muted">Strategy store…</span>
+    </div>
     {% endif %}
 
     <main class="bb-main">
@@ -102,7 +120,7 @@
         {% endif %}
         <div id="engine-mind-slot" class="bb-engine-mind-slot"
              hx-get="/board/partials/engine-mind"
-             hx-trigger="{% if staged_load %}load delay:200ms, every 8s{% else %}load, every 5s{% endif %}"
+             hx-trigger="{% if staged_load %}load delay:200ms, every 8s{% else %}load, every 3s{% endif %}"
              hx-swap="innerHTML">
             <span class="bb-muted">Engine mind…</span>
         </div>
@@ -409,6 +427,8 @@
                     speed = parseInt(speedRange.value, 10) || 8;
                     root.dataset.speed = String(speed);
                     if (speedVal) speedVal.textContent = speed + "×";
+                    var hidden = root.querySelector(".bb-rp-speed-hidden");
+                    if (hidden) hidden.value = String(speed);
                 });
             }
 
@@ -667,6 +687,27 @@
             if (evt.detail.target.id === "replay-player-slot") {
                 var player = evt.detail.target.querySelector(".bb-replay-player");
                 if (player) window.bbMountReplayPlayer(player);
+            }
+            if (evt.detail.target.id === "profitchart-companion-slot") {
+                var copyBtn = evt.detail.target.querySelector(".bb-pc-copy");
+                if (copyBtn && !copyBtn.dataset.wired) {
+                    copyBtn.dataset.wired = "1";
+                    copyBtn.addEventListener("click", function () {
+                        var levels = [];
+                        try {
+                            levels = JSON.parse(copyBtn.dataset.levels || "[]");
+                        } catch (e) { /* ignore */ }
+                        var text = levels
+                            .map(function (l) {
+                                return l.label + ": " + l.price;
+                            })
+                            .join("\n");
+                        if (text && navigator.clipboard) {
+                            navigator.clipboard.writeText(text);
+                            window.bbShowToast("Levels copied for ProfitChart");
+                        }
+                    });
+                }
             }
         });
 

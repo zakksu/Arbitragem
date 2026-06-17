@@ -347,3 +347,67 @@
     margin: 0;
     font-size: 0.65rem;
 }
+
+/* 10.0 — Daily briefing + knowledge library */
+
+.bb-daily-briefing-slot,
+.bb-knowledge-slot {
+    margin: 0.35rem 0;
+}
+
+.bb-daily-briefing,
+.bb-knowledge-library {
+    border: 1px solid var(--arb-border);
+    border-radius: var(--arb-radius);
+    background: var(--arb-surface-2, #12141c);
+    padding: 0.5rem 0.65rem;
+    font-size: 0.72rem;
+}
+
+.bb-db-head,
+.bb-kl-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.5rem;
+    margin-bottom: 0.35rem;
+}
+
+.bb-db-bullets {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+}
+
+.bb-db-bullets li {
+    padding: 0.2rem 0;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.04);
+}
+
+.bb-kl-search {
+    display: flex;
+    gap: 0.35rem;
+    margin-bottom: 0.35rem;
+}
+
+.bb-kl-search input {
+    flex: 1;
+    min-width: 0;
+}
+
+.bb-kl-results {
+    list-style: none;
+    margin: 0.5rem 0 0;
+    padding: 0;
+    max-height: 160px;
+    overflow-y: auto;
+}
+
+.bb-kl-results li {
+    padding: 0.35rem 0;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.bb-kl-hint {
+    font-size: 0.65rem;
+}

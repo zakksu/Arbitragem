@@ -5,7 +5,10 @@
     <div class="bb-rp-head">
         <div>
             <strong>Visual Replay</strong>
-            <span class="bb-muted">{{ symbol }} · tick player</span>
+            <span class="bb-muted">{{ symbol }} · training engine</span>
+            {% if last_run %}
+            <em class="bb-rp-job">job {{ last_run.job_id }} · {{ last_run.source }} · {{ last_run.status }}</em>
+            {% endif %}
         </div>
         <div class="bb-rp-controls">
             <button type="button" class="bb-btn-secondary bb-rp-play" aria-pressed="false">▶ Play</button>
@@ -18,9 +21,36 @@
         </div>
     </div>
 
+    <form class="bb-rp-run-form"
+          hx-post="/board/partials/replay-player/run"
+          hx-target="#replay-player-slot"
+          hx-swap="innerHTML">
+        <input type="hidden" name="symbol" value="{{ symbol }}">
+        <label>
+            Strategy
+            <select name="strategy">
+                <option value="{{ default_strategy }}">{{ default_strategy }}</option>
+                {% for s in strategies %}
+                {% if s.name != default_strategy %}
+                <option value="{{ s.name }}">{{ s.name }}</option>
+                {% endif %}
+                {% endfor %}
+            </select>
+        </label>
+        <input type="hidden" name="speed" value="{{ speed or 8 }}" class="bb-rp-speed-hidden">
+        <button type="submit" class="bb-btn-primary">Run replay</button>
+    </form>
+
+    {% if last_run and last_run.metrics %}
+    <div class="bb-rp-metrics">
+        <span>fills <strong>{{ last_run.fill_count or 0 }}</strong></span>
+        <span>P&L <strong>R$ {{ "%.2f"|format(last_run.metrics.total_pnl or 0) }}</strong></span>
+        <span>win <strong>{{ last_run.metrics.win_rate_pct or 0 }}%</strong></span>
+    </div>
+    {% endif %}
+
     <div class="bb-rp-stage">
         <canvas class="bb-rp-canvas" width="640" height="160" aria-label="Replay price chart"></canvas>
-        <div class="bb-rp-crosshair"></div>
     </div>
 
     <div class="bb-rp-hud">
@@ -49,5 +79,23 @@
         <div class="bb-rp-position-fill"></div>
     </div>
 
-    <p class="bb-muted bb-rp-disclaimer">Sandbox replay — synthetic fills when bridge has no tick feed.</p>
+    {% if sessions %}
+    <details class="bb-rp-sessions">
+        <summary>Recent sessions ({{ sessions|length }})</summary>
+        <ul>
+            {% for s in sessions %}
+            <li>
+                <a href="#"
+                   hx-get="/board/partials/replay-player?symbol={{ s.symbol }}&job_id={{ s.job_id }}"
+                   hx-target="#replay-player-slot"
+                   hx-swap="innerHTML">
+                    {{ s.symbol }} · {{ s.job_id }} · {{ s.status }} · {{ s.fill_count }} fills
+                </a>
+            </li>
+            {% endfor %}
+        </ul>
+    </details>
+    {% endif %}
+
+    <p class="bb-muted bb-rp-disclaimer">Sandbox replay — tick sim feeds journal + WFO when enabled.</p>
 </div>

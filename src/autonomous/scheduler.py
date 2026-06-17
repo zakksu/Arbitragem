@@ -32,14 +32,38 @@ async def run_rankings_sync() -> dict[str, Any]:
 def register_autonomous_jobs(scheduler) -> None:
     """Hook into APScheduler after core jobs."""
     settings = get_settings()
-    if not getattr(settings, "autonomous_rankings_sync", True):
-        return
-    interval = max(1, getattr(settings, "rankings_sync_interval_hours", 6))
-    scheduler.add_job(
-        run_rankings_sync_sync,
-        "interval",
-        hours=interval,
-        id="rankings_sync",
-        replace_existing=True,
-    )
-    logger.info("autonomous_scheduler_registered", rankings_interval_hours=interval)
+    if getattr(settings, "autonomous_rankings_sync", True):
+        interval = max(1, getattr(settings, "rankings_sync_interval_hours", 6))
+        scheduler.add_job(
+            run_rankings_sync_sync,
+            "interval",
+            hours=interval,
+            id="rankings_sync",
+            replace_existing=True,
+        )
+    if getattr(settings, "replay_training_enabled", False):
+        mins = max(5, getattr(settings, "replay_training_interval_min", 30))
+        scheduler.add_job(
+            run_replay_training_sync,
+            "interval",
+            minutes=mins,
+            id="replay_training",
+            replace_existing=True,
+        )
+    logger.info("autonomous_scheduler_registered", rankings=settings.autonomous_rankings_sync)
+
+
+def run_replay_training_sync() -> dict[str, Any]:
+    from src.services.replay_engine import run_training_cycle
+
+    session = get_session_factory()()
+    try:
+        return run_training_cycle(session)
+    except Exception as exc:
+        logger.error("replay_training_failed", error=str(exc))
+        from src.autonomous.engine_mind import get_engine_mind
+
+        get_engine_mind().record_error(str(exc))
+        return {"error": str(exc)}
+    finally:
+        session.close()
