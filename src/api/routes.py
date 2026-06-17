@@ -343,20 +343,34 @@ def confirm_trade_idea(
     paper_override: bool = False,
     db: Session = Depends(get_db),
 ):
+    from src.config import get_settings
+    from src.services.paper_execution import estimate_paper_fills
+
     try:
-        idea = TradeIdeaService(db).confirm_idea(idea_id, paper_override=paper_override)
+        svc = TradeIdeaService(db)
+        idea = svc.confirm_idea(idea_id, paper_override=paper_override)
     except ValueError as exc:
         raise HTTPException(400, str(exc)) from exc
-    return TradeIdeaService(db).to_dict(idea)
+    payload = svc.to_dict(idea)
+    if get_settings().paper_trading_mode:
+        payload["paper_fill_preview"] = estimate_paper_fills(payload)
+    from src.services.idea_gates import build_idea_gates
+
+    payload["gates"] = build_idea_gates(db, idea_id)
+    return payload
 
 
 @router.post("/ideas/{idea_id}/execute")
 def execute_trade_idea(idea_id: int, db: Session = Depends(get_db)):
+    from src.services.idea_gates import build_idea_gates
+
     try:
         idea = TradeIdeaService(db).execute_idea(idea_id)
     except ValueError as exc:
         raise HTTPException(400, str(exc)) from exc
-    return TradeIdeaService(db).to_dict(idea)
+    payload = TradeIdeaService(db).to_dict(idea)
+    payload["gates"] = build_idea_gates(db, idea_id)
+    return payload
 
 
 @router.get("/symbols/{symbol}/report")
@@ -364,6 +378,13 @@ def symbol_report(symbol: str, force: bool = False, db: Session = Depends(get_db
     from src.services.symbol_report import build_symbol_report
 
     return build_symbol_report(db, symbol, force=force)
+
+
+@router.get("/symbols/{symbol}/session-vwap")
+def symbol_session_vwap(symbol: str):
+    from src.services.vwap import build_session_vwap_payload
+
+    return build_session_vwap_payload(symbol)
 
 
 @router.get("/ideas/{idea_id}")
@@ -374,6 +395,23 @@ def get_trade_idea(idea_id: int, db: Session = Depends(get_db)):
     if not idea:
         raise HTTPException(404, "Idea not found")
     return TradeIdeaService(db).to_dict(idea)
+
+
+@router.get("/ideas/{idea_id}/gates")
+def get_idea_gates(idea_id: int, db: Session = Depends(get_db)):
+    from src.services.idea_gates import build_idea_gates
+
+    try:
+        return build_idea_gates(db, idea_id)
+    except ValueError as exc:
+        raise HTTPException(404, str(exc)) from exc
+
+
+@router.get("/execution/clear/status")
+def execution_clear_status():
+    from src.services.clear_router import clear_router_status
+
+    return clear_router_status()
 
 
 @router.get("/board/{symbol}/notes")
@@ -517,16 +555,14 @@ def risk_kill_switch(
     payload: dict = Body(default_factory=dict),
     db: Session = Depends(get_db),
 ):
-    """Toggle kill switch — blocks confirm/execute when active (A2.6c)."""
-    from src.models import TradeIdea
-    from src.services.kill_switch import set_active
+    """Legacy alias — pauses all trading sleeves (does not reject ideas)."""
+    from src.services.trading_sleeves import set_all
     from src.services.system_audit import log_event
 
     active = bool(payload.get("active", True))
-    reason = str(payload.get("reason") or "Manual kill switch")
-    state = set_active(active, reason=reason if active else "")
+    reason = str(payload.get("reason") or "Manual pause")
+    state = set_all(not active, reason=reason if active else "")
 
-    rejected = 0
     paused = 0
     if active:
         for s in db.query(Strategy).filter(Strategy.status == "active").all():
@@ -535,42 +571,144 @@ def risk_kill_switch(
                 paused += 1
             except ValueError:
                 pass
-        for idea in db.query(TradeIdea).filter(
-            TradeIdea.status.in_(["detected", "backtested", "confirmed"])
-        ).all():
-            idea.status = "rejected"
-            if "[Kill switch]" not in (idea.rationale or ""):
-                idea.rationale = (idea.rationale or "") + "\n[Kill switch] Idea cancelled."
-            rejected += 1
         log_event(
             db,
             level="warning",
-            component="kill_switch",
-            message=f"Kill switch ON — paused {paused} strategies, rejected {rejected} ideas",
-            details={**state, "paused_strategies": paused, "rejected_ideas": rejected},
+            component="trading_sleeves",
+            message=f"All sleeves paused — paused {paused} strategies",
+            details={**state, "paused_strategies": paused},
         )
         db.commit()
     else:
         log_event(
             db,
             level="info",
-            component="kill_switch",
-            message="Kill switch OFF — confirms and executes allowed",
+            component="trading_sleeves",
+            message="All sleeves open — confirms and executes allowed",
             details=state,
         )
         db.commit()
 
-    return {**state, "paused_strategies": paused, "rejected_ideas": rejected}
+    return {
+        "active": active,
+        "activated_at": None,
+        "reason": state.get("reason"),
+        "sleeves": state.get("sleeves"),
+        "paused_strategies": paused,
+        "rejected_ideas": 0,
+    }
+
+
+@router.get("/risk/sleeves")
+def get_trading_sleeves():
+    from src.services.trading_sleeves import status as sleeves_status
+
+    return sleeves_status()
+
+
+@router.post("/risk/sleeves")
+def post_trading_sleeves(payload: dict = Body(default_factory=dict), db: Session = Depends(get_db)):
+    from src.services.system_audit import log_event
+    from src.services.trading_sleeves import SLEEVES, set_all, set_sleeve, status as sleeves_status
+
+    sleeve = payload.get("sleeve")
+    open_ = payload.get("open")
+    reason = str(payload.get("reason") or "")
+
+    if sleeve:
+        if open_ is None:
+            raise HTTPException(400, "Provide 'open': true|false when setting a sleeve")
+        state = set_sleeve(str(sleeve), bool(open_), reason=reason)
+        log_event(
+            db,
+            level="info",
+            component="trading_sleeves",
+            message=f"Sleeve {sleeve} {'open' if open_ else 'paused'}",
+            details=state,
+        )
+        db.commit()
+        return state
+
+    if "all_open" in payload:
+        state = set_all(bool(payload["all_open"]), reason=reason)
+        log_event(
+            db,
+            level="info",
+            component="trading_sleeves",
+            message=f"All sleeves {'open' if payload['all_open'] else 'paused'}",
+            details=state,
+        )
+        db.commit()
+        return state
+
+    if "sleeves" in payload and isinstance(payload["sleeves"], dict):
+        state = sleeves_status()
+        for key in SLEEVES:
+            if key in payload["sleeves"]:
+                set_sleeve(key, bool(payload["sleeves"][key]), reason=reason)
+        state = sleeves_status()
+        db.commit()
+        return state
+
+    raise HTTPException(400, "Provide sleeve+open, all_open, or sleeves map")
+
+
+@router.post("/autonomy/run")
+def autonomy_run(db: Session = Depends(get_db)):
+    from src.services.autonomy import run_autonomy_cycle
+
+    return run_autonomy_cycle(db)
+
+
+@router.get("/orchestrator/status")
+def orchestrator_status_endpoint():
+    from src.services.trading_orchestrator import orchestrator_status
+
+    return orchestrator_status()
+
+
+@router.post("/orchestrator/run")
+def orchestrator_run(db: Session = Depends(get_db)):
+    from src.services.trader_agent import run_trader_cycle
+
+    return run_trader_cycle(db)
+
+
+@router.get("/autonomy/status")
+def autonomy_status_endpoint():
+    from src.services.autonomy import autonomy_status
+
+    return autonomy_status()
 
 
 @router.post("/strategies/pause-all")
 def pause_all_strategies(db: Session = Depends(get_db)):
-    """Legacy alias — activates kill switch and rejects pending ideas."""
-    result = risk_kill_switch({"active": True, "reason": "pause-all"}, db=db)
+    """Pause active strategies and close all sleeves — does not reject ideas."""
+    from src.services.system_audit import log_event
+    from src.services.trading_sleeves import set_all
+
+    state = set_all(False, reason="pause-all")
+    paused = 0
+    for s in db.query(Strategy).filter(Strategy.status == "active").all():
+        try:
+            StrategyService(db).pause_strategy(s.id)
+            paused += 1
+        except ValueError:
+            pass
+    log_event(
+        db,
+        level="warning",
+        component="trading_sleeves",
+        message=f"Pause-all — closed sleeves, paused {paused} strategies",
+        details={**state, "paused_strategies": paused},
+    )
+    db.commit()
     return {
-        "paused": result.get("paused_strategies", 0),
-        "rejected_ideas": result.get("rejected_ideas", 0),
-        **result,
+        "paused": paused,
+        "rejected_ideas": 0,
+        "active": True,
+        "sleeves": state.get("sleeves"),
+        "reason": state.get("reason"),
     }
 
 
@@ -616,20 +754,24 @@ def set_board_layout(preset: str, db: Session = Depends(get_db)):
 
 @router.get("/stream/quotes")
 async def stream_quotes(symbols: str | None = None):
-    """SSE Core14 quote stream — batch from Profit bridge + 15s heartbeat (A2.8)."""
+    """SSE Core14 quote stream — batch from Profit bridge + heartbeat (A2.8 / 7.0)."""
     import asyncio
     import json
     import time
 
     from src.services.filipe_universe import symbol_list
 
+    settings = get_settings()
+
     async def generate():
         client = get_profit_client()
-        syms = (
-            [s.strip().upper() for s in symbols.split(",") if s.strip()]
-            if symbols
-            else symbol_list()
-        )
+        if settings.golden_path_mode and not symbols:
+            syms = [settings.golden_path_symbol]
+        elif symbols:
+            syms = [s.strip().upper() for s in symbols.split(",") if s.strip()]
+        else:
+            syms = symbol_list()
+        heartbeat_sec = 30 if len(syms) <= 1 else 15
         last_heartbeat = time.monotonic()
         while True:
             batch = await asyncio.to_thread(client.get_quotes_batch, syms)
@@ -649,7 +791,7 @@ async def stream_quotes(symbols: str | None = None):
             yield f"data: {json.dumps(payload)}\n\n"
 
             now = time.monotonic()
-            if now - last_heartbeat >= 15:
+            if now - last_heartbeat >= heartbeat_sec:
                 yield f"data: {json.dumps({'type': 'heartbeat', 'ts': time.time()})}\n\n"
                 last_heartbeat = now
 
@@ -685,6 +827,22 @@ def setup_test():
     from src.services.setup_wizard import run_setup_tests
 
     return run_setup_tests()
+
+
+@router.get("/integrations/profit/account")
+def profit_account_profile():
+    """Active ProfitChart account mapping (no password returned)."""
+    from src.services.profit_accounts import profit_account_checklist, resolve_profit_account
+
+    settings = get_settings()
+    acct = resolve_profit_account(settings)
+    return {
+        "active": acct,
+        "accounts": profit_account_checklist(settings),
+        "password_configured": bool(settings.profit_password.strip()),
+        "paper_trading_mode": settings.paper_trading_mode,
+        "profit_live_style": settings.profit_live_style,
+    }
 
 
 @router.get("/integrations/profit/test")
@@ -899,26 +1057,134 @@ def market_clocks():
 
 @router.get("/watchlist/enriched")
 def watchlist_enriched(db: Session = Depends(get_db)):
-    from src.services.filipe_universe import load_filipe_core14
-    from src.services.risk_profile import get_or_create_profile
-    from src.services.watchlist_enrich import enrich_watchlist_rows
+    from src.services.enriched_watchlist import build_enriched_watchlist
 
-    symbols = load_filipe_core14()
-    rows = [s.to_dict() for s in symbols] if symbols else []
-    sym_list = [r["symbol"] for r in rows if r.get("symbol")]
-    client = get_profit_client()
-    batch = client.get_quotes_batch(sym_list)
-    for row in rows:
-        q = batch.get(row["symbol"])
-        if q:
-            row["last"] = q.last
-            row["bid"] = q.bid
-            row["ask"] = q.ask
-    svc = TradeIdeaService(db)
-    ideas = [svc.to_dict(i) for i in svc.list_ideas(limit=50)]
-    profile = get_or_create_profile(db)
-    enriched = enrich_watchlist_rows(rows, ideas, cost_per_trade_brl=profile.cost_per_trade_brl)
-    return {"symbols": enriched, "count": len(enriched)}
+    return build_enriched_watchlist(db)
+
+
+@router.get("/universe/futures")
+def universe_futures():
+    from src.services.futures_quotes import build_futures_watchlist_rows
+    from src.services.futures_universe import load_futures_universe
+
+    return {
+        "symbols": [f.to_dict() for f in load_futures_universe()],
+        "quotes": build_futures_watchlist_rows(),
+    }
+
+
+@router.get("/signals/social")
+def social_signals(limit: int = 12):
+    from src.config import get_settings
+    from src.services.social_signals import get_social_signals
+
+    if not get_settings().social_signals_enabled:
+        return {
+            "signals": [],
+            "count": 0,
+            "read_only": True,
+            "auto_trade": False,
+            "disclaimer": "Social signals disabled",
+            "sources": [],
+        }
+    return get_social_signals(limit=limit)
+
+
+@router.get("/universe/crypto")
+def universe_crypto():
+    from src.services.crypto_quotes import build_crypto_watchlist_rows
+    from src.services.crypto_universe import load_crypto_universe
+
+    return {
+        "symbols": [c.to_dict() for c in load_crypto_universe()],
+        "quotes": build_crypto_watchlist_rows(),
+        "read_only": True,
+        "auto_trade": False,
+    }
+
+
+@router.get("/archaeology/timeline")
+def archaeology_timeline(
+    limit: int = 100,
+    symbol: str | None = None,
+    db: Session = Depends(get_db),
+):
+    from src.services.trade_archaeology import build_timeline
+
+    return build_timeline(db, limit=limit, symbol=symbol)
+
+
+@router.post("/archaeology/import")
+async def archaeology_import(file: UploadFile = File(...), db: Session = Depends(get_db)):
+    """Upload Profit trade-history CSV for archaeology timeline."""
+    from src.config import get_settings
+    from src.services.trade_archaeology import import_trade_csv
+
+    if not file.filename or not file.filename.lower().endswith(".csv"):
+        raise HTTPException(400, "Only .csv files are accepted")
+    content = await file.read()
+    if len(content) > 10 * 1024 * 1024:
+        raise HTTPException(400, "File too large (max 10MB)")
+    settings = get_settings()
+    path = save_uploaded_csv(content, file.filename, settings.archaeology_import_path)
+    try:
+        return import_trade_csv(db, path)
+    except Exception as exc:
+        raise HTTPException(400, f"CSV saved but import failed: {exc}") from exc
+
+
+@router.post("/archaeology/scan")
+def archaeology_scan(db: Session = Depends(get_db)):
+    from src.services.trade_archaeology import scan_archaeology_dir
+
+    return scan_archaeology_dir(db)
+
+
+@router.get("/archaeology/symbol/{symbol}/insights")
+def archaeology_symbol_insights(symbol: str, db: Session = Depends(get_db)):
+    from src.services.archaeology_backtest import archaeology_symbol_insights as build_insights
+
+    return build_insights(db, symbol)
+
+
+@router.post("/cei/parse")
+async def cei_parse_upload(file: UploadFile = File(...)):
+    """Upload CEI/B3 trade export for parser spike preview."""
+    if not file.filename or not file.filename.lower().endswith(".csv"):
+        raise HTTPException(400, "Only .csv files are accepted")
+    content = await file.read()
+    if len(content) > 10 * 1024 * 1024:
+        raise HTTPException(400, "File too large (max 10MB)")
+    from src.config import get_settings
+    from src.services.cei_parser import parse_cei_export
+
+    settings = get_settings()
+    path = save_uploaded_csv(content, file.filename, settings.archaeology_import_path)
+    try:
+        return parse_cei_export(path)
+    except Exception as exc:
+        raise HTTPException(400, f"CEI parse failed: {exc}") from exc
+
+
+@router.post("/cei/import")
+async def cei_import_upload(file: UploadFile = File(...), db: Session = Depends(get_db)):
+    """Import CEI/B3 trade CSV into archaeology timeline (same row pipeline as Profit)."""
+    if not file.filename or not file.filename.lower().endswith(".csv"):
+        raise HTTPException(400, "Only .csv files are accepted")
+    content = await file.read()
+    if len(content) > 10 * 1024 * 1024:
+        raise HTTPException(400, "File too large (max 10MB)")
+    from src.config import get_settings
+    from src.services.trade_archaeology import import_trade_csv
+
+    settings = get_settings()
+    path = save_uploaded_csv(content, file.filename, settings.archaeology_import_path)
+    try:
+        result = import_trade_csv(db, path)
+        result["source_format"] = "cei"
+        return result
+    except Exception as exc:
+        raise HTTPException(400, f"CEI import failed: {exc}") from exc
 
 
 @router.get("/symbols/{symbol}/trade-product")
@@ -971,13 +1237,211 @@ def kpi_history(range: str = "today", db: Session = Depends(get_db)):
     return build_kpi_history(db, key)
 
 
+@router.get("/education")
+def education_pack():
+    from src.services.education import get_education_pack
+
+    return get_education_pack()
+
+
+@router.get("/education/axioms")
+def education_axioms():
+    from src.services.education import list_axioms
+
+    return {"axioms": list_axioms()}
+
+
+@router.get("/education/structures")
+def education_structures():
+    from src.services.education import list_structures
+
+    return {"structures": list_structures()}
+
+
+@router.get("/education/daily")
+def education_daily():
+    from src.services.education import daily_axiom
+
+    return daily_axiom()
+
+
+@router.get("/education/structures/{structure_type}")
+def education_structure_blurb(structure_type: str):
+    from src.services.education import structure_blurb
+
+    blurb = structure_blurb(structure_type)
+    if not blurb:
+        raise HTTPException(404, f"No education blurb for {structure_type}")
+    return {"structure_type": structure_type.lower(), **blurb}
+
+
+@router.get("/paper/validation")
+def paper_validation_checklist(db: Session = Depends(get_db)):
+    from src.services.paper_validation import build_paper_validation
+
+    return build_paper_validation(db)
+
+
+@router.get("/paper/journal/export")
+def paper_journal_export(
+    format: str = "json",
+    db: Session = Depends(get_db),
+):
+    from fastapi.responses import PlainTextResponse
+
+    from src.services.paper_validation import (
+        build_journal_export,
+        journal_csv_text,
+        write_journal_csv,
+    )
+
+    fmt = format.lower()
+    if fmt == "csv":
+        return PlainTextResponse(
+            content=journal_csv_text(db),
+            media_type="text/csv",
+            headers={"Content-Disposition": 'attachment; filename="paper_journal.csv"'},
+        )
+    if fmt == "file":
+        return write_journal_csv(db)
+    return build_journal_export(db)
+
+
+@router.post("/paper/journal/export")
+def paper_journal_export_file(db: Session = Depends(get_db)):
+    from src.services.paper_validation import write_journal_csv
+
+    return write_journal_csv(db)
+
+
+@router.get("/paper/crypto/preview")
+def paper_crypto_preview(
+    symbol: str,
+    side: str = "buy",
+    quantity: float = 0.01,
+):
+    from src.services.crypto_paper import preview_crypto_fill
+
+    try:
+        return preview_crypto_fill(symbol=symbol, side=side, quantity=quantity)
+    except ValueError as exc:
+        raise HTTPException(400, str(exc)) from exc
+
+
+@router.post("/paper/crypto/execute")
+def paper_crypto_execute(
+    payload: dict = Body(...),
+    db: Session = Depends(get_db),
+):
+    from src.services.crypto_paper import execute_crypto_paper
+
+    symbol = str(payload.get("symbol", "")).strip()
+    side = str(payload.get("side", "buy"))
+    try:
+        quantity = float(payload.get("quantity", 0))
+    except (TypeError, ValueError) as exc:
+        raise HTTPException(400, "quantity must be a number") from exc
+    note = payload.get("note")
+    try:
+        return execute_crypto_paper(
+            db,
+            symbol=symbol,
+            side=side,
+            quantity=quantity,
+            note=str(note) if note else None,
+        )
+    except ValueError as exc:
+        raise HTTPException(400, str(exc)) from exc
+
+
 @router.post("/ntsl/arm")
-def ntsl_arm(payload: NtslArmRequest):
+def ntsl_arm(payload: NtslArmRequest, db: Session = Depends(get_db)):
+    from src.integrations.profit_bridge import get_profit_client
     from src.services.ntsl_arm import arm_ntsl
+    from src.services.trade_ideas import TradeIdeaService
+
+    legs = payload.legs
+    if not legs:
+        svc = TradeIdeaService(db)
+        quote = get_profit_client().get_quote(payload.symbol)
+        legs = svc._legs_for_structure(
+            payload.structure_type, payload.symbol, payload.side, quote
+        )
 
     return arm_ntsl(
         symbol=payload.symbol,
         structure_type=payload.structure_type,
         side=payload.side,
+        legs=legs,
         ntsl_code=payload.ntsl_code,
+        stop_ticks=payload.stop_ticks,
+        target_ticks=payload.target_ticks,
     )
+
+
+@router.post("/autonomous/run")
+def autonomous_run(db: Session = Depends(get_db)):
+    """Run one autonomous daily routine (scan + WFO + rankings sync)."""
+    from src.autonomous.engine import AutonomousEngine
+
+    return AutonomousEngine(db).run_daily_routine_sync().to_dict()
+
+
+from src.web.api.v1.backtest import router as backtest_rankings_router
+
+router.include_router(backtest_rankings_router, prefix="/backtest", tags=["backtest"])
+
+
+@router.get("/golden-path")
+def golden_path_status(db: Session = Depends(get_db)):
+    from src.services.golden_path import evaluate_golden_path
+
+    return evaluate_golden_path(db)
+
+
+@router.get("/golden-path/reconcile")
+def golden_path_reconcile(db: Session = Depends(get_db)):
+    from src.services.pnl_reconcile import reconcile_symbol_pnl
+
+    settings = get_settings()
+    return reconcile_symbol_pnl(db, settings.golden_path_symbol)
+
+
+@router.get("/ops/memory")
+def ops_memory():
+    from src.services.ops_panel import build_ops_panel
+
+    return build_ops_panel()
+
+
+@router.get("/symbol-factory/status")
+def symbol_factory_status(db: Session = Depends(get_db)):
+    from src.services.symbol_factory import factory_status
+
+    return factory_status(db)
+
+
+@router.post("/symbol-factory/shadow")
+def symbol_factory_add_shadow(payload: dict = Body(...), db: Session = Depends(get_db)):
+    from src.services.symbol_factory import add_shadow_symbol
+
+    symbol = str(payload.get("symbol", "")).strip()
+    if not symbol:
+        raise HTTPException(400, "symbol required")
+    result = add_shadow_symbol(db, symbol)
+    if not result.get("ok"):
+        raise HTTPException(409, detail=result)
+    return result
+
+
+@router.post("/symbol-factory/promote")
+def symbol_factory_promote(payload: dict = Body(...), db: Session = Depends(get_db)):
+    from src.services.symbol_factory import promote_shadow_symbol
+
+    symbol = str(payload.get("symbol", "")).strip()
+    if not symbol:
+        raise HTTPException(400, "symbol required")
+    result = promote_shadow_symbol(db, symbol)
+    if not result.get("ok"):
+        raise HTTPException(409, detail=result)
+    return result
