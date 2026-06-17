@@ -1,0 +1,119 @@
+{# Release 7.0 — Symbol replication factory (locked / unlocked) #}
+{% set sf = factory %}
+{% set gp = golden_path %}
+{% set required = sf.shadow_sessions_required|default(3) %}
+<div class="bb-sf-panel" id="symbol-factory-panel" aria-label="Symbol replication factory">
+    <header class="bb-sf-head">
+        <div>
+            <strong>Symbol Replication Factory</strong>
+            <span class="bb-muted">Clone {{ sf.golden_symbol }} pipeline to Core14</span>
+        </div>
+        <button type="button" class="bb-sf-close" onclick="document.getElementById('symbol-factory-slot').innerHTML=''" aria-label="Close">×</button>
+    </header>
+
+    <div class="bb-sf-body">
+        <aside class="bb-sf-sidebar">
+            <h4>Golden Path ({{ sf.golden_symbol }})</h4>
+            <ol class="bb-sf-gp-list">
+                {% for item in gp['items'] %}
+                <li class="{% if item.ok %}is-ok{% else %}is-pending{% endif %}">
+                    <span class="bb-sf-gp-mark">{% if item.ok %}✓{% else %}○{% endif %}</span>
+                    {{ item.label }}
+                </li>
+                {% endfor %}
+            </ol>
+            <div class="bb-sf-sessions {% if gp.sessions_green_count >= 5 %}is-green{% endif %}">
+                Sessions green: <strong>{{ gp.sessions_green_count }}</strong> / 5
+            </div>
+            {% if sf.locked %}
+            <ul class="bb-sf-lock-reasons">
+                {% for reason in sf.lock_reasons %}
+                <li>{{ reason }}</li>
+                {% endfor %}
+            </ul>
+            {% endif %}
+        </aside>
+
+        <div class="bb-sf-main{% if sf.locked %} is-locked{% endif %}">
+            {% if sf.locked %}
+            <div class="bb-sf-lock-overlay" aria-hidden="true">
+                <span class="bb-sf-lock-icon">🔒</span>
+                <p>Unlocks when {{ sf.golden_symbol }} golden path is green (5 sessions).</p>
+            </div>
+            {% endif %}
+
+            <h4>Add symbol to universe</h4>
+            <form class="bb-sf-form"
+                  hx-post="/board/partials/symbol-factory/shadow"
+                  hx-target="#symbol-factory-slot"
+                  hx-swap="innerHTML">
+                <label for="sf-symbol">Select Core14 symbol</label>
+                <div class="bb-sf-row">
+                    <select id="sf-symbol" name="symbol" {% if sf.locked %}disabled{% endif %} required>
+                        <option value="">— choose —</option>
+                        {% for c in sf.candidates %}
+                        <option value="{{ c.symbol }}" {% if c.symbol == 'PRIO3' %}selected{% endif %}>{{ c.symbol }} · {{ c.name }}</option>
+                        {% endfor %}
+                    </select>
+                    <button type="submit" class="bb-btn-confirm" {% if sf.locked %}disabled{% endif %}>
+                        Clone from {{ sf.golden_symbol }} template
+                    </button>
+                </div>
+                <p class="bb-muted bb-sf-hint">Clones strategy, risk, sizing, exits, and monitoring from {{ sf.golden_symbol }} template.</p>
+            </form>
+
+            {% if sf.shadow_symbols %}
+            <section class="bb-sf-shadow-list">
+                <h4>Shadow mode ({{ required }} sessions)</h4>
+                {% for shadow in sf.shadow_symbols %}
+                {% set done = shadow.sessions_ok|default(0)|int %}
+                <div class="bb-sf-shadow-card">
+                    <header>
+                        <strong>{{ shadow.symbol }}</strong>
+                        <span class="bb-muted">from {{ shadow.cloned_from|default(sf.golden_symbol) }}</span>
+                    </header>
+                    <ol class="bb-sf-shadow-steps">
+                        <li class="{% if done >= 1 %}is-done{% elif done == 0 %}is-active{% endif %}">Session 1 · Collecting data</li>
+                        <li class="{% if done >= 2 %}is-done{% elif done == 1 %}is-active{% endif %}">Session 2 · Validating signals</li>
+                        <li class="{% if done >= 3 %}is-done{% elif done == 2 %}is-active{% endif %}">Session 3 · Performance check</li>
+                        <li class="{% if done >= required %}is-done{% endif %}">Ready for activation</li>
+                    </ol>
+                    <div class="bb-sf-shadow-actions">
+                        <span class="bb-muted">{{ done }}/{{ required }} sessions</span>
+                        <form hx-post="/board/partials/symbol-factory/promote"
+                              hx-target="#symbol-factory-slot"
+                              hx-swap="innerHTML">
+                            <input type="hidden" name="symbol" value="{{ shadow.symbol }}">
+                            <button type="submit"
+                                    class="bb-btn-confirm"
+                                    {% if sf.locked or done < required %}disabled{% endif %}>
+                                Promote to motor
+                            </button>
+                        </form>
+                    </div>
+                </div>
+                {% endfor %}
+            </section>
+            {% else %}
+            <section class="bb-sf-shadow-empty">
+                <h4>Shadow mode ({{ required }} sessions)</h4>
+                <p class="bb-muted">Run in shadow mode to validate signals and performance before activation. Recommended first clone: <strong>PRIO3</strong>.</p>
+                <ol class="bb-sf-shadow-steps bb-sf-shadow-preview">
+                    <li>Session 1 · Collecting data</li>
+                    <li>Session 2 · Validating signals</li>
+                    <li>Session 3 · Performance check</li>
+                    <li>Ready for activation</li>
+                </ol>
+            </section>
+            {% endif %}
+
+            {% if message %}
+            <p class="bb-sf-msg {% if message_ok %}bb-sf-msg-ok{% else %}bb-sf-msg-err{% endif %}">{{ message }}</p>
+            {% endif %}
+        </div>
+    </div>
+
+    <footer class="bb-sf-foot">
+        <span class="bb-muted">+1 symbol per week max · Maintain quality over quantity</span>
+    </footer>
+</div>

@@ -512,6 +512,181 @@ body.bb-layout-learn .bb-col-ideas {
     background: rgba(255, 255, 255, 0.03);
 }
 
+/* 4.2 — crypto watchlist rows + read-only badges (W4.22) */
+.bb-watch-row-crypto {
+    background: linear-gradient(90deg, rgba(168, 85, 247, 0.07) 0%, transparent 55%);
+    border-left: 2px solid rgba(168, 85, 247, 0.35);
+}
+
+.bb-watch-row-crypto:hover {
+    background: linear-gradient(90deg, rgba(168, 85, 247, 0.12) 0%, #1f1f1f 55%);
+}
+
+.bb-watch-row-crypto.is-active {
+    background: linear-gradient(90deg, rgba(168, 85, 247, 0.16) 0%, #2a1f0a 55%);
+    border-left-color: #a855f7;
+}
+
+.bb-watch-section-row td {
+    font-size: 0.62rem;
+    font-weight: 700;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: var(--arb-muted);
+    padding: 0.45rem 0.35rem 0.2rem;
+    border-bottom: none;
+    background: transparent;
+}
+
+.bb-watch-section-crypto td {
+    color: #c084fc;
+}
+
+.bb-crypto-badge {
+    display: inline-block;
+    margin-left: 0.35rem;
+    font-size: 0.58rem;
+    font-weight: 700;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    padding: 0.08rem 0.35rem;
+    border-radius: 3px;
+    vertical-align: middle;
+    color: #c084fc;
+    border: 1px solid #a855f7;
+    background: rgba(168, 85, 247, 0.1);
+}
+
+.bb-crypto-paper,
+.bb-archaeology {
+    margin-top: 0.75rem;
+    padding: 0.65rem 0.75rem;
+    border-radius: var(--arb-radius);
+    border: 1px solid var(--arb-border);
+}
+
+.bb-crypto-head,
+.bb-arch-head {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    gap: 0.35rem 0.6rem;
+    margin-bottom: 0.5rem;
+}
+
+.bb-crypto-form,
+.bb-arch-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+    align-items: flex-end;
+    margin-bottom: 0.5rem;
+}
+
+.bb-arch-file input[type="file"] {
+    font-size: 0.72rem;
+    max-width: 11rem;
+}
+
+.bb-arch-table {
+    width: 100%;
+    font-size: 0.68rem;
+    border-collapse: collapse;
+}
+
+.bb-arch-table th,
+.bb-arch-table td {
+    padding: 0.25rem 0.35rem;
+    border-bottom: 1px solid var(--arb-border);
+}
+
+.bb-arch-side-buy {
+    color: #4ade80;
+}
+
+.bb-arch-side-sell {
+    color: #f87171;
+}
+
+.bb-arch-status.is-success,
+.bb-crypto-result.is-success {
+    border-color: #22c55e;
+}
+
+.bb-arch-status.is-error,
+.bb-crypto-result.is-error {
+    border-color: #ef4444;
+}
+
+.bb-btn-live {
+    background: linear-gradient(180deg, #ef4444 0%, #b91c1c 100%) !important;
+    border-color: #b91c1c !important;
+    color: #fff !important;
+}
+
+.bb-lifecycle-strip {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.2rem;
+    margin: 0.35rem 0 0.5rem;
+    font-size: 0.62rem;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+}
+
+.bb-lifecycle-step {
+    padding: 0.1rem 0.35rem;
+    border-radius: 3px;
+    border: 1px solid var(--arb-border);
+    color: var(--arb-muted);
+}
+
+.bb-lifecycle-step.is-done {
+    border-color: #22c55e;
+    color: #4ade80;
+}
+
+.bb-lifecycle-step.is-current {
+    border-color: var(--arb-accent);
+    color: var(--arb-accent);
+    font-weight: 700;
+}
+
+.bb-lifecycle-arrow {
+    color: var(--arb-muted);
+    font-size: 0.58rem;
+}
+
+.bb-vwap-value em.bb-vwap-dist {
+    font-size: 0.72rem;
+    color: var(--arb-muted);
+    font-style: normal;
+}
+
+.bb-vwap-reclaim {
+    color: #4ade80;
+}
+
+.bb-vwap-reclaim-short {
+    color: #f87171;
+}
+
+.bb-idea-status-tag {
+    font-size: 0.58rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    padding: 0.08rem 0.35rem;
+    border-radius: 3px;
+    border: 1px solid var(--arb-border);
+    margin-left: 0.35rem;
+}
+
+.bb-status-detected { color: var(--arb-muted); }
+.bb-status-backtested { color: #38bdf8; border-color: #38bdf8; }
+.bb-status-confirmed { color: #fbbf24; border-color: #f59e0b; }
+.bb-status-executed { color: #4ade80; border-color: #22c55e; }
+
 /* 4.1 — social signal chips in pulse news third (W4.20) */
 .bb-social-chips {
     display: flex;
@@ -925,6 +1100,254 @@ body.bb-layout-learn .bb-col-ideas {
 
 .bb-ops-red strong {
     color: #f87171;
+}
+
+/* 7.0 — Symbol factory drawer */
+.bb-sf-slot {
+    width: 100%;
+    margin-bottom: 0.35rem;
+}
+
+.bb-sf-open {
+    margin-bottom: 0.35rem;
+    font-size: 0.78rem;
+}
+
+.bb-sf-panel {
+    background: #0b1220;
+    border: 1px solid #1e293b;
+    border-radius: 6px;
+    margin-bottom: 0.5rem;
+    overflow: hidden;
+}
+
+.bb-sf-head {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: 0.75rem;
+    padding: 0.6rem 0.75rem;
+    border-bottom: 1px solid #1e293b;
+    background: #0f172a;
+}
+
+.bb-sf-head strong {
+    display: block;
+    color: #e2e8f0;
+}
+
+.bb-sf-close {
+    background: transparent;
+    border: none;
+    color: #94a3b8;
+    font-size: 1.25rem;
+    line-height: 1;
+    cursor: pointer;
+}
+
+.bb-sf-body {
+    display: grid;
+    grid-template-columns: minmax(180px, 220px) 1fr;
+    gap: 0;
+    min-height: 220px;
+}
+
+@media (max-width: 720px) {
+    .bb-sf-body {
+        grid-template-columns: 1fr;
+    }
+}
+
+.bb-sf-sidebar {
+    padding: 0.65rem 0.75rem;
+    border-right: 1px solid #1e293b;
+    background: #0a0f0a;
+    font-size: 0.72rem;
+}
+
+.bb-sf-sidebar h4 {
+    margin: 0 0 0.5rem;
+    color: #cbd5e1;
+    font-size: 0.78rem;
+}
+
+.bb-sf-gp-list {
+    list-style: none;
+    margin: 0 0 0.5rem;
+    padding: 0;
+}
+
+.bb-sf-gp-list li {
+    display: flex;
+    gap: 0.35rem;
+    align-items: flex-start;
+    margin-bottom: 0.25rem;
+    color: #94a3b8;
+}
+
+.bb-sf-gp-list li.is-ok {
+    color: #bbf7d0;
+}
+
+.bb-sf-gp-mark {
+    flex-shrink: 0;
+    width: 1rem;
+}
+
+.bb-sf-sessions {
+    padding: 0.35rem 0.5rem;
+    border-radius: 4px;
+    background: #1e293b;
+    color: #cbd5e1;
+}
+
+.bb-sf-sessions.is-green {
+    background: #14532d;
+    color: #bbf7d0;
+}
+
+.bb-sf-lock-reasons {
+    margin: 0.5rem 0 0;
+    padding-left: 1rem;
+    color: #fbbf24;
+    font-size: 0.68rem;
+}
+
+.bb-sf-main {
+    position: relative;
+    padding: 0.65rem 0.75rem;
+}
+
+.bb-sf-main.is-locked .bb-sf-form,
+.bb-sf-main.is-locked .bb-sf-shadow-list,
+.bb-sf-main.is-locked .bb-sf-shadow-empty {
+    opacity: 0.45;
+    pointer-events: none;
+}
+
+.bb-sf-lock-overlay {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    background: rgba(11, 18, 32, 0.72);
+    z-index: 2;
+    text-align: center;
+    padding: 1rem;
+}
+
+.bb-sf-lock-icon {
+    font-size: 2rem;
+    margin-bottom: 0.35rem;
+}
+
+.bb-sf-main h4 {
+    margin: 0 0 0.5rem;
+    color: #e2e8f0;
+    font-size: 0.85rem;
+}
+
+.bb-sf-form label {
+    display: block;
+    font-size: 0.72rem;
+    color: #94a3b8;
+    margin-bottom: 0.25rem;
+}
+
+.bb-sf-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+    align-items: center;
+}
+
+.bb-sf-row select {
+    min-width: 180px;
+    background: #111827;
+    color: #e2e8f0;
+    border: 1px solid #374151;
+    border-radius: 4px;
+    padding: 0.35rem 0.5rem;
+}
+
+.bb-sf-hint {
+    margin: 0.35rem 0 0;
+    font-size: 0.68rem;
+}
+
+.bb-sf-shadow-steps {
+    list-style: none;
+    margin: 0.5rem 0;
+    padding: 0;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.35rem;
+}
+
+.bb-sf-shadow-steps li {
+    padding: 0.25rem 0.5rem;
+    border-radius: 999px;
+    background: #1e293b;
+    color: #94a3b8;
+    font-size: 0.68rem;
+}
+
+.bb-sf-shadow-steps li.is-done {
+    background: #14532d;
+    color: #bbf7d0;
+}
+
+.bb-sf-shadow-steps li.is-active {
+    background: #422006;
+    color: #fde68a;
+}
+
+.bb-sf-shadow-card {
+    margin-top: 0.5rem;
+    padding: 0.5rem;
+    border: 1px solid #1e293b;
+    border-radius: 4px;
+    background: #111827;
+}
+
+.bb-sf-shadow-card header {
+    display: flex;
+    gap: 0.5rem;
+    align-items: baseline;
+    margin-bottom: 0.35rem;
+}
+
+.bb-sf-shadow-actions {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 0.5rem;
+    margin-top: 0.35rem;
+}
+
+.bb-sf-msg {
+    margin-top: 0.5rem;
+    padding: 0.35rem 0.5rem;
+    border-radius: 4px;
+    font-size: 0.75rem;
+}
+
+.bb-sf-msg-ok {
+    background: #14532d;
+    color: #bbf7d0;
+}
+
+.bb-sf-msg-err {
+    background: #450a0a;
+    color: #fecaca;
+}
+
+.bb-sf-foot {
+    padding: 0.4rem 0.75rem;
+    border-top: 1px solid #1e293b;
+    font-size: 0.68rem;
 }
 
 .bb-strategies-main {

@@ -40,7 +40,7 @@
             <div class="bb-col-body"
                  id="watchlist"
                  hx-get="/board/partials/watchlist"
-                 hx-trigger="load"
+                 hx-trigger="{% if golden_path_mode %}load delay:80ms{% else %}load{% endif %}"
                  hx-swap="innerHTML">
                 <div class="bb-watch-empty"><span class="bb-loading"></span></div>
             </div>
@@ -73,7 +73,7 @@
             <div class="bb-col-body"
                  id="idea-stack"
                  hx-get="/board/partials/ideas"
-                 hx-trigger="load, every 60s"
+                 hx-trigger="{% if golden_path_mode %}load delay:250ms, every 60s{% else %}load, every 60s{% endif %}"
                  hx-swap="innerHTML">
                 <div class="bb-ideas-empty"><span class="bb-loading"></span></div>
             </div>
@@ -88,10 +88,18 @@
              hx-swap="innerHTML">
             <span class="bb-muted">Ops…</span>
         </div>
+        <div id="symbol-factory-slot" class="bb-sf-slot"></div>
+        <button type="button"
+                class="bb-btn-secondary bb-sf-open"
+                hx-get="/board/partials/symbol-factory"
+                hx-target="#symbol-factory-slot"
+                hx-swap="innerHTML">
+            Symbol factory
+        </button>
         {% endif %}
         <div id="trader-desk-slot" class="bb-footer-pulse"
              hx-get="/board/partials/trader-desk"
-             hx-trigger="load"
+             hx-trigger="{% if golden_path_mode %}load delay:400ms{% else %}load{% endif %}"
              hx-swap="innerHTML">
             <span class="bb-muted">Loading trader desk…</span>
         </div>
@@ -199,6 +207,7 @@
                 addLevel("entry", "#f59e0b", "Entry");
                 addLevel("stop", "#ef4444", "Stop");
                 addLevel("target", "#22c55e", "Target");
+                addLevel("vwap", "#8b5cf6", "VWAP");
 
                 new ResizeObserver(function () {
                     var next = el.clientWidth || w;

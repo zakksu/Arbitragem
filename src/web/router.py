@@ -39,49 +39,6 @@ _CORE14_FALLBACK: list[dict[str, str]] = [
     {"symbol": "WEGE3", "name": "WEG ON", "sector": "Industrial"},
 ]
 
-def _enriched_watchlist_sync() -> list[dict[str, Any]]:
-    """Board watchlist rows — same pipeline as GET /api/v1/watchlist/enriched."""
-    from src.config import get_settings
-    from src.services.futures_quotes import build_futures_watchlist_rows
-    from src.services.risk_profile import get_or_create_profile
-    from src.services.trade_ideas import TradeIdeaService
-    from src.services.watchlist_enrich import enrich_watchlist_rows
-
-    settings = get_settings()
-    if settings.golden_path_mode:
-        sym = settings.golden_path_symbol
-        rows: list[dict[str, Any]] = [
-            {"symbol": sym, "name": "Petrobras PN", "sector": "Energia", "asset_class": "equity"}
-        ]
-    else:
-        symbols = load_filipe_core14()
-        rows = (
-            [s.to_dict() for s in symbols] if symbols else [dict(s) for s in _CORE14_FALLBACK]
-        )
-        for row in rows:
-            row.setdefault("asset_class", "equity")
-        if settings.futures_watchlist_enabled:
-            rows.extend(build_futures_watchlist_rows())
-    eq_syms = [r["symbol"] for r in rows if r.get("asset_class") != "future" and r.get("symbol")]
-    batch = get_profit_client().get_quotes_batch(eq_syms)
-    for row in rows:
-        if row.get("asset_class") == "future":
-            continue
-        q = batch.get(row["symbol"])
-        if q:
-            row["last"] = q.last
-            row["bid"] = q.bid
-            row["ask"] = q.ask
-
-    def _ideas(session):
-        svc = TradeIdeaService(session)
-        return [svc.to_dict(i) for i in svc.list_ideas(limit=50)]
-
-    ideas = _with_db(_ideas)
-    profile = _with_db(get_or_create_profile)
-    return enrich_watchlist_rows(rows, ideas, cost_per_trade_brl=profile.cost_per_trade_brl)
-
-
 def _pulse_rail_with_social_sync() -> dict[str, Any]:
     from src.config import get_settings
     from src.services.pulse_rail import get_pulse_rail
@@ -113,6 +70,21 @@ def _with_db(fn: Callable[..., T], *args: Any, **kwargs: Any) -> T:
         return fn(session, *args, **kwargs)
     finally:
         session.close()
+
+
+def _idea_gates_sync(idea_id: int) -> dict[str, Any] | None:
+    from src.services.idea_gates import build_idea_gates
+
+    try:
+        return _with_db(build_idea_gates, idea_id)
+    except ValueError:
+        return None
+
+
+def _clear_status_sync() -> dict[str, Any]:
+    from src.services.clear_router import clear_router_status
+
+    return clear_router_status()
 
 
 async def _fetch_json(request: Request, path: str, *, timeout: float = 2.0) -> dict[str, Any] | list[Any] | None:
@@ -316,20 +288,37 @@ async def status_partial(request: Request):
 
 @router.get("/board/partials/watchlist", response_class=HTMLResponse)
 async def watchlist_partial(request: Request):
-    rows = await _to_thread(_enriched_watchlist_sync)
+    from src.services.enriched_watchlist import build_enriched_watchlist
+
+    payload = await _to_thread(_with_db, build_enriched_watchlist)
+    rows = payload["symbols"]
     active = request.query_params.get("active")
+    equity_rows = [r for r in rows if r.get("asset_class") not in ("future", "crypto")]
     return TEMPLATES.TemplateResponse(
         request,
         "partials/watchlist.html",
-        {"symbols": rows, "active_symbol": active},
+        {
+            "symbols": rows,
+            "equity_rows": equity_rows,
+            "futures_rows": payload.get("futures") or [],
+            "crypto_rows": payload.get("crypto") or [],
+            "crypto_count": payload.get("crypto_count") or 0,
+            "active_symbol": active,
+        },
     )
 
 
 @router.get("/board/partials/symbol/{symbol}", response_class=HTMLResponse)
 async def symbol_partial(request: Request, symbol: str):
+    from src.services.crypto_quotes import get_crypto_quotes
+    from src.services.crypto_universe import is_crypto, load_crypto_universe
+
     sym = symbol.strip().upper()
+    crypto_sym = is_crypto(sym)
     universe = await _fetch_universe(request)
     meta = next((s for s in universe if s.get("symbol") == sym), None)
+    if crypto_sym:
+        meta = next((c.to_dict() for c in load_crypto_universe() if c.symbol == sym), meta)
 
     def _load_note(session):
         from src.services.board_notes import BoardNotesService
@@ -349,8 +338,16 @@ async def symbol_partial(request: Request, symbol: str):
 
     note = await _to_thread(_with_db, _load_note)
     top_idea = await _to_thread(_with_db, _top_idea)
-    quote = await _to_thread(_fast_quote, sym)
-    candles = await _to_thread(get_profit_client().get_session_candles, sym)
+    if crypto_sym:
+        quote = get_crypto_quotes([sym]).get(sym)
+        candles = []
+        session_vwap = None
+    else:
+        quote = await _to_thread(_fast_quote, sym)
+        candles = await _to_thread(get_profit_client().get_session_candles, sym)
+        from src.services.vwap import build_session_vwap_payload
+
+        session_vwap = await _to_thread(build_session_vwap_payload, sym)
 
     option_chain = None
     max_pain = None
@@ -377,7 +374,9 @@ async def symbol_partial(request: Request, symbol: str):
             "iv_rank": iv_rank_val,
             "preview_legs": None,
             "candles": candles,
+            "is_crypto": crypto_sym,
             "top_idea": top_idea,
+            "session_vwap": session_vwap,
         },
     )
 
@@ -586,7 +585,13 @@ async def confirm_idea_partial(request: Request, idea_id: int):
         return TEMPLATES.TemplateResponse(
             request,
             "partials/idea_execute_step.html",
-            {"idea": idea, "risk": risk, "error": None},
+            {
+                "idea": idea,
+                "risk": risk,
+                "error": None,
+                "gates": await _to_thread(_idea_gates_sync, idea_id),
+                "clear": await _to_thread(_clear_status_sync),
+            },
         )
 
     if idea is None:
@@ -600,6 +605,8 @@ async def confirm_idea_partial(request: Request, idea_id: int):
             "cockpit": _risk_cockpit(),
             "risk": await _fetch_risk_summary(request),
             "error": error,
+            "gates": await _to_thread(_idea_gates_sync, idea_id),
+            "clear": await _to_thread(_clear_status_sync),
         },
     )
 
@@ -612,7 +619,13 @@ async def idea_execute_step_partial(request: Request, idea_id: int):
     return TEMPLATES.TemplateResponse(
         request,
         "partials/idea_execute_step.html",
-        {"idea": idea, "risk": await _fetch_risk_summary(request), "error": None},
+        {
+            "idea": idea,
+            "risk": await _fetch_risk_summary(request),
+            "error": None,
+            "gates": await _to_thread(_idea_gates_sync, idea_id),
+            "clear": await _to_thread(_clear_status_sync),
+        },
     )
 
 
@@ -634,6 +647,8 @@ async def execute_idea_partial(request: Request, idea_id: int):
                             "idea": idea,
                             "risk": await _fetch_risk_summary(request),
                             "error": error,
+                            "gates": await _to_thread(_idea_gates_sync, idea_id),
+                            "clear": await _to_thread(_clear_status_sync),
                         },
                     )
     except httpx.HTTPError as exc:
@@ -643,7 +658,13 @@ async def execute_idea_partial(request: Request, idea_id: int):
             return TEMPLATES.TemplateResponse(
                 request,
                 "partials/idea_execute_step.html",
-                {"idea": idea, "risk": await _fetch_risk_summary(request), "error": error},
+                {
+                    "idea": idea,
+                    "risk": await _fetch_risk_summary(request),
+                    "error": error,
+                    "gates": await _to_thread(_idea_gates_sync, idea_id),
+                    "clear": await _to_thread(_clear_status_sync),
+                },
             )
 
     ideas = await _fetch_ideas(request)
@@ -666,7 +687,12 @@ async def idea_review_partial(request: Request, idea_id: int):
     return TEMPLATES.TemplateResponse(
         request,
         "partials/idea_review.html",
-        {"idea": idea, "risk_box": risk_box},
+        {
+            "idea": idea,
+            "risk_box": risk_box,
+            "gates": await _to_thread(_idea_gates_sync, idea_id),
+            "clear": await _to_thread(_clear_status_sync),
+        },
     )
 
 
@@ -690,6 +716,8 @@ async def idea_confirm_step_partial(request: Request, idea_id: int):
             "cockpit": _risk_cockpit(),
             "risk": await _fetch_risk_summary(request),
             "error": None,
+            "gates": await _to_thread(_idea_gates_sync, idea_id),
+            "clear": await _to_thread(_clear_status_sync),
         },
     )
 
@@ -950,6 +978,67 @@ async def ops_panel_partial(request: Request):
     )
 
 
+async def _symbol_factory_context(message: str = "", message_ok: bool = True) -> dict[str, Any]:
+    from src.services.golden_path import evaluate_golden_path
+    from src.services.symbol_factory import factory_status
+
+    def _load(session):
+        return {
+            "factory": factory_status(session),
+            "golden_path": evaluate_golden_path(session),
+            "message": message,
+            "message_ok": message_ok,
+        }
+
+    return await _to_thread(_with_db, _load)
+
+
+@router.get("/board/partials/symbol-factory", response_class=HTMLResponse)
+async def symbol_factory_partial(request: Request):
+    ctx = await _symbol_factory_context()
+    return TEMPLATES.TemplateResponse(request, "partials/symbol_factory.html", ctx)
+
+
+@router.post("/board/partials/symbol-factory/shadow", response_class=HTMLResponse)
+async def symbol_factory_shadow(request: Request):
+    from src.services.symbol_factory import add_shadow_symbol
+
+    form = await request.form()
+    symbol = str(form.get("symbol", "")).strip()
+
+    def _add(session):
+        return add_shadow_symbol(session, symbol)
+
+    result = await _to_thread(_with_db, _add)
+    if result.get("ok"):
+        msg = f"{symbol} added to shadow mode"
+        ctx = await _symbol_factory_context(msg, True)
+    else:
+        msg = result.get("error") or "Shadow add failed"
+        ctx = await _symbol_factory_context(msg, False)
+    return TEMPLATES.TemplateResponse(request, "partials/symbol_factory.html", ctx)
+
+
+@router.post("/board/partials/symbol-factory/promote", response_class=HTMLResponse)
+async def symbol_factory_promote(request: Request):
+    from src.services.symbol_factory import promote_shadow_symbol
+
+    form = await request.form()
+    symbol = str(form.get("symbol", "")).strip()
+
+    def _promote(session):
+        return promote_shadow_symbol(session, symbol)
+
+    result = await _to_thread(_with_db, _promote)
+    if result.get("ok"):
+        msg = f"{symbol} promoted to motor universe"
+        ctx = await _symbol_factory_context(msg, True)
+    else:
+        msg = result.get("error") or "Promote failed"
+        ctx = await _symbol_factory_context(msg, False)
+    return TEMPLATES.TemplateResponse(request, "partials/symbol_factory.html", ctx)
+
+
 @router.get("/board/partials/market-context", response_class=HTMLResponse)
 async def market_context_partial(request: Request):
     pulse = await _to_thread(_pulse_rail_with_social_sync)
@@ -1057,6 +1146,149 @@ async def replay_lab_run(request: Request):
         "partials/replay_lab_log.html",
         {"run": run},
     )
+
+
+@router.get("/board/partials/archaeology", response_class=HTMLResponse)
+async def archaeology_partial(request: Request):
+    from src.services.trade_archaeology import build_timeline
+
+    symbol = request.query_params.get("symbol")
+    limit = int(request.query_params.get("limit", "100") or 100)
+
+    def _load(session):
+        return build_timeline(session, limit=limit, symbol=symbol)
+
+    timeline = await _to_thread(_with_db, _load)
+    return TEMPLATES.TemplateResponse(
+        request,
+        "partials/archaeology_timeline.html",
+        {"timeline": timeline, "symbol_filter": symbol},
+    )
+
+
+@router.post("/board/partials/archaeology/import", response_class=HTMLResponse)
+async def archaeology_import_partial(request: Request):
+    from src.services.trade_archaeology import build_timeline, import_trade_csv
+
+    form = await request.form()
+    upload = form.get("file")
+    if not upload or not hasattr(upload, "read"):
+        return TEMPLATES.TemplateResponse(
+            request,
+            "partials/archaeology_status.html",
+            {"status": "error", "message": "Choose a Profit trade-list CSV file."},
+        )
+
+    content = await upload.read()
+    settings = get_settings()
+    import_dir = settings.archaeology_import_path
+    import_dir.mkdir(parents=True, exist_ok=True)
+    safe_name = str(getattr(upload, "filename", "import.csv") or "import.csv").replace("\\", "_").replace("/", "_")
+    path = import_dir / safe_name
+    path.write_bytes(content)
+
+    def _import(session):
+        result = import_trade_csv(session, path)
+        result["timeline"] = build_timeline(session, limit=100)
+        return result
+
+    result = await _to_thread(_with_db, _import)
+    return TEMPLATES.TemplateResponse(
+        request,
+        "partials/archaeology_status.html",
+        {
+            "status": "ok",
+            "message": f"Imported {result.get('imported', 0)} rows (skipped {result.get('skipped', 0)}).",
+            "timeline": result.get("timeline"),
+        },
+    )
+
+
+@router.post("/board/partials/archaeology/scan", response_class=HTMLResponse)
+async def archaeology_scan_partial(request: Request):
+    from src.services.trade_archaeology import build_timeline, scan_archaeology_dir
+
+    def _scan(session):
+        scan = scan_archaeology_dir(session)
+        scan["timeline"] = build_timeline(session, limit=100)
+        return scan
+
+    result = await _to_thread(_with_db, _scan)
+    return TEMPLATES.TemplateResponse(
+        request,
+        "partials/archaeology_status.html",
+        {
+            "status": "ok",
+            "message": (
+                f"Scanned {result.get('files_scanned', 0)} file(s); "
+                f"imported {result.get('imported', 0)} new row(s)."
+            ),
+            "timeline": result.get("timeline"),
+        },
+    )
+
+
+@router.get("/board/partials/symbol/{symbol}/crypto-paper", response_class=HTMLResponse)
+async def crypto_paper_partial(request: Request, symbol: str):
+    from src.services.crypto_paper import preview_crypto_fill
+    from src.services.crypto_universe import is_crypto, load_crypto_universe
+
+    sym = symbol.strip().upper()
+    if not is_crypto(sym):
+        return HTMLResponse("", status_code=404)
+
+    meta = next((c.to_dict() for c in load_crypto_universe() if c.symbol == sym), {})
+    preview = None
+    error = None
+    try:
+        preview = await _to_thread(
+            preview_crypto_fill,
+            symbol=sym,
+            side="buy",
+            quantity=0.01,
+        )
+    except Exception as exc:
+        error = str(exc)
+
+    return TEMPLATES.TemplateResponse(
+        request,
+        "partials/crypto_paper.html",
+        {"symbol": sym, "meta": meta, "preview": preview, "error": error},
+    )
+
+
+@router.post("/board/partials/symbol/{symbol}/crypto-paper/execute", response_class=HTMLResponse)
+async def crypto_paper_execute_partial(request: Request, symbol: str):
+    from src.services.crypto_paper import execute_crypto_paper
+    from src.services.crypto_universe import is_crypto
+
+    sym = symbol.strip().upper()
+    if not is_crypto(sym):
+        return HTMLResponse("", status_code=404)
+
+    form = await request.form()
+    side = str(form.get("side", "buy"))
+    try:
+        quantity = float(form.get("quantity", 0.01) or 0.01)
+    except (TypeError, ValueError):
+        quantity = 0.01
+
+    def _execute(session):
+        return execute_crypto_paper(session, symbol=sym, side=side, quantity=quantity)
+
+    try:
+        result = await _to_thread(_with_db, _execute)
+        return TEMPLATES.TemplateResponse(
+            request,
+            "partials/crypto_paper_result.html",
+            {"symbol": sym, "result": result, "error": None},
+        )
+    except Exception as exc:
+        return TEMPLATES.TemplateResponse(
+            request,
+            "partials/crypto_paper_result.html",
+            {"symbol": sym, "result": None, "error": str(exc)},
+        )
 
 
 @router.get("/board/partials/ntsl-arm-confirm", response_class=HTMLResponse)
