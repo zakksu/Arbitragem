@@ -348,6 +348,283 @@
     font-size: 0.65rem;
 }
 
+/* ProfitChart Companion */
+.bb-pc-companion {
+    margin: 0.75rem 0;
+    padding: 0.65rem;
+    border: 1px solid var(--arb-border);
+    border-radius: var(--arb-radius);
+    background: linear-gradient(180deg, rgba(15, 18, 24, 0.9), var(--arb-panel));
+}
+
+.bb-pc-head {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: space-between;
+    gap: 0.5rem;
+    margin-bottom: 0.5rem;
+}
+
+.bb-pc-badges {
+    display: flex;
+    gap: 0.35rem;
+    flex-wrap: wrap;
+}
+
+.bb-pc-last {
+    margin-bottom: 0.45rem;
+    font-size: 0.78rem;
+}
+
+.bb-pc-last strong {
+    font-size: 1.1rem;
+    color: var(--arb-accent);
+    margin-left: 0.35rem;
+}
+
+.bb-pc-levels {
+    display: grid;
+    gap: 0.35rem;
+    margin-bottom: 0.5rem;
+}
+
+.bb-pc-level {
+    display: grid;
+    grid-template-columns: 5rem 1fr auto;
+    align-items: center;
+    gap: 0.35rem;
+    padding: 0.35rem 0.45rem;
+    border-left: 3px solid var(--pc-color, var(--arb-accent));
+    background: rgba(0, 0, 0, 0.2);
+    border-radius: 3px;
+    font-size: 0.72rem;
+}
+
+.bb-pc-level-bar {
+    grid-column: 1 / -1;
+    height: 3px;
+    background: rgba(255, 255, 255, 0.06);
+    border-radius: 2px;
+    overflow: hidden;
+}
+
+.bb-pc-level-fill {
+    height: 100%;
+    background: var(--pc-color, var(--arb-accent));
+    opacity: 0.85;
+}
+
+.bb-pc-actions {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    flex-wrap: wrap;
+    margin-bottom: 0.35rem;
+}
+
+/* Strategy Store */
+.bb-strategy-store-slot,
+.bb-daily-briefing-slot,
+.bb-knowledge-slot {
+    margin: 0.35rem 0;
+}
+
+.bb-strategy-store {
+    border: 1px solid var(--arb-border);
+    border-radius: var(--arb-radius);
+    padding: 0.55rem 0.65rem;
+    background: var(--arb-panel);
+    font-size: 0.74rem;
+}
+
+.bb-ss-head {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 0.5rem;
+    margin-bottom: 0.45rem;
+}
+
+.bb-ss-list {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    max-height: 10rem;
+    overflow-y: auto;
+}
+
+.bb-ss-row {
+    padding: 0.4rem 0.45rem;
+    border: 1px solid var(--arb-border);
+    border-radius: 4px;
+    margin-bottom: 0.3rem;
+    cursor: pointer;
+    transition: border-color 0.15s;
+}
+
+.bb-ss-row:hover {
+    border-color: var(--arb-accent);
+}
+
+.bb-ss-summary {
+    display: block;
+    color: var(--arb-muted);
+    font-size: 0.68rem;
+    margin-top: 0.15rem;
+}
+
+.bb-ss-tags em,
+.bb-ss-sym {
+    font-size: 0.62rem;
+    margin-right: 0.35rem;
+    padding: 0.1rem 0.3rem;
+    border: 1px solid var(--arb-border);
+    border-radius: 3px;
+}
+
+.bb-ss-drawer {
+    margin-top: 0.45rem;
+    padding: 0.45rem;
+    border: 1px solid var(--arb-border);
+    background: rgba(0, 0, 0, 0.25);
+}
+
+.bb-ss-code {
+    font-size: 0.65rem;
+    max-height: 8rem;
+    overflow: auto;
+    white-space: pre-wrap;
+    margin: 0.35rem 0;
+}
+
+/* Daily briefing charts */
+.bb-db-charts {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 0.5rem;
+    margin-bottom: 0.5rem;
+}
+
+@media (max-width: 800px) {
+    .bb-db-charts { grid-template-columns: 1fr; }
+}
+
+.bb-db-chart {
+    padding: 0.35rem 0.45rem;
+    border: 1px solid var(--arb-border);
+    border-radius: 4px;
+    background: rgba(0, 0, 0, 0.15);
+    font-size: 0.68rem;
+}
+
+.bb-db-chart span {
+    display: block;
+    color: var(--arb-muted);
+    text-transform: uppercase;
+    font-size: 0.6rem;
+    margin-bottom: 0.25rem;
+}
+
+.bb-db-bar-track {
+    height: 6px;
+    background: rgba(255, 255, 255, 0.08);
+    border-radius: 3px;
+    overflow: hidden;
+    margin: 0.25rem 0;
+}
+
+.bb-db-bar-fill {
+    height: 100%;
+    border-radius: 3px;
+}
+
+.bb-db-fill-golden {
+    background: linear-gradient(90deg, #f59e0b, #3dd68c);
+}
+
+.bb-db-spark-svg {
+    width: 100%;
+    height: 32px;
+    display: block;
+}
+
+.bb-db-spark-line {
+    fill: none;
+    stroke: var(--arb-accent);
+    stroke-width: 1.5;
+}
+
+.bb-db-replay-bars {
+    display: flex;
+    align-items: flex-end;
+    gap: 4px;
+    height: 32px;
+}
+
+.bb-db-replay-bar {
+    flex: 1;
+    min-height: 4px;
+    background: #7ec8ff;
+    border-radius: 2px 2px 0 0;
+    opacity: 0.85;
+}
+
+.bb-em-cycles {
+    margin-bottom: 0.45rem;
+}
+
+.bb-em-cycle-list {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    font-size: 0.68rem;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.35rem;
+}
+
+.bb-em-cycle-list li {
+    padding: 0.2rem 0.4rem;
+    border: 1px solid var(--arb-border);
+    border-radius: 3px;
+}
+
+.bb-rp-run-form {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: flex-end;
+    gap: 0.5rem;
+    margin-bottom: 0.45rem;
+    font-size: 0.72rem;
+}
+
+.bb-rp-run-form select {
+    margin-left: 0.35rem;
+}
+
+.bb-rp-metrics {
+    display: flex;
+    gap: 0.75rem;
+    font-size: 0.72rem;
+    margin-bottom: 0.35rem;
+}
+
+.bb-rp-job {
+    display: block;
+    font-size: 0.65rem;
+    color: var(--arb-muted);
+}
+
+.bb-rp-sessions {
+    font-size: 0.68rem;
+    margin-top: 0.35rem;
+}
+
+.bb-rp-sessions ul {
+    margin: 0.25rem 0 0;
+    padding-left: 1rem;
+}
+
 /* 10.0 — Daily briefing + knowledge library */
 
 .bb-daily-briefing-slot,

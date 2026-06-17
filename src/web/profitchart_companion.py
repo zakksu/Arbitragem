@@ -9,18 +9,31 @@ from src.config import get_settings
 from src.integrations.profit_bridge import get_profit_client
 
 
+def _quote_last(quote: Any) -> float | None:
+    if quote is None:
+        return None
+    if isinstance(quote, dict):
+        val = quote.get("last")
+    else:
+        val = getattr(quote, "last", None)
+    if val is None:
+        return None
+    try:
+        return float(val)
+    except (TypeError, ValueError):
+        return None
+
+
 def build_profitchart_companion(
     symbol: str,
     *,
-    quote: dict[str, Any] | None = None,
+    quote: dict[str, Any] | Any | None = None,
     top_idea: dict[str, Any] | None = None,
     session_vwap: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
     settings = get_settings()
     sym = symbol.strip().upper()
-    last = None
-    if quote and quote.get("last") is not None:
-        last = float(quote["last"])
+    last = _quote_last(quote)
 
     levels: list[dict[str, Any]] = []
     if top_idea:

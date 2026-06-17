@@ -9,6 +9,49 @@ from dashboard.components.alerts import render_alerts_banner
 from dashboard.api_cache import cached_get, get_sidebar_context, invalidate_cache
 from dashboard.utils import api_post
 
+
+def _render_cockpit_insights() -> None:
+    """10.0 — engine mind + replay + strategy store snapshot from API."""
+    mind = replays = strategies = None
+    try:
+        mind = cached_get("/engine/mind", ttl=20)
+    except Exception:
+        pass
+    try:
+        replays = cached_get("/replay/sessions", params={"limit": 5}, ttl=45)
+    except Exception:
+        pass
+    try:
+        strategies = cached_get("/strategy-store", params={"limit": 20}, ttl=60)
+    except Exception:
+        pass
+    if not mind and not replays and not strategies:
+        return
+
+    with st.expander("10.0 Cockpit — Engine Mind & Replay", expanded=False):
+        c1, c2, c3 = st.columns(3)
+        if mind:
+            c1.metric("Engine phase", str(mind.get("phase", "idle")).upper())
+            res = mind.get("resources") or {}
+            c2.metric("Replay workers", res.get("replay_workers", "—"))
+            c3.metric("RAM budget", f"{res.get('ram_budget_mb', '—')} MB")
+            err = mind.get("last_error")
+            if err:
+                st.warning(err)
+        sessions = (replays or {}).get("sessions") or []
+        if sessions:
+            st.caption(
+                f"Last replay: **{sessions[0].get('symbol')}** · "
+                f"{sessions[0].get('status')} · {sessions[0].get('fill_count', 0)} fills"
+            )
+        strat_n = len((strategies or {}).get("strategies") or [])
+        st.caption(f"Strategy store: **{strat_n}** NTSL indexed")
+        st.markdown(
+            "[Open Structure Deck](http://localhost:8000/board) · "
+            "[Engine Mind](#) scroll with **M** on board"
+        )
+
+
 def _render_status_bar(account: dict, health: dict, universe_count: int) -> None:
     """Compact ProfitChart-style top strip — balance, P&L, connectors, universe."""
     paper = account.get("mock", False)
@@ -186,6 +229,8 @@ def render() -> None:
             invalidate_cache()
             st.rerun()
 
+    st.divider()
+    _render_cockpit_insights()
     st.divider()
     st.subheader("Today's Scalp Picks")
     _render_scalp_watchlist(limit=8)
