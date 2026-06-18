@@ -1,6 +1,6 @@
 # Agent instructions — Arbitragem Dashboard
 
-**Current sprint:** [RELEASE_14.1_EXECUTION.md](RELEASE_14.1_EXECUTION.md) **14.1.0** shipped (execution ladder + session prep). Board: [RELEASE_14.0.0.md](RELEASE_14.0.0.md). Version: `14.1.0`.
+**Current sprint:** [RELEASE_14.1_EXECUTION.md](RELEASE_14.1_EXECUTION.md) **14.1.1** (desk command strip + weekly sim report). Version: `14.1.1`.
 
 ## Two-agent workflow (always on)
 

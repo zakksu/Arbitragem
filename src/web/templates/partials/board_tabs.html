@@ -3,11 +3,16 @@
     <button type="button"
             class="bb-tab-pill{% if tab.id == active_tab %} is-active{% endif %}"
             role="tab"
+            id="bb-tab-{{ tab.id }}"
             data-tab="{{ tab.id }}"
             aria-selected="{% if tab.id == active_tab %}true{% else %}false{% endif %}"
             aria-controls="{% if tab.id == 'desk' %}bb-panel-desk{% else %}bb-tab-dynamic{% endif %}"
             onclick="bbSwitchBoardTab('{{ tab.id }}')">
-        {{ tab.label }}
+        <span class="bb-tab-label">{{ tab.label }}</span>
+        {% if tab.id == 'desk' %}<kbd class="bb-tab-kbd">1</kbd>{% endif %}
+        {% if tab.id == 'journal' %}<kbd class="bb-tab-kbd">2</kbd>{% endif %}
+        {% if tab.id == 'pnl' %}<kbd class="bb-tab-kbd">3</kbd>{% endif %}
     </button>
     {% endfor %}
+    <span class="bb-tab-hint bb-muted">Desk · Journal · PnL</span>
 </nav>

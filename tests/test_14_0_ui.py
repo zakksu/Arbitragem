@@ -33,8 +33,18 @@ def test_board_has_tab_bar_not_journal_on_desk(client: TestClient):
     assert r.status_code == 200
     assert "bb-tab-bar" in r.text
     assert "bb-tab-pill" in r.text
+    assert "bb-tab-kbd" in r.text
     assert "trade-journal-slot" not in r.text
     assert "bb-panel-desk" in r.text
+    assert "desk-command-slot" in r.text
+    assert "live-radar-slot" not in r.text
+    assert "session-prep-slot" not in r.text
+
+
+def test_desk_command_strip_partial(client: TestClient):
+    r = client.get("/board/partials/desk-command-strip")
+    assert r.status_code == 200
+    assert "desk-command-strip" in r.text or r.text.strip() == ""
 
 
 def test_board_tab_journal_query(client: TestClient):
@@ -62,6 +72,7 @@ def test_pnl_tab_partial(client: TestClient):
     assert r.status_code == 200
     assert "pnl-tab-root" in r.text
     assert "pnl-intraday-chart" in r.text
+    assert "bb-pnl-chart-wrap" in r.text
 
 
 def test_board_tabs_api(client: TestClient):
@@ -88,6 +99,29 @@ def test_pnl_tab_range_5d(client: TestClient):
     r = client.get("/board/partials/pnl-tab?range=5d")
     assert r.status_code == 200
     assert "pnl-tab-root" in r.text
+    assert 'data-range="5d"' in r.text
+
+
+def test_pnl_range_api(client: TestClient):
+    r = client.get("/api/v1/pnl/range?range=5d")
+    assert r.status_code == 200
+    body = r.json()
+    assert body["range_key"] == "5d"
+    assert "buckets" in body
+
+
+def test_pnl_tab_api(client: TestClient):
+    r = client.get("/api/v1/pnl/tab?range=today")
+    assert r.status_code == 200
+    body = r.json()
+    assert "intraday" in body
+    assert "projection" in body
+    assert body["range_key"] == "today"
+
+
+def test_pnl_range_invalid(client: TestClient):
+    r = client.get("/api/v1/pnl/range?range=1y")
+    assert r.status_code == 400
 
 
 def test_journal_note_patch_api(client: TestClient):

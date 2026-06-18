@@ -377,6 +377,21 @@ async def pnl_tab_partial(request: Request):
     )
 
 
+@router.get("/board/partials/desk-command-strip", response_class=HTMLResponse)
+async def desk_command_strip_partial(request: Request):
+    """Compact live radar + session prep row (14.0 desk cleanup)."""
+    from src.services.live_radar import build_live_radar
+    from src.services.session_prep import build_session_prep
+
+    radar = await _to_thread(build_live_radar)
+    prep = await _to_thread(_with_db, build_session_prep)
+    return TEMPLATES.TemplateResponse(
+        request,
+        "partials/desk_command_strip.html",
+        {"radar": radar, "prep": prep},
+    )
+
+
 @router.get("/board/partials/live-radar", response_class=HTMLResponse)
 async def live_radar_partial(request: Request):
     from src.services.live_radar import build_live_radar
@@ -1356,11 +1371,17 @@ async def pnl_stream(request: Request):
 
     from src.services.pnl_intraday import build_pnl_tab_payload
 
+    range_key = (request.query_params.get("range") or "today").strip().lower()
+    if range_key not in ("today", "5d", "20d"):
+        range_key = "today"
+
     async def event_generator():
         while True:
             if await request.is_disconnected():
                 break
-            payload = await _to_thread(_with_db, build_pnl_tab_payload)
+            payload = await _to_thread(
+                _with_db, lambda s: build_pnl_tab_payload(s, range_key=range_key)
+            )
             yield f"event: pnl\ndata: {json.dumps(payload)}\n\n"
             await asyncio.sleep(5.0)
 

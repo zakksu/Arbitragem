@@ -1,6 +1,8 @@
 # Release 14.1 — Execution ladder + session prep
 
-**Status:** shipped — tag `v14.1.0` on `main`
+**Status:** shipped — tag `v14.1.1` on `main`
+
+| 14.1h | Desk command strip (radar + prep merged), weekly strategy sim report |
 
 ## Shipped
 

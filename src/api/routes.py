@@ -1459,6 +1459,41 @@ def pnl_projection(db: Session = Depends(get_db)):
     return build_pnl_projection(db)
 
 
+@router.get("/strategies/weekly-report")
+def weekly_strategy_report(
+    days: int = 7,
+    run_sim: bool = False,
+    db: Session = Depends(get_db),
+):
+    """Trailing-week tick replay + paper book performance."""
+    from src.services.weekly_strategy_sim import build_weekly_strategy_report
+
+    days = max(1, min(30, int(days)))
+    return build_weekly_strategy_report(db, days=days, run_sim=run_sim, max_fresh=15)
+
+
+@router.get("/pnl/range")
+def pnl_range(range: str = "5d", db: Session = Depends(get_db)):
+    """5D / 20D cumulative PnL buckets (14.0-GA)."""
+    from src.services.pnl_intraday import build_range_pnl
+
+    rk = (range or "5d").strip().lower()
+    if rk not in ("5d", "20d"):
+        raise HTTPException(400, detail="range must be 5d or 20d")
+    return build_range_pnl(db, rk)
+
+
+@router.get("/pnl/tab")
+def pnl_tab_payload(range: str = "today", db: Session = Depends(get_db)):
+    """Full PnL tab context — intraday, projection, risk, lanes (API + dashboard cache)."""
+    from src.services.pnl_intraday import build_pnl_tab_payload
+
+    rk = (range or "today").strip().lower()
+    if rk not in ("today", "5d", "20d"):
+        raise HTTPException(400, detail="range must be today, 5d, or 20d")
+    return build_pnl_tab_payload(db, range_key=rk)
+
+
 @router.get("/board/tabs")
 def board_tabs():
     from src.services.board_layout import board_tab_metadata

@@ -25,36 +25,36 @@
     <div id="bb-tab-dynamic" class="bb-tab-panel bb-tab-dynamic{% if active_tab in ('journal', 'pnl') %} is-active{% endif %}" {% if active_tab == 'desk' %}hidden{% endif %} aria-live="polite" role="tabpanel"></div>
 
     <div id="bb-panel-desk" class="bb-tab-panel{% if (active_tab or 'desk') == 'desk' %} is-active{% endif %}" data-tab="desk">
-    <div id="live-radar-slot" class="bb-live-radar-slot"
-         hx-get="/board/partials/live-radar"
+    <div id="desk-command-slot" class="bb-desk-command-slot"
+         hx-get="/board/partials/desk-command-strip"
          hx-trigger="load, every 15s"
          hx-swap="innerHTML">
-        <span class="bb-muted">Live radar…</span>
-    </div>
-    <div id="session-prep-slot" class="bb-session-prep-slot"
-         hx-get="/board/partials/session-prep"
-         hx-trigger="load, every 60s"
-         hx-swap="innerHTML">
-        <span class="bb-muted">Session prep…</span>
+        <span class="bb-muted">Command strip…</span>
     </div>
     {% if not golden_path_mode %}
-    <div id="sector-strip-slot" class="bb-sector-strip-slot"
-         hx-get="/board/partials/sector-strip"
-         hx-trigger="load, every 60s"
-         hx-swap="innerHTML">
-        <span class="bb-muted">Sector map…</span>
-    </div>
-    <div hx-get="/board/partials/strategy-lab-strip"
+    <details class="bb-desk-tools bb-glass"{% if not low_ram_mode %} open{% endif %}>
+        <summary>Market tools <span class="bb-muted">sectors · learning</span></summary>
+        <div class="bb-desk-tools-body">
+            <div id="sector-strip-slot" class="bb-sector-strip-slot"
+                 hx-get="/board/partials/sector-strip"
+                 hx-trigger="load, every 60s"
+                 hx-swap="innerHTML">
+                <span class="bb-muted">Sector map…</span>
+            </div>
+            <div class="bb-learning-rail-thin"
+                 id="learning-rail-desk-slot"
+                 hx-get="/board/partials/learning-rail"
+                 hx-trigger="load delay:350ms, every 120s"
+                 hx-swap="innerHTML">
+                <span class="bb-muted">Learning…</span>
+            </div>
+        </div>
+    </details>
+    <div id="strategy-lab-desk-slot"
+         hx-get="/board/partials/strategy-lab-strip"
          hx-trigger="load delay:150ms"
          hx-swap="innerHTML">
-        <details class="bb-strategy-lab-strip bb-glass"><summary>Strategy Lab…</summary></details>
-    </div>
-    <div class="bb-learning-rail-thin bb-glass"
-         id="learning-rail-desk-slot"
-         hx-get="/board/partials/learning-rail"
-         hx-trigger="load delay:350ms, every 120s"
-         hx-swap="innerHTML">
-        <span class="bb-muted">Learning…</span>
+        <span class="bb-muted">Rankings…</span>
     </div>
     {% endif %}
     <div id="mobile-banner" class="bb-mobile-banner-slot"
@@ -1111,7 +1111,7 @@
             document.body.addEventListener("htmx:afterSwap", function (ev) {
                 if (document.body.dataset.profitAutoCopy !== "1") return;
                 var tgt = ev.detail && ev.detail.target;
-                if (!tgt || tgt.id !== "live-radar-slot") return;
+                if (!tgt || tgt.id !== "desk-command-slot") return;
                 var hintEl = tgt.querySelector(".bb-outbox-hint");
                 if (!hintEl || !navigator.clipboard) return;
                 var hint = hintEl.textContent.trim();
@@ -1140,7 +1140,9 @@
             var valid = { desk: 1, journal: 1, pnl: 1 };
             var pnlEs = null;
 
-            function drawPnlChart(points, stopLoss) {
+            function drawPnlChart(points, stopLoss, opts) {
+                opts = opts || {};
+                var animate = opts.animate !== false;
                 var svg = document.getElementById("pnl-intraday-chart");
                 if (!svg || !points || !points.length) return;
                 var vals = points.map(function (p) { return Number(p.cumulative_brl || 0); });
@@ -1152,31 +1154,63 @@
                 maxV += pad;
                 var w = 640;
                 var h = 200;
-                var line = points.map(function (p, i) {
+                var coords = points.map(function (p, i) {
                     var x = (i / Math.max(1, points.length - 1)) * w;
                     var y = h - ((Number(p.cumulative_brl || 0) - minV) / (maxV - minV)) * h;
-                    return (i === 0 ? "M" : "L") + x.toFixed(1) + "," + y.toFixed(1);
+                    return { x: x, y: y };
+                });
+                var line = coords.map(function (c, i) {
+                    return (i === 0 ? "M" : "L") + c.x.toFixed(1) + "," + c.y.toFixed(1);
                 }).join(" ");
+                var last = coords[coords.length - 1];
+                var area = line + " L" + w.toFixed(1) + "," + h + " L0," + h + " Z";
                 var zeroY = h - ((0 - minV) / (maxV - minV)) * h;
                 var stopY = stopLoss
                     ? h - ((-Math.abs(Number(stopLoss)) - minV) / (maxV - minV)) * h
                     : null;
+                var lastVal = vals[vals.length - 1];
+                var stroke = lastVal >= 0 ? "#3dd68c" : "#f87171";
+                var gradId = "bbPnlGrad";
+                var existing = svg.querySelector("#" + gradId);
+                if (existing) existing.remove();
                 svg.innerHTML =
-                    '<line x1="0" y1="' + zeroY.toFixed(1) + '" x2="' + w + '" y2="' + zeroY.toFixed(1) + '" stroke="rgba(255,255,255,0.08)" />' +
+                    "<defs><linearGradient id=\"" + gradId + "\" x1=\"0\" y1=\"0\" x2=\"0\" y2=\"1\">" +
+                    "<stop offset=\"0%\" stop-color=\"" + stroke + "\" stop-opacity=\"0.38\"/>" +
+                    "<stop offset=\"100%\" stop-color=\"" + stroke + "\" stop-opacity=\"0\"/>" +
+                    "</linearGradient></defs>" +
+                    "<line class=\"bb-pnl-zero\" x1=\"0\" y1=\"" + zeroY.toFixed(1) + "\" x2=\"" + w + "\" y2=\"" + zeroY.toFixed(1) + "\" />" +
                     (stopY
-                        ? '<line x1="0" y1="' + stopY.toFixed(1) + '" x2="' + w + '" y2="' + stopY.toFixed(1) + '" stroke="#ef4444" stroke-dasharray="4 4" opacity="0.7" />'
+                        ? "<line class=\"bb-pnl-stop\" x1=\"0\" y1=\"" + stopY.toFixed(1) + "\" x2=\"" + w + "\" y2=\"" + stopY.toFixed(1) + "\" />"
                         : "") +
-                    '<path d="' + line + '" fill="none" stroke="#3dd68c" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" />';
+                    "<path class=\"bb-pnl-area\" d=\"" + area + "\" fill=\"url(#" + gradId + ")\" />" +
+                    "<path class=\"bb-pnl-line\" d=\"" + line + "\" fill=\"none\" stroke=\"" + stroke + "\" stroke-width=\"2.5\" stroke-linecap=\"round\" stroke-linejoin=\"round\" />" +
+                    "<circle class=\"bb-pnl-dot\" cx=\"" + last.x.toFixed(1) + "\" cy=\"" + last.y.toFixed(1) + "\" r=\"4\" fill=\"" + stroke + "\" />";
+                if (animate) {
+                    var pathEl = svg.querySelector(".bb-pnl-line");
+                    if (pathEl && pathEl.getTotalLength) {
+                        var len = pathEl.getTotalLength();
+                        pathEl.style.strokeDasharray = String(len);
+                        pathEl.style.strokeDashoffset = String(len);
+                        requestAnimationFrame(function () {
+                            pathEl.style.transition = "stroke-dashoffset 0.9s cubic-bezier(0.22, 1, 0.36, 1)";
+                            pathEl.style.strokeDashoffset = "0";
+                        });
+                    }
+                }
             }
 
             window.bbMountPnlTab = function () {
                 var root = document.getElementById("pnl-tab-root");
                 if (!root) return;
-                fetch("/api/v1/pnl/intraday")
+                var rk = root.dataset.range || "today";
+                var apiUrl = rk === "today"
+                    ? "/api/v1/pnl/intraday"
+                    : "/api/v1/pnl/range?range=" + encodeURIComponent(rk);
+                fetch(apiUrl)
                     .then(function (r) { return r.json(); })
                     .then(function (data) {
                         var pts = data.points || data.buckets || [];
-                        drawPnlChart(pts, root.dataset.stop);
+                        drawPnlChart(pts, root.dataset.stop, { animate: true });
                         var hero = document.getElementById("pnl-hero-value");
                         if (hero && data.day_pnl_brl != null) {
                             hero.textContent = "R$ " + Number(data.day_pnl_brl).toFixed(2);
@@ -1189,13 +1223,13 @@
                 }
                 if (typeof EventSource !== "undefined") {
                     try {
-                        pnlEs = new EventSource("/board/stream/pnl");
+                        pnlEs = new EventSource("/board/stream/pnl?range=" + encodeURIComponent(rk));
                         pnlEs.addEventListener("pnl", function (ev) {
                             try {
                                 var payload = JSON.parse(ev.data);
                                 var intra = payload.intraday || payload;
                                 var pts = intra.points || intra.buckets || [];
-                                drawPnlChart(pts, root.dataset.stop);
+                                drawPnlChart(pts, root.dataset.stop, { animate: false });
                                 if (intra.day_pnl_brl != null) {
                                     var hero = document.getElementById("pnl-hero-value");
                                     if (hero) hero.textContent = "R$ " + Number(intra.day_pnl_brl).toFixed(2);
@@ -1242,11 +1276,12 @@
                         desk.classList.remove("is-active");
                     }
                     dyn.hidden = false;
-                    dyn.classList.add("is-active");
+                    dyn.classList.add("is-active", "bb-tab-loading");
                     htmx.ajax("GET", "/board/partials/" + tab + "-tab", {
                         target: "#bb-tab-dynamic",
                         swap: "innerHTML",
                     }).then(function () {
+                        dyn.classList.remove("bb-tab-loading");
                         if (tab === "pnl" && window.bbMountPnlTab) window.bbMountPnlTab();
                     });
                 }

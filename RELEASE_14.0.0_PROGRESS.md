@@ -10,6 +10,7 @@
 | 14.0-beta | `pnl_intraday.py`, API, SSE `/board/stream/pnl`, PnL tab chart | ✅ |
 | 14.0-rc | Strategy Lab strip, learning rail, engine mind on desk, layout presets | ✅ |
 | 14.0-GA | Journal filters, trade notes API, PnL 5D/20D, status sparkline, mobile CSS | ✅ |
+| 14.0+ | `GET /pnl/range`, `GET /pnl/tab`, SSE `?range=` for 5D/20D charts | ✅ |
 
 ## Tests
 

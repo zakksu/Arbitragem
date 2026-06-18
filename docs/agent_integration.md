@@ -967,8 +967,10 @@ Theory cards come from `build_theory_cards()` → FTS `search_chunks()` on `data
 | Endpoint | Purpose |
 |----------|---------|
 | `GET /api/v1/pnl/intraday` | Today buckets `{ts, cumulative_brl, fees_brl}` + lane split CASH/WIN/OPT |
+| `GET /api/v1/pnl/range?range=5d\|20d` | Multi-day cumulative buckets + lanes |
+| `GET /api/v1/pnl/tab?range=today\|5d\|20d` | Full tab payload: `{ intraday, projection, risk, lanes, range_key }` |
 | `GET /api/v1/pnl/projection` | Expectancy × remaining trades estimate (`model: expectancy_estimate`) |
-| `GET /board/stream/pnl` | SSE `event: pnl` every 5s — same payload as tab build |
+| `GET /board/stream/pnl?range=today\|5d\|20d` | SSE `event: pnl` every 5s — same payload as tab build |
 
 #### Journal tab
 

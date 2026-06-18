@@ -2,9 +2,9 @@
 {% set f = filters or desk.filters or {} %}
 {% set rk = f.range_key or desk.range_key or '30d' %}
 <div class="bb-journal-tab" id="journal-tab-root">
-    <header class="bb-journal-head" style="display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:0.5rem;margin-bottom:0.65rem;">
-        <h2 class="bb-journal-title" style="margin:0;font-size:1rem;letter-spacing:0.02em;">Trade Journal</h2>
-        <div class="bb-journal-head-actions" style="display:flex;gap:0.35rem;align-items:center;">
+    <header class="bb-journal-head">
+        <h2 class="bb-journal-title">Trade Journal</h2>
+        <div class="bb-journal-head-actions">
             {% if desk.paper_mode %}
             <span class="bb-pill">PAPER</span>
             {% else %}

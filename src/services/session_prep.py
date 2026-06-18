@@ -78,37 +78,37 @@ def build_session_prep(session) -> dict[str, Any]:
         {
             "id": "sleeves",
             "label": "CASH sleeve ON",
-            "cmd": "Status bar → CASH button green",
+            "cmd": "Status bar -> CASH button green",
             "ok": bool(risk.get("sleeves_all_open")),
             "detail": risk.get("sleeves_reason") or "ok",
         },
         {
             "id": "motor",
             "label": "Motor ready",
-            "cmd": "Live Radar → MOTOR green",
+            "cmd": "Live Radar -> MOTOR green",
             "ok": bool(orch.get("active") or settings.autonomy_enabled),
             "detail": "active" if orch.get("active") else "idle",
         },
     ]
 
     steps_during_paper: list[dict[str, str]] = [
-        {"step": "1", "action": "Desk tab — watch Live Radar (aim for green lamps)"},
+        {"step": "1", "action": "Desk tab - watch Live Radar (aim for green lamps)"},
         {"step": "2", "action": "Let motor scan OR press Scan in toolbar"},
-        {"step": "3", "action": "Review Idea Stack → Confirm top idea (two-step modal)"},
-        {"step": "4", "action": "Motor auto-executes in paper — no Profit click needed"},
-        {"step": "5", "action": "Journal tab — verify fill + grade"},
-        {"step": "6", "action": "PnL tab — watch intraday curve"},
+        {"step": "3", "action": "Review Idea Stack -> Confirm top idea (two-step modal)"},
+        {"step": "4", "action": "Motor auto-executes in paper - no Profit click needed"},
+        {"step": "5", "action": "Journal tab - verify fill + grade"},
+        {"step": "6", "action": "PnL tab - watch intraday curve"},
         {"step": "7", "action": "Stop if day P&L hits loss limit (status bar)"},
     ]
 
     steps_during_manual: list[dict[str, str]] = [
         {"step": "1", "action": "Set PAPER_TRADING_MODE=false + restart if doing live manual"},
         {"step": "2", "action": "ProfitChart: Sim 3368 selected, Chart Trading panel open"},
-        {"step": "3", "action": "Desk → Confirm idea → Execute (or motor execute)"},
-        {"step": "4", "action": "Live Radar copies hint — paste in Chart Trading (C/V Mercado · qty · sym)"},
+        {"step": "3", "action": "Desk -> Confirm idea -> Execute (or motor execute)"},
+        {"step": "4", "action": "Live Radar copies hint - paste in Chart Trading (C/V Mercado qty sym)"},
         {"step": "5", "action": "Optional: python scripts/profit_manual_assist.py"},
         {"step": "6", "action": "Optional: import NTSL from exports/ntsl/ in Profit Editor"},
-        {"step": "7", "action": "Journal tab — log matches Profit blotter"},
+        {"step": "7", "action": "Journal tab - log matches Profit blotter"},
     ]
 
     blockers: list[str] = []
