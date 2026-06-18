@@ -281,11 +281,31 @@ def cmd_setup(_: argparse.Namespace) -> int:
 
 
 def _auto_detect_profit_dll(env_path: Path) -> None:
-    """On Windows, write PROFIT_DLL_PATH when a single unambiguous DLL is found."""
+    """On Windows, write PROFIT_DLL_PATH / PROFITCHART_EXE when detected."""
     if sys.platform != "win32":
         return
     sys.path.insert(0, str(ROOT))
-    from src.integrations.profit_dll_detect import detect_profit_dll
+    from src.integrations.profit_dll_detect import detect_profit_dll, find_profitchart_exe
+
+    chart = find_profitchart_exe()
+    if chart and env_path.exists():
+        chart_line = f"PROFITCHART_EXE={chart}"
+        text = env_path.read_text(encoding="utf-8")
+        if "PROFITCHART_EXE=" in text:
+            lines = [
+                chart_line if row.startswith("PROFITCHART_EXE=") else row
+                for row in text.splitlines()
+            ]
+            text = "\n".join(lines)
+            if not text.endswith("\n"):
+                text += "\n"
+        else:
+            if text and not text.endswith("\n"):
+                text += "\n"
+            text += f"{chart_line}\n"
+        env_path.write_text(text, encoding="utf-8")
+        os.environ["PROFITCHART_EXE"] = str(chart)
+        print(f"[dev] ProfitChart detected -> {chart}")
 
     if env_path.exists():
         for line in env_path.read_text(encoding="utf-8").splitlines():
@@ -297,7 +317,10 @@ def _auto_detect_profit_dll(env_path: Path) -> None:
 
     result = detect_profit_dll()
     if not result.get("recommended"):
-        print("[dev] ProfitDLL not auto-detected — run scripts/detect_profit_dll.py")
+        if result.get("automation_module_missing"):
+            print("[dev] ProfitChart running - install Modulo de Automacao (ProfitDLL) for live API orders")
+        else:
+            print("[dev] ProfitDLL not auto-detected — run scripts/detect_profit_dll.py")
         return
 
     line = f"PROFIT_DLL_PATH={result['recommended']}"
@@ -318,7 +341,7 @@ def _auto_detect_profit_dll(env_path: Path) -> None:
         text += f"{line}\n"
     env_path.write_text(text, encoding="utf-8")
     os.environ["PROFIT_DLL_PATH"] = result["recommended"]
-    print(f"[dev] Auto-detected ProfitDLL → {result['recommended']}")
+    print(f"[dev] Auto-detected ProfitDLL -> {result['recommended']}")
 
 
 def _maybe_start_profitchart() -> None:

@@ -60,10 +60,98 @@ def _registry_hint() -> Path | None:
     return None
 
 
-def find_profit_dll_candidates(*, max_depth: int = 4) -> list[Path]:
-    """Return unique ProfitDLL paths, best match first."""
+def _running_profitchart_exe() -> Path | None:
+    """Best-effort path from a running ProfitChart process (Windows)."""
+    if sys.platform != "win32":
+        return None
+    try:
+        import subprocess
+
+        out = subprocess.check_output(
+            [
+                "powershell",
+                "-NoProfile",
+                "-Command",
+                "(Get-Process profitchart -ErrorAction SilentlyContinue | Select-Object -First 1 -ExpandProperty Path)",
+            ],
+            text=True,
+            timeout=8,
+        ).strip()
+        if out and Path(out).is_file():
+            return Path(out).resolve()
+    except (OSError, subprocess.SubprocessError):
+        pass
+    return None
+
+
+def find_profitchart_exe() -> Path | None:
+    """Locate ProfitChart executable — running process first, then common install dirs."""
+    running = _running_profitchart_exe()
+    if running:
+        return running
+
+    candidates: list[Path] = []
+    for env_key in ("APPDATA", "LOCALAPPDATA"):
+        val = os.environ.get(env_key)
+        if val:
+            candidates.append(Path(val) / "Nelogica" / "Profit" / "profitchart.exe")
+            candidates.append(Path(val) / "Nelogica" / "Profit" / "ProfitChart.exe")
+    candidates.extend(
+        [
+            Path(r"C:\Nelogica\Profit\ProfitChart.exe"),
+            Path(r"C:\Nelogica\Profit\profitchart.exe"),
+            Path(r"C:\Program Files\Nelogica\Profit\ProfitChart.exe"),
+            Path(r"C:\Program Files (x86)\Nelogica\Profit\ProfitChart.exe"),
+        ]
+    )
+    configured = os.environ.get("PROFITCHART_EXE", "").strip()
+    if configured:
+        candidates.insert(0, Path(configured))
+
+    seen: set[str] = set()
+    for path in candidates:
+        key = str(path).lower()
+        if key in seen:
+            continue
+        seen.add(key)
+        if path.is_file():
+            return path.resolve()
+    return None
+
+
+def _search_dll_near_profitchart(chart: Path | None) -> list[Path]:
+    if not chart or not chart.is_file():
+        return []
+    roots = [chart.parent, chart.parent / "x64", chart.parent / "ResourceDlls"]
     found: list[Path] = []
     seen: set[str] = set()
+    for root in roots:
+        if not root.is_dir():
+            continue
+        for name in DLL_NAMES:
+            direct = root / name
+            if direct.is_file():
+                key = str(direct.resolve()).lower()
+                if key not in seen:
+                    seen.add(key)
+                    found.append(direct.resolve())
+        try:
+            for match in root.rglob("ProfitDLL*.dll"):
+                key = str(match.resolve()).lower()
+                if key not in seen:
+                    seen.add(key)
+                    found.append(match.resolve())
+        except OSError:
+            continue
+    return found
+
+
+def find_profit_dll_candidates(*, max_depth: int = 4) -> list[Path]:
+    """Return unique ProfitDLL paths, best match first."""
+    chart = find_profitchart_exe()
+    near = _search_dll_near_profitchart(chart)
+    found: list[Path] = list(near)
+    seen: set[str] = {str(p).lower() for p in found}
 
     def add(path: Path) -> None:
         resolved = path.resolve()
@@ -109,6 +197,7 @@ def find_profit_dll_candidates(*, max_depth: int = 4) -> list[Path]:
 
 def detect_profit_dll() -> dict:
     """Structured detect result for API + CLI."""
+    chart = find_profitchart_exe()
     candidates = find_profit_dll_candidates()
     return {
         "found": bool(candidates),
@@ -116,6 +205,15 @@ def detect_profit_dll() -> dict:
         "candidates": [str(p) for p in candidates],
         "recommended": str(candidates[0]) if candidates else None,
         "platform": sys.platform,
+        "profitchart_exe": str(chart) if chart else None,
+        "profitchart_running": chart is not None and _running_profitchart_exe() is not None,
+        "automation_module_missing": bool(chart) and not candidates,
+        "automation_hint": (
+            "ProfitChart is installed but ProfitDLL was not found. "
+            "Install Nelogica Módulo de Automação (ProfitDLL) for API order routing."
+            if chart and not candidates
+            else None
+        ),
     }
 
 
