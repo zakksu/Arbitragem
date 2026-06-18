@@ -58,6 +58,17 @@
         <strong id="kpi-pnl-value" class="{% if cockpit.day_pnl >= 0 %}bb-pnl-pos{% else %}bb-pnl-neg{% endif %}">
             R$ {{ "%.2f"|format(cockpit.day_pnl) }}
         </strong>
+        {% if intraday_spark and intraday_spark|length > 1 %}
+        <svg class="bb-status-spark" viewBox="0 0 80 20" aria-hidden="true" style="width:64px;height:16px;margin-left:0.35rem;vertical-align:middle;">
+            {% set spark_pts = [] %}
+            {% for b in intraday_spark %}
+            {% set x = (loop.index0 / (intraday_spark|length - 1)) * 80 %}
+            {% set y = 10 - (b.cumulative_brl / 100) * 8 %}
+            {% if spark_pts.append(x|string + ',' + y|string) %}{% endif %}
+            {% endfor %}
+            <polyline fill="none" stroke="{% if cockpit.day_pnl >= 0 %}#3dd68c{% else %}#ff6b6b{% endif %}" stroke-width="1.5" points="{{ spark_pts|join(' ') }}" />
+        </svg>
+        {% endif %}
         {% if cockpit.pnl_source %}
         <em class="bb-pnl-source" id="kpi-pnl-source" title="P&L source">{{ cockpit.pnl_source|capitalize }}</em>
         {% endif %}

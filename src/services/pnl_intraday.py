@@ -98,9 +98,58 @@ def build_pnl_projection(session: Session) -> dict[str, Any]:
     }
 
 
-def build_pnl_tab_payload(session: Session) -> dict[str, Any]:
+def build_range_pnl(session: Session, range_key: str) -> dict[str, Any]:
+    """Daily cumulative net PnL for 5D / 20D charts (14.0-GA)."""
+    days = 5 if range_key == "5d" else 20
+    now = datetime.utcnow()
+    since = now - timedelta(days=days)
+    trades = (
+        session.query(Trade)
+        .filter(Trade.executed_at >= since)
+        .order_by(Trade.executed_at.asc())
+        .all()
+    )
+    lanes: dict[str, float] = {"cash": 0.0, "win": 0.0, "opt": 0.0}
+    by_day: dict[str, float] = {}
+    for t in trades:
+        pnl = float(t.pnl or 0) - float(t.fees or 0)
+        day_key = (t.executed_at or since).strftime("%Y-%m-%d")
+        by_day[day_key] = by_day.get(day_key, 0.0) + pnl
+        lane = _lane_key(t.symbol)
+        lanes[lane] = round(lanes.get(lane, 0.0) + pnl, 2)
+
+    cumulative = 0.0
+    buckets: list[dict[str, Any]] = []
+    for day_key in sorted(by_day.keys()):
+        cumulative += by_day[day_key]
+        buckets.append({"ts": day_key, "cumulative_brl": round(cumulative, 2)})
+
+    if not buckets:
+        buckets = [{"ts": since.date().isoformat(), "cumulative_brl": 0.0}]
+
+    from src.services.kpi_history import build_kpi_history
+
+    kpi = build_kpi_history(session, range_key)
+    return {
+        "buckets": buckets,
+        "points": buckets,
+        "day_pnl_brl": kpi["pnl_brl"],
+        "trades_today": kpi["trades"],
+        "pnl_source": "journal",
+        "lanes": lanes,
+        "range_key": range_key,
+        "updated_at": datetime.utcnow().isoformat(),
+    }
+
+
+def build_pnl_tab_payload(session: Session, *, range_key: str = "today") -> dict[str, Any]:
     """Template context for pnl_tab.html partial + SSE stream."""
-    intraday = build_intraday_pnl(session)
+    rk = (range_key or "today").strip().lower()
+    if rk in ("5d", "20d"):
+        intraday = build_range_pnl(session, rk)
+    else:
+        intraday = build_intraday_pnl(session)
+        intraday["range_key"] = "today"
     projection = build_pnl_projection(session)
     risk = build_risk_summary(session)
     risk["max_daily_loss_brl"] = risk.get("tightest_loss_limit_brl") or risk.get(
@@ -126,4 +175,5 @@ def build_pnl_tab_payload(session: Session) -> dict[str, Any]:
         "lanes": lanes,
         "stop_loss_budget": round(stop_remaining, 2),
         "projection_label": projection.get("label"),
+        "range_key": rk,
     }

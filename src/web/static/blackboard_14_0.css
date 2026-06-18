@@ -427,6 +427,34 @@
         display: none;
     }
 
+    .bb-pnl-lanes {
+        grid-template-columns: 1fr;
+    }
+}
+
+.bb-status-spark {
+    display: inline-block;
+    opacity: 0.92;
+    vertical-align: middle;
+}
+
+.bb-filter-pill {
+    font-size: 0.68rem;
+    padding: 0.2rem 0.55rem;
+    border-radius: 999px;
+    border: 1px solid var(--bb14-glass-border);
+    background: transparent;
+    color: var(--arb-text-muted, #8a8f9a);
+    cursor: pointer;
+}
+
+.bb-filter-pill.is-active {
+    border-color: var(--bb14-accent);
+    color: var(--bb14-accent);
+    background: var(--bb14-accent-dim);
+}
+
+@media (max-width: 768px) {
     .bb-journal-hero {
         grid-template-columns: repeat(2, 1fr);
     }

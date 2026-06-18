@@ -18,17 +18,17 @@
         <button type="button"
                 class="bb-journal-filter{% if rk == 'today' %} is-active{% endif %}"
                 hx-get="/board/partials/journal-tab?range=today{% if f.symbol %}&symbol={{ f.symbol }}{% endif %}{% if f.setup_tag %}&tag={{ f.setup_tag }}{% endif %}"
-                hx-target="#journal-panel"
+                hx-target="#journal-tab-root"
                 hx-swap="innerHTML">Today</button>
         <button type="button"
                 class="bb-journal-filter{% if rk == '5d' %} is-active{% endif %}"
                 hx-get="/board/partials/journal-tab?range=5d{% if f.symbol %}&symbol={{ f.symbol }}{% endif %}{% if f.setup_tag %}&tag={{ f.setup_tag }}{% endif %}"
-                hx-target="#journal-panel"
+                hx-target="#journal-tab-root"
                 hx-swap="innerHTML">5D</button>
         <button type="button"
                 class="bb-journal-filter{% if rk not in ('today', '5d') %} is-active{% endif %}"
                 hx-get="/board/partials/journal-tab?days=30{% if f.symbol %}&symbol={{ f.symbol }}{% endif %}{% if f.setup_tag %}&tag={{ f.setup_tag }}{% endif %}"
-                hx-target="#journal-panel"
+                hx-target="#journal-tab-root"
                 hx-swap="innerHTML">30D</button>
         <input type="search"
                class="bb-journal-symbol-input"
@@ -36,7 +36,7 @@
                value="{{ f.symbol or '' }}"
                hx-get="/board/partials/journal-tab"
                hx-trigger="keyup changed delay:400ms, search"
-               hx-target="#journal-panel"
+               hx-target="#journal-tab-root"
                hx-swap="innerHTML"
                hx-include="[name='range'],[name='tag']"
                name="symbol">
@@ -46,7 +46,7 @@
                value="{{ f.setup_tag or '' }}"
                hx-get="/board/partials/journal-tab"
                hx-trigger="keyup changed delay:400ms, search"
-               hx-target="#journal-panel"
+               hx-target="#journal-tab-root"
                hx-swap="innerHTML"
                hx-include="[name='range'],[name='symbol']"
                name="tag">

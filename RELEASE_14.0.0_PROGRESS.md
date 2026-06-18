@@ -1,32 +1,24 @@
 # Release 14.0.0 — Progress
 
-**Version:** `14.0.0-alpha`
+**Version:** `14.0.0` (GA)
 
-## Backend (Agent 1) — shipped this increment
+## Shipped
 
-| ID | Deliverable | Status |
-|----|-------------|--------|
-| A14.1 | `board_tab_metadata()` + `GET /api/v1/board/tabs` | ✅ |
-| A14.2 | `pnl_intraday.py` — intraday buckets + lanes | ✅ |
-| A14.3 | `GET /pnl/intraday` + `GET /pnl/projection` | ✅ |
-| A14.4 | `GET /board/stream/pnl` SSE (5s) | ✅ |
-| — | `GET /board/partials/journal-tab` + filters | ✅ |
-| — | `PATCH /api/v1/trades/{id}/note` | ✅ |
-| — | Journal desk filters (`range`, `symbol`, `setup_tag`) | ✅ |
-
-## Worker (Agent 2) — in progress
-
-| ID | Deliverable | Status |
-|----|-------------|--------|
-| W14.1 | Tab bar + `?tab=` routing | 🔲 |
-| W14.2 | Remove journal from Desk | 🔲 |
-| W14.3 | `journal_tab.html` polish | partial |
-| W14.5 | PnL chart + SSE client JS | partial |
+| Phase | Scope | Status |
+|-------|--------|--------|
+| 14.0-alpha | Tab shell, journal off desk, `blackboard_14_0.css` | ✅ |
+| 14.0-beta | `pnl_intraday.py`, API, SSE `/board/stream/pnl`, PnL tab chart | ✅ |
+| 14.0-rc | Strategy Lab strip, learning rail, engine mind on desk, layout presets | ✅ |
+| 14.0-GA | Journal filters, trade notes API, PnL 5D/20D, status sparkline, mobile CSS | ✅ |
 
 ## Tests
 
 ```powershell
-pytest tests/test_pnl_intraday.py -q
+pytest tests/test_14_0_ui.py tests/test_pnl_intraday.py -q
 ```
 
-**10 passed** (14.0 backend slice).
+## Board
+
+- Desk: http://localhost:8000/board
+- Journal: http://localhost:8000/board?tab=journal
+- PnL: http://localhost:8000/board?tab=pnl

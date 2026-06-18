@@ -327,7 +327,8 @@ async def pnl_tab_partial(request: Request):
     """PnL tab — intraday + projection cards (14.0-beta)."""
     from src.services.pnl_intraday import build_pnl_tab_payload
 
-    payload = await _to_thread(_with_db, build_pnl_tab_payload)
+    range_key = request.query_params.get("range", "today")
+    payload = await _to_thread(_with_db, lambda s: build_pnl_tab_payload(s, range_key=range_key))
     return TEMPLATES.TemplateResponse(
         request,
         "partials/pnl_tab.html",
@@ -361,11 +362,24 @@ async def status_partial(request: Request):
     validation = await _to_thread(_with_db, _validation)
     from src.services.self_healing.health_registry import health_snapshot
 
+    def _spark(session):
+        from src.services.pnl_intraday import build_intraday_pnl
+
+        return build_intraday_pnl(session).get("buckets") or []
+
     health = await _to_thread(health_snapshot)
+    intraday_spark = await _to_thread(_with_db, _spark)
     return TEMPLATES.TemplateResponse(
         request,
         "partials/status_bar.html",
-        {"bootstrap": bootstrap, "risk": risk, "cockpit": cockpit, "validation": validation, "health": health},
+        {
+            "bootstrap": bootstrap,
+            "risk": risk,
+            "cockpit": cockpit,
+            "validation": validation,
+            "health": health,
+            "intraday_spark": intraday_spark,
+        },
     )
 
 

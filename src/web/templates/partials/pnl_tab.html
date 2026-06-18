@@ -7,10 +7,19 @@
 {% set win = lanes.win or 0 %}
 {% set opt = lanes.opt or 0 %}
 {% set lane_total = (cash|abs + win|abs + opt|abs) or 1 %}
+{% set rk = range_key or intra.range_key or 'today' %}
 <div class="bb-pnl-tab" id="pnl-tab-root"
      data-stop="{{ risk.tightest_loss_limit_brl if risk else '' }}"
      data-proj-low="{{ proj.projected_eod_low_brl or '' }}"
      data-proj-high="{{ proj.projected_eod_high_brl or '' }}">
+    <div class="bb-pnl-range bb-journal-filters" style="margin-bottom:0.5rem;">
+        <button type="button" class="bb-filter-pill{% if rk == 'today' %} is-active{% endif %}"
+                onclick="bbSwitchBoardTab('pnl');htmx.ajax('GET','/board/partials/pnl-tab?range=today',{target:'#bb-tab-dynamic',swap:'innerHTML'}).then(function(){if(window.bbMountPnlTab)window.bbMountPnlTab();});">Today</button>
+        <button type="button" class="bb-filter-pill{% if rk == '5d' %} is-active{% endif %}"
+                onclick="bbSwitchBoardTab('pnl');htmx.ajax('GET','/board/partials/pnl-tab?range=5d',{target:'#bb-tab-dynamic',swap:'innerHTML'}).then(function(){if(window.bbMountPnlTab)window.bbMountPnlTab();});">5D</button>
+        <button type="button" class="bb-filter-pill{% if rk == '20d' %} is-active{% endif %}"
+                onclick="bbSwitchBoardTab('pnl');htmx.ajax('GET','/board/partials/pnl-tab?range=20d',{target:'#bb-tab-dynamic',swap:'innerHTML'}).then(function(){if(window.bbMountPnlTab)window.bbMountPnlTab();});">20D</button>
+    </div>
     <div class="bb-glass bb-pnl-hero">
         <p class="bb-muted" style="margin:0 0 0.35rem;text-transform:uppercase;letter-spacing:0.08em;font-size:0.62rem;">Day P&amp;L</p>
         <div class="bb-pnl-hero-value {% if day_pnl >= 0 %}bb-pnl-pos{% else %}bb-pnl-neg{% endif %}" id="pnl-hero-value">
@@ -26,7 +35,7 @@
 
     <div class="bb-glass bb-pnl-chart-wrap" style="margin-top:0.75rem;padding:0.5rem;">
         <div class="bb-pnl-chart-head" style="display:flex;justify-content:space-between;align-items:center;margin-bottom:0.35rem;">
-            <strong style="font-size:0.72rem;">Intraday equity</strong>
+            <strong style="font-size:0.72rem;">{% if rk == 'today' %}Intraday equity{% else %}{{ rk|upper }} cumulative{% endif %}</strong>
             <span class="bb-muted" style="font-size:0.62rem;">SSE · 5s</span>
         </div>
         <svg class="bb-pnl-chart" id="pnl-intraday-chart" viewBox="0 0 640 200" preserveAspectRatio="none" style="width:100%;height:200px;display:block;"></svg>

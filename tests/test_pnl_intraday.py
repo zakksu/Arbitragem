@@ -23,7 +23,7 @@ def client(monkeypatch, tmp_path):
 
 
 def test_version_14_0_alpha():
-    assert __version__ == "14.0.0-alpha"
+    assert __version__ == "14.0.0"
 
 
 def test_pnl_intraday_empty(client):
