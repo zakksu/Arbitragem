@@ -1,0 +1,13 @@
+<nav class="bb-tab-bar bb-glass" id="board-tab-bar" aria-label="Cockpit tabs">
+    {% for tab in board_tabs %}
+    <button type="button"
+            class="bb-tab-pill{% if tab.id == active_tab %} is-active{% endif %}"
+            role="tab"
+            data-tab="{{ tab.id }}"
+            aria-selected="{% if tab.id == active_tab %}true{% else %}false{% endif %}"
+            aria-controls="{% if tab.id == 'desk' %}bb-panel-desk{% else %}bb-tab-dynamic{% endif %}"
+            onclick="bbSwitchBoardTab('{{ tab.id }}')">
+        {{ tab.label }}
+    </button>
+    {% endfor %}
+</nav>

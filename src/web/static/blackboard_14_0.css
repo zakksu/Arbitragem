@@ -1,0 +1,433 @@
+/* 14.0 — Hybrid Cockpit: tabs, glass cards, prop-desk density */
+
+:root {
+    --bb14-accent: #3dd68c;
+    --bb14-accent-dim: rgba(61, 214, 140, 0.14);
+    --bb14-accent-glow: rgba(61, 214, 140, 0.35);
+    --bb14-glass-bg: rgba(18, 22, 28, 0.72);
+    --bb14-glass-border: rgba(255, 255, 255, 0.07);
+    --bb14-radius: 8px;
+    --bb14-mono: "JetBrains Mono", "Cascadia Code", "Consolas", monospace;
+}
+
+.bb-cockpit-14 {
+    --arb-accent: var(--bb14-accent);
+}
+
+/* —— Tab bar (board_tabs.html) —— */
+.bb-tab-bar {
+    display: flex;
+    gap: 0.35rem;
+    align-items: center;
+    padding: 0.45rem 0.75rem;
+    margin: 0;
+    border-bottom: 1px solid var(--bb14-glass-border);
+    background: linear-gradient(180deg, rgba(8, 10, 14, 0.98), rgba(8, 10, 14, 0.88));
+    position: sticky;
+    top: 0;
+    z-index: 40;
+}
+
+.bb-tab-pill {
+    appearance: none;
+    border: 1px solid transparent;
+    background: transparent;
+    color: var(--arb-text-muted, #8a8f9a);
+    font-size: 0.78rem;
+    font-weight: 600;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    padding: 0.42rem 1rem;
+    border-radius: 999px;
+    cursor: pointer;
+    transition: color 0.15s ease, background 0.15s ease, box-shadow 0.2s ease;
+}
+
+.bb-tab-pill:hover {
+    color: #e8eaed;
+    background: rgba(255, 255, 255, 0.04);
+}
+
+.bb-tab-pill.is-active {
+    color: #0d1117;
+    background: var(--bb14-accent);
+    border-color: var(--bb14-accent);
+    box-shadow: 0 0 18px var(--bb14-accent-glow);
+}
+
+.bb-tab-panel {
+    display: none;
+    animation: bb14-fade-in 0.22s ease;
+}
+
+.bb-tab-panel.is-active,
+.bb-tab-panel:not([hidden]) {
+    display: block;
+}
+
+.bb-tab-dynamic {
+    min-height: 40vh;
+}
+
+.bb-strategy-lab-strip {
+    margin: 0.35rem 0.75rem 0;
+    overflow: hidden;
+}
+
+.bb-strategy-lab-strip > summary {
+    cursor: pointer;
+    padding: 0.45rem 0.65rem;
+    font-size: 0.72rem;
+    font-weight: 600;
+    list-style: none;
+    color: #c9d1d9;
+}
+
+.bb-strategy-lab-strip > summary::-webkit-details-marker {
+    display: none;
+}
+
+.bb-learning-rail-thin {
+    margin: 0.25rem 0.75rem;
+    padding: 0.35rem 0.55rem;
+    font-size: 0.68rem;
+    max-height: 4.5rem;
+    overflow: hidden;
+}
+
+/* —— Tab bar (legacy cockpit_tab_bar) —— */
+.bb-cockpit-tabs-wrap {
+    padding: 0.45rem 0.75rem 0;
+    background: linear-gradient(180deg, rgba(8, 10, 14, 0.98), rgba(8, 10, 14, 0.85));
+    border-bottom: 1px solid var(--bb14-glass-border);
+    position: sticky;
+    top: 0;
+    z-index: 40;
+}
+
+.bb-cockpit-tabs {
+    display: flex;
+    gap: 0.35rem;
+    align-items: center;
+    max-width: 100%;
+}
+
+.bb-cockpit-tab {
+    appearance: none;
+    border: 1px solid transparent;
+    background: transparent;
+    color: var(--arb-text-muted, #8a8f9a);
+    font-size: 0.78rem;
+    font-weight: 600;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    padding: 0.42rem 1rem;
+    border-radius: 999px;
+    cursor: pointer;
+    transition: color 0.15s ease, background 0.15s ease, box-shadow 0.2s ease, border-color 0.15s ease;
+}
+
+.bb-cockpit-tab:hover {
+    color: #e8eaed;
+    background: rgba(255, 255, 255, 0.04);
+}
+
+.bb-cockpit-tab.is-active {
+    color: #0d1117;
+    background: var(--bb14-accent);
+    border-color: var(--bb14-accent);
+    box-shadow: 0 0 18px var(--bb14-accent-glow);
+}
+
+.bb-cockpit-tab-hint {
+    margin-left: auto;
+    font-size: 0.65rem;
+    color: var(--arb-text-muted, #6b7280);
+    letter-spacing: 0.02em;
+}
+
+/* —— Tab panels —— */
+.bb-cockpit-panel {
+    display: none;
+    animation: bb14-fade-in 0.22s ease;
+}
+
+.bb-cockpit-panel.is-active {
+    display: block;
+}
+
+@keyframes bb14-fade-in {
+    from {
+        opacity: 0;
+        transform: translateY(4px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+/* Desk: lean — hide journal archaeology strip on main surface */
+.bb-cockpit-14 .bb-trade-journal-slot,
+.bb-cockpit-14 #trade-journal-slot {
+    display: none !important;
+}
+
+/* —— Glass cards —— */
+.bb-glass {
+    background: var(--bb14-glass-bg);
+    border: 1px solid var(--bb14-glass-border);
+    border-radius: var(--bb14-radius);
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+}
+
+.bb-glass-subtle {
+    background: rgba(255, 255, 255, 0.02);
+    border: 1px solid var(--bb14-glass-border);
+    border-radius: var(--bb14-radius);
+}
+
+/* Desk strategy lab collapsible */
+.bb-desk-strategy-lab {
+    margin: 0.35rem 0.75rem 0;
+    border: 1px solid var(--bb14-glass-border);
+    border-radius: var(--bb14-radius);
+    background: var(--bb14-glass-bg);
+    overflow: hidden;
+}
+
+.bb-desk-strategy-lab > summary {
+    cursor: pointer;
+    padding: 0.45rem 0.65rem;
+    font-size: 0.72rem;
+    font-weight: 600;
+    letter-spacing: 0.03em;
+    list-style: none;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    color: #c9d1d9;
+}
+
+.bb-desk-strategy-lab > summary::-webkit-details-marker {
+    display: none;
+}
+
+.bb-desk-strategy-lab > summary::before {
+    content: "▸";
+    color: var(--bb14-accent);
+    transition: transform 0.15s ease;
+}
+
+.bb-desk-strategy-lab[open] > summary::before {
+    transform: rotate(90deg);
+}
+
+.bb-desk-strategy-lab-body {
+    padding: 0 0.5rem 0.5rem;
+    max-height: 220px;
+    overflow: auto;
+}
+
+.bb-desk-strategy-lab-body .bb-rankings-table {
+    font-size: 0.68rem;
+}
+
+/* Compact engine mind on Desk */
+.bb-cockpit-14 #bb-panel-desk .bb-engine-mind-slot {
+    margin-bottom: 0.25rem;
+}
+
+.bb-cockpit-14 #bb-panel-desk .bb-engine-mind {
+    padding: 0.4rem 0.55rem;
+    font-size: 0.68rem;
+}
+
+.bb-cockpit-14 #bb-panel-desk .bb-em-sources {
+    display: none;
+}
+
+.bb-cockpit-14 #bb-panel-desk .bb-footer {
+    padding-top: 0.35rem;
+}
+
+/* —— Journal tab —— */
+.bb-journal-tab {
+    padding: 0.65rem 0.75rem 1.25rem;
+    max-width: 1600px;
+    margin: 0 auto;
+}
+
+.bb-journal-hero {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+    gap: 0.5rem;
+    margin-bottom: 0.75rem;
+}
+
+.bb-journal-stat {
+    padding: 0.55rem 0.65rem;
+}
+
+.bb-journal-stat-label {
+    font-size: 0.62rem;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: var(--arb-text-muted, #8a8f9a);
+    margin-bottom: 0.2rem;
+}
+
+.bb-journal-stat-value {
+    font-family: var(--bb14-mono);
+    font-size: 1.05rem;
+    font-variant-numeric: tabular-nums;
+    font-weight: 600;
+}
+
+.bb-journal-stat-value.bb-hero-pnl {
+    font-size: 1.45rem;
+    color: var(--bb14-accent);
+}
+
+.bb-journal-filters {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.35rem;
+    align-items: center;
+    margin-bottom: 0.65rem;
+}
+
+.bb-journal-filter {
+    appearance: none;
+    border: 1px solid var(--bb14-glass-border);
+    background: rgba(255, 255, 255, 0.03);
+    color: #c9d1d9;
+    font-size: 0.7rem;
+    padding: 0.28rem 0.65rem;
+    border-radius: 999px;
+    cursor: pointer;
+    transition: border-color 0.15s, background 0.15s;
+}
+
+.bb-journal-filter:hover {
+    border-color: rgba(61, 214, 140, 0.35);
+}
+
+.bb-journal-filter.is-active {
+    border-color: var(--bb14-accent);
+    background: var(--bb14-accent-dim);
+    color: var(--bb14-accent);
+}
+
+.bb-journal-arch-slot {
+    margin-bottom: 0.75rem;
+}
+
+.bb-journal-blotter {
+    margin-bottom: 0.75rem;
+    overflow: hidden;
+}
+
+.bb-journal-blotter .bb-tj-table {
+    width: 100%;
+    font-size: 0.72rem;
+}
+
+.bb-journal-blotter .bb-tj-blotter-wrap {
+    max-height: min(70vh, 640px);
+    overflow: auto;
+}
+
+.bb-journal-motor {
+    margin-top: 0.5rem;
+}
+
+.bb-journal-motor .bb-tj-log {
+    max-height: 280px;
+    overflow: auto;
+    font-size: 0.68rem;
+    font-family: var(--bb14-mono);
+}
+
+/* —— PnL tab placeholder (beta) —— */
+.bb-pnl-tab {
+    padding: 1rem 0.75rem 2rem;
+    max-width: 1200px;
+    margin: 0 auto;
+}
+
+.bb-pnl-hero {
+    text-align: center;
+    padding: 2rem 1rem;
+}
+
+.bb-pnl-hero-value {
+    font-family: var(--bb14-mono);
+    font-size: clamp(2rem, 6vw, 3.2rem);
+    font-weight: 700;
+    font-variant-numeric: tabular-nums;
+    color: var(--bb14-accent);
+    text-shadow: 0 0 40px var(--bb14-accent-glow);
+}
+
+.bb-pnl-beta-note {
+    margin-top: 1rem;
+    font-size: 0.78rem;
+    color: var(--arb-text-muted, #8a8f9a);
+}
+
+.bb-pnl-lanes {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 0.5rem;
+    margin-top: 1.5rem;
+}
+
+.bb-pnl-lane {
+    padding: 0.65rem;
+    text-align: center;
+}
+
+.bb-pnl-lane-bar {
+    height: 6px;
+    border-radius: 3px;
+    background: rgba(255, 255, 255, 0.06);
+    margin-top: 0.4rem;
+    overflow: hidden;
+}
+
+.bb-pnl-lane-fill {
+    height: 100%;
+    background: var(--bb14-accent);
+    border-radius: 3px;
+    transition: width 0.4s ease;
+}
+
+.bb-pnl-chart {
+    background: rgba(0, 0, 0, 0.2);
+    border-radius: 6px;
+}
+
+.bb-pnl-hero-value {
+    transition: color 0.25s ease, text-shadow 0.25s ease;
+}
+
+.bb-pnl-hero-value.bb-pnl-pos {
+    text-shadow: 0 0 32px var(--bb14-accent-glow);
+}
+
+@media (max-width: 768px) {
+    .bb-cockpit-tab {
+        padding: 0.38rem 0.7rem;
+        font-size: 0.72rem;
+    }
+
+    .bb-cockpit-tab-hint {
+        display: none;
+    }
+
+    .bb-journal-hero {
+        grid-template-columns: repeat(2, 1fr);
+    }
+}

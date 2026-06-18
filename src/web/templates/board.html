@@ -3,32 +3,52 @@
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>Arbitragem Scalper — Theory Deck</title>
+    <title>Arbitragem — Hybrid Cockpit</title>
     <link rel="stylesheet" href="/static/blackboard.css">
     <link rel="stylesheet" href="/static/blackboard_4_0.css">
     <link rel="stylesheet" href="/static/blackboard_10_0.css">
+    <link rel="stylesheet" href="/static/blackboard_14_0.css">
     <script src="https://unpkg.com/htmx.org@2.0.4"></script>
+    <script src="https://unpkg.com/htmx-ext-sse@2.2.2/sse.js"></script>
 </head>
-<body class="bb-app">
+<body class="bb-app bb-cockpit-14" data-active-tab="{{ active_tab or 'desk' }}">
     <header class="bb-status" id="status-bar"
             hx-get="/board/partials/status"
             hx-trigger="load, every 30s"
             hx-swap="outerHTML">
-        <div class="bb-logo">Arbitragem Scalper <span>Structure Deck</span></div>
+        <div class="bb-logo">Arbitragem <span>Hybrid Cockpit</span></div>
         <div class="bb-status-item"><span class="bb-loading"></span> loading…</div>
     </header>
+
+    {% include "partials/board_tabs.html" %}
+
+    <div id="bb-tab-dynamic" class="bb-tab-panel bb-tab-dynamic{% if active_tab in ('journal', 'pnl') %} is-active{% endif %}" {% if active_tab == 'desk' %}hidden{% endif %} aria-live="polite" role="tabpanel"></div>
+
+    <div id="bb-panel-desk" class="bb-tab-panel{% if (active_tab or 'desk') == 'desk' %} is-active{% endif %}" data-tab="desk">
     <div id="live-radar-slot" class="bb-live-radar-slot"
          hx-get="/board/partials/live-radar"
          hx-trigger="load, every 15s"
          hx-swap="innerHTML">
         <span class="bb-muted">Live radar…</span>
     </div>
-    <div id="trade-journal-slot" class="bb-trade-journal-slot"
-         hx-get="/board/partials/trade-journal"
-         hx-trigger="load, every 60s"
+    {% if not golden_path_mode %}
+    <details class="bb-strategy-lab-strip bb-glass" id="bb-strategy-lab-strip">
+        <summary>Strategy Lab</summary>
+        <div id="strategy-store-desk-slot"
+             hx-get="/board/partials/strategy-store"
+             hx-trigger="load delay:200ms"
+             hx-swap="innerHTML">
+            <span class="bb-muted">Strategies…</span>
+        </div>
+    </details>
+    <div class="bb-learning-rail-thin bb-glass"
+         id="learning-rail-desk-slot"
+         hx-get="/board/partials/learning-rail"
+         hx-trigger="load delay:350ms, every 120s"
          hx-swap="innerHTML">
-        <span class="bb-muted">Trade journal…</span>
+        <span class="bb-muted">Learning…</span>
     </div>
+    {% endif %}
     <div id="mobile-banner" class="bb-mobile-banner-slot"
          hx-get="/board/partials/mobile-banner"
          hx-trigger="load, every 30s"
@@ -125,13 +145,6 @@
         </section>
     </main>
 
-    <div id="archaeology-hero-slot" class="bb-archaeology-hero-slot"
-         hx-get="/board/partials/archaeology"
-         hx-trigger="bb-arch-load from:body"
-         hx-swap="innerHTML">
-        <span class="bb-muted">Archaeology timeline loads with Archaeology layout…</span>
-    </div>
-
     <footer class="bb-footer">
         {% if golden_path_mode %}
         <div id="ops-panel-strip" class="bb-ops-slot"
@@ -168,6 +181,7 @@
             {% endwith %}
         </span>
     </footer>
+    </div>{# /bb-panel-desk #}
 
     <script src="https://unpkg.com/lightweight-charts@4.2.0/dist/lightweight-charts.standalone.production.js"></script>
     <script>
@@ -1100,6 +1114,138 @@
                 } catch (e) { /* SSE optional */ }
             }
         });
+
+        (function bbBoardTabs14() {
+            var valid = { desk: 1, journal: 1, pnl: 1 };
+            var pnlEs = null;
+
+            function drawPnlChart(points, stopLoss) {
+                var svg = document.getElementById("pnl-intraday-chart");
+                if (!svg || !points || !points.length) return;
+                var vals = points.map(function (p) { return Number(p.cumulative_brl || 0); });
+                var minV = Math.min.apply(null, vals.concat([0]));
+                var maxV = Math.max.apply(null, vals.concat([0]));
+                if (stopLoss) minV = Math.min(minV, -Math.abs(Number(stopLoss)));
+                var pad = (maxV - minV) * 0.12 || 10;
+                minV -= pad;
+                maxV += pad;
+                var w = 640;
+                var h = 200;
+                var line = points.map(function (p, i) {
+                    var x = (i / Math.max(1, points.length - 1)) * w;
+                    var y = h - ((Number(p.cumulative_brl || 0) - minV) / (maxV - minV)) * h;
+                    return (i === 0 ? "M" : "L") + x.toFixed(1) + "," + y.toFixed(1);
+                }).join(" ");
+                var zeroY = h - ((0 - minV) / (maxV - minV)) * h;
+                var stopY = stopLoss
+                    ? h - ((-Math.abs(Number(stopLoss)) - minV) / (maxV - minV)) * h
+                    : null;
+                svg.innerHTML =
+                    '<line x1="0" y1="' + zeroY.toFixed(1) + '" x2="' + w + '" y2="' + zeroY.toFixed(1) + '" stroke="rgba(255,255,255,0.08)" />' +
+                    (stopY
+                        ? '<line x1="0" y1="' + stopY.toFixed(1) + '" x2="' + w + '" y2="' + stopY.toFixed(1) + '" stroke="#ef4444" stroke-dasharray="4 4" opacity="0.7" />'
+                        : "") +
+                    '<path d="' + line + '" fill="none" stroke="#3dd68c" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" />';
+            }
+
+            window.bbMountPnlTab = function () {
+                var root = document.getElementById("pnl-tab-root");
+                if (!root) return;
+                fetch("/api/v1/pnl/intraday")
+                    .then(function (r) { return r.json(); })
+                    .then(function (data) {
+                        var pts = data.points || data.buckets || [];
+                        drawPnlChart(pts, root.dataset.stop);
+                        var hero = document.getElementById("pnl-hero-value");
+                        if (hero && data.day_pnl_brl != null) {
+                            hero.textContent = "R$ " + Number(data.day_pnl_brl).toFixed(2);
+                        }
+                    })
+                    .catch(function () { /* stub */ });
+                if (pnlEs) {
+                    pnlEs.close();
+                    pnlEs = null;
+                }
+                if (typeof EventSource !== "undefined") {
+                    try {
+                        pnlEs = new EventSource("/board/stream/pnl");
+                        pnlEs.addEventListener("pnl", function (ev) {
+                            try {
+                                var payload = JSON.parse(ev.data);
+                                var intra = payload.intraday || payload;
+                                var pts = intra.points || intra.buckets || [];
+                                drawPnlChart(pts, root.dataset.stop);
+                                if (intra.day_pnl_brl != null) {
+                                    var hero = document.getElementById("pnl-hero-value");
+                                    if (hero) hero.textContent = "R$ " + Number(intra.day_pnl_brl).toFixed(2);
+                                }
+                                var lanes = intra.lanes || {};
+                                ["cash", "win", "opt"].forEach(function (k) {
+                                    var el = document.getElementById("pnl-lane-" + k);
+                                    if (el && lanes[k] != null) {
+                                        el.textContent = "R$ " + Number(lanes[k]).toFixed(2);
+                                    }
+                                });
+                            } catch (e) { /* ignore */ }
+                        });
+                    } catch (e) { /* optional */ }
+                }
+            };
+
+            function switchTab(tab, push) {
+                if (!valid[tab]) tab = "desk";
+                try { sessionStorage.setItem("bb_board_tab", tab); } catch (e) { /* ignore */ }
+                document.querySelectorAll(".bb-tab-pill").forEach(function (btn) {
+                    btn.classList.toggle("is-active", btn.dataset.tab === tab);
+                    btn.setAttribute("aria-selected", btn.dataset.tab === tab ? "true" : "false");
+                });
+                var desk = document.getElementById("bb-panel-desk");
+                var dyn = document.getElementById("bb-tab-dynamic");
+                if (tab === "desk") {
+                    if (desk) {
+                        desk.hidden = false;
+                        desk.classList.add("is-active");
+                    }
+                    if (dyn) {
+                        dyn.hidden = true;
+                        dyn.classList.remove("is-active");
+                        dyn.innerHTML = "";
+                    }
+                    if (pnlEs) {
+                        pnlEs.close();
+                        pnlEs = null;
+                    }
+                } else if (dyn && typeof htmx !== "undefined") {
+                    if (desk) {
+                        desk.hidden = true;
+                        desk.classList.remove("is-active");
+                    }
+                    dyn.hidden = false;
+                    dyn.classList.add("is-active");
+                    htmx.ajax("GET", "/board/partials/" + tab + "-tab", {
+                        target: "#bb-tab-dynamic",
+                        swap: "innerHTML",
+                    }).then(function () {
+                        if (tab === "pnl" && window.bbMountPnlTab) window.bbMountPnlTab();
+                    });
+                }
+                if (push !== false) {
+                    var u = new URL(window.location.href);
+                    if (tab === "desk") u.searchParams.delete("tab");
+                    else u.searchParams.set("tab", tab);
+                    history.replaceState({}, "", u);
+                }
+            }
+            window.bbSwitchBoardTab = switchTab;
+            document.addEventListener("DOMContentLoaded", function () {
+                var params = new URLSearchParams(window.location.search);
+                var tab = params.get("tab");
+                if (!tab) {
+                    try { tab = sessionStorage.getItem("bb_board_tab"); } catch (e) { /* ignore */ }
+                }
+                if (tab && tab !== "desk") switchTab(tab, false);
+            });
+        })();
     </script>
 </body>
 </html>
