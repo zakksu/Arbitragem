@@ -1210,6 +1210,10 @@ def social_signals(limit: int = 12):
             "auto_trade": False,
             "disclaimer": "Social signals disabled",
             "sources": [],
+            "sources_active": [],
+            "fetched_at": __import__("datetime").datetime.utcnow().isoformat() + "Z",
+            "freshness_minutes": None,
+            "session": None,
         }
     return get_social_signals(limit=limit)
 

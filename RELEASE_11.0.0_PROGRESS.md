@@ -19,11 +19,13 @@
 - `POST /api/v1/options/core17/refresh`
 - Strategy store scan returns `pack_version` + diff counts
 
-## GA gates (manual)
+## GA gates (manual — not code)
 
 - ≥9,000 archaeology rows imported
 - 50 NTSL indexed
 - Phase C sign-off (`docs/PHASE_C_GATE.md`)
+
+**Backend code-complete** as of `8f5fecc` + social signals polish. GA tag blocked on Filipe manual gates above.
 
 ## Tests
 

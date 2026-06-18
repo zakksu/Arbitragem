@@ -137,11 +137,22 @@ def _curated_twitter_signals() -> list[dict]:
 
 def get_social_signals(*, limit: int = 12) -> dict:
     """Aggregate read-only social/RSS signals — no order routing."""
+    from src.services.futures_quotes import futures_session_status
+
+    fetched_at = datetime.utcnow()
     rss = _fetch_rss_signals()
     twitter = _curated_twitter_signals()
     combined = rss + twitter
     combined.sort(key=lambda s: s.get("published_at", ""), reverse=True)
     trimmed = combined[: max(1, min(limit, 50))]
+    sources_active = sorted({s.get("source", "unknown") for s in trimmed if s.get("source")})
+    freshness_minutes: int | None = None
+    if trimmed and trimmed[0].get("published_at"):
+        try:
+            newest = datetime.fromisoformat(trimmed[0]["published_at"].replace("Z", "+00:00"))
+            freshness_minutes = max(0, int((fetched_at - newest.replace(tzinfo=None)).total_seconds() / 60))
+        except (ValueError, TypeError):
+            pass
     return {
         "signals": trimmed,
         "count": len(trimmed),
@@ -149,4 +160,8 @@ def get_social_signals(*, limit: int = 12) -> dict:
         "auto_trade": False,
         "disclaimer": _DISCLAIMER,
         "sources": ["rss", "twitter"],
+        "sources_active": sources_active,
+        "fetched_at": fetched_at.isoformat() + "Z",
+        "freshness_minutes": freshness_minutes,
+        "session": futures_session_status(),
     }

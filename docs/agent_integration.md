@@ -9,6 +9,7 @@
 | `GET /alerts/status` | Telegram/Discord configured | Settings |
 | `POST /alerts/test` | Send test notification | Settings |
 | `GET /integrations/profit/test` | Profit bridge probe | Settings |
+| `GET /integrations/profit/execution-ladder` | Paper/manual/NTSL/DLL ladder status | Live radar, setup wizard |
 | `GET /scanner/insights` | Top scalp candidates (reliability) | Scanner, Home |
 | `GET /universe/ibov-top20` | IBOV Top 20 universe CSV | Scanner tab |
 | `GET /system/events` | Recent errors/warnings | Settings |
@@ -63,6 +64,35 @@ Priority: **journal** (today's `Trade` rows) → **Profit** bridge (`GET /accoun
 ```
 
 Worker: show **one** Day P&L in status bar; use `pnl_source` label (Profit / Journal / Clear).
+
+#### `GET /integrations/profit/execution-ladder` (14.1)
+
+Resolves active execution rung without requiring ProfitDLL.
+
+**Env:** `PROFIT_EXEC_LADDER=auto` · `PROFIT_NTSL_ON_EXECUTE=true` · `PROFIT_MANUAL_AUTO_COPY=true`
+
+```json
+{
+  "configured": "auto",
+  "active_mode": "paper_stub",
+  "paper_trading_mode": true,
+  "dll_found": false,
+  "dll_loadable": false,
+  "rungs": [
+    {"id": "paper_stub", "label": "Paper + stub", "active": true, "available": true},
+    {"id": "manual_outbox", "label": "Manual outbox", "active": false, "available": true},
+    {"id": "ntsl_export", "label": "NTSL export", "active": false, "available": true},
+    {"id": "dll_auto", "label": "DLL auto", "active": false, "available": false}
+  ],
+  "ntsl_dir": "exports/ntsl",
+  "outbox_dir": "data/profit_outbox",
+  "doc": "/docs/PROFIT_EXECUTION_LADDER.md"
+}
+```
+
+`active_mode`: `paper_stub` | `manual_outbox` | `ntsl_export` | `dll_auto` (never `auto`).
+
+CLI: `python scripts/profit_manual_assist.py` — prints ladder status + latest outbox hint.
 
 #### `GET /setup/status` (3.0.1)
 
@@ -403,7 +433,12 @@ Worker: show ideal vs expected per leg in confirm modal before execute.
   "count": 6,
   "read_only": true,
   "auto_trade": false,
-  "disclaimer": "Read-only signals — never auto-trade from social feeds."
+  "disclaimer": "Read-only signals — never auto-trade from social feeds.",
+  "sources": ["rss", "twitter"],
+  "sources_active": ["rss", "twitter"],
+  "fetched_at": "2026-06-16T12:05:00Z",
+  "freshness_minutes": 5,
+  "session": {"market": "b3_futures", "session_status": "open", "session_label": "B3 day"}
 }
 ```
 

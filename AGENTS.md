@@ -134,22 +134,13 @@ Exit `0` = API + Streamlit healthy at http://localhost:8501
 
 **Done (11.0-rc pack):** W11.4 sector strip on Desk · A11.8 NTSL pack version + store diff · A11.9 options refresh API · A11.11 motor queue 12 + core17 universe.
 
-**Next / backlog:**
+**Next / backlog (code-complete — manual gates only):**
 
 ```
-A11.7  Replay top archaeology symbols — POST /replay/archaeology/batch — **DONE**
-A12.8  Clear API journal sync — POST /journal/sync/clear — **DONE**
-A4.20  GET /quotes/futures — **DONE**
-A11.12 Patch proposals weighted by archaeology win rate — **DONE**
-A11.14 bridge /health account_profile + is_paper — **DONE** (stub + dll bridge)
-A4.21  RSS/Twitter signals API — exists GET /signals/social; polish only
-A11.16 futures_contract_sizer — GET /futures/sizer/{symbol} — **DONE**
-A11.17 WIN front-month in scanner quotes — **DONE**
-A11.18 F1–F5 structure_type + replay hooks — **DONE**
-Profit execution ladder — GET /integrations/profit/execution-ladder — **DONE**
+Blocked on Filipe / external: Phase C gate (`docs/PHASE_C_GATE.md`), ≥9k archaeology rows, 50 NTSL indexed, DLL ctypes live orders (12.0-rc), live crypto.
 ```
 
-Blocked on Filipe / external: Phase C gate, DLL ctypes orders (12.0-rc), live crypto.
+**Shipped (11.0 GA software — `8f5fecc`):** A11.7 replay · A12.8 Clear sync · A4.20 futures · A11.12 patch weighting · A11.14 bridge health · A4.21 social signals · A11.16 sizer · A11.17 WIN roll · A11.18 F1–F5 · profit execution ladder · session prep.
 
 ### Worker (Agent 2) — **parallel with every A12.x / A11.x pick**
 
