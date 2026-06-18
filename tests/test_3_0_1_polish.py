@@ -20,7 +20,7 @@ def client(monkeypatch):
 
 
 def test_version_is_4_0_beta():
-    assert __version__ == "13.0.0"
+    assert __version__ == "14.0.0-alpha"
 
 
 def test_normalize_drawdown_pct_missing():

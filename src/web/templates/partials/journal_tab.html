@@ -1,0 +1,153 @@
+{% if desk %}
+{% set f = filters or desk.filters or {} %}
+{% set rk = f.range_key or desk.range_key or '30d' %}
+<div class="bb-journal-tab" id="journal-tab-root">
+    <header class="bb-journal-head" style="display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:0.5rem;margin-bottom:0.65rem;">
+        <h2 class="bb-journal-title" style="margin:0;font-size:1rem;letter-spacing:0.02em;">Trade Journal</h2>
+        <div class="bb-journal-head-actions" style="display:flex;gap:0.35rem;align-items:center;">
+            {% if desk.paper_mode %}
+            <span class="bb-pill">PAPER</span>
+            {% else %}
+            <span class="bb-pill bb-pill-live">LIVE</span>
+            {% endif %}
+            <a class="bb-btn-secondary" href="/api/v1/journal/export.csv" download="arbitragem_journal.csv">Export CSV</a>
+        </div>
+    </header>
+
+    <div class="bb-journal-filters">
+        <button type="button"
+                class="bb-journal-filter{% if rk == 'today' %} is-active{% endif %}"
+                hx-get="/board/partials/journal-tab?range=today{% if f.symbol %}&symbol={{ f.symbol }}{% endif %}{% if f.setup_tag %}&tag={{ f.setup_tag }}{% endif %}"
+                hx-target="#journal-panel"
+                hx-swap="innerHTML">Today</button>
+        <button type="button"
+                class="bb-journal-filter{% if rk == '5d' %} is-active{% endif %}"
+                hx-get="/board/partials/journal-tab?range=5d{% if f.symbol %}&symbol={{ f.symbol }}{% endif %}{% if f.setup_tag %}&tag={{ f.setup_tag }}{% endif %}"
+                hx-target="#journal-panel"
+                hx-swap="innerHTML">5D</button>
+        <button type="button"
+                class="bb-journal-filter{% if rk not in ('today', '5d') %} is-active{% endif %}"
+                hx-get="/board/partials/journal-tab?days=30{% if f.symbol %}&symbol={{ f.symbol }}{% endif %}{% if f.setup_tag %}&tag={{ f.setup_tag }}{% endif %}"
+                hx-target="#journal-panel"
+                hx-swap="innerHTML">30D</button>
+        <input type="search"
+               class="bb-journal-symbol-input"
+               placeholder="Symbol"
+               value="{{ f.symbol or '' }}"
+               hx-get="/board/partials/journal-tab"
+               hx-trigger="keyup changed delay:400ms, search"
+               hx-target="#journal-panel"
+               hx-swap="innerHTML"
+               hx-include="[name='range'],[name='tag']"
+               name="symbol">
+        <input type="search"
+               class="bb-journal-symbol-input"
+               placeholder="Setup tag"
+               value="{{ f.setup_tag or '' }}"
+               hx-get="/board/partials/journal-tab"
+               hx-trigger="keyup changed delay:400ms, search"
+               hx-target="#journal-panel"
+               hx-swap="innerHTML"
+               hx-include="[name='range'],[name='symbol']"
+               name="tag">
+        <input type="hidden" name="range" value="{% if rk == 'today' %}today{% elif rk == '5d' %}5d{% else %}30d{% endif %}">
+    </div>
+
+    <div class="bb-journal-hero">
+        <div class="bb-glass bb-journal-stat">
+            <div class="bb-journal-stat-label">Day P&amp;L</div>
+            <div class="bb-journal-stat-value bb-hero-pnl">R$ {{ "%.2f"|format(desk.summary.day_pnl_brl or 0) }}</div>
+        </div>
+        <div class="bb-glass bb-journal-stat">
+            <div class="bb-journal-stat-label">Net</div>
+            <div class="bb-journal-stat-value">R$ {{ "%.2f"|format(desk.summary.net_pnl_brl) }}</div>
+        </div>
+        <div class="bb-glass bb-journal-stat">
+            <div class="bb-journal-stat-label">Trades</div>
+            <div class="bb-journal-stat-value">{{ desk.summary.trade_count }}</div>
+        </div>
+        <div class="bb-glass bb-journal-stat">
+            <div class="bb-journal-stat-label">Win rate</div>
+            <div class="bb-journal-stat-value">{{ desk.summary.win_rate_pct }}%</div>
+        </div>
+        <div class="bb-glass bb-journal-stat">
+            <div class="bb-journal-stat-label">Expectancy</div>
+            <div class="bb-journal-stat-value">R$ {{ "%.2f"|format(desk.summary.expectancy_brl) }}</div>
+        </div>
+        <div class="bb-glass bb-journal-stat">
+            <div class="bb-journal-stat-label">Capital</div>
+            <div class="bb-journal-stat-value">R$ {{ "%.0f"|format(desk.capital_brl) }}</div>
+        </div>
+    </div>
+
+    {% if desk.win_archaeology and desk.win_archaeology.top_win_series %}
+    <div class="bb-glass bb-glass-subtle" style="padding:0.55rem 0.65rem;margin-bottom:0.75rem;">
+        <strong>WIN archaeology</strong>
+        <span class="bb-muted"> · {{ desk.win_archaeology.win_trade_count or 0 }} historical WIN fills</span>
+        <div class="bb-tj-win-tags" style="margin-top:0.35rem;">
+            {% for sym, n in desk.win_archaeology.top_win_series %}
+            <span class="bb-pill" title="{{ n }} trades">{{ sym }}</span>
+            {% endfor %}
+        </div>
+    </div>
+    {% endif %}
+
+    <div class="bb-glass bb-journal-arch-slot"
+         hx-get="/board/partials/archaeology"
+         hx-trigger="load"
+         hx-swap="innerHTML">
+        <span class="bb-muted" style="padding:0.5rem;display:block;">Loading archaeology…</span>
+    </div>
+
+    <section class="bb-glass bb-journal-blotter bb-accent-rail">
+        <div class="bb-tj-head" style="padding:0.5rem 0.65rem 0;">
+            <strong>Blotter</strong>
+            <span class="bb-muted">{{ desk.blotter|length }} rows</span>
+        </div>
+        <div class="bb-tj-blotter-wrap">
+            <table class="bb-tj-table">
+                <thead>
+                    <tr>
+                        <th>Time</th><th>Sym</th><th>Side</th><th>Qty</th>
+                        <th>Price</th><th>Fees</th><th>Net</th><th>G</th><th>Note</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for row in desk.blotter %}
+                    <tr>
+                        <td>{{ row.time }}</td>
+                        <td><span class="bb-desk-sym">{{ row.symbol }}</span></td>
+                        <td>{{ row.side|upper }}</td>
+                        <td>{{ row.qty }}</td>
+                        <td style="font-family:var(--bb14-mono);">{{ "%.2f"|format(row.price) }}</td>
+                        <td>{{ "%.2f"|format(row.fees_brl) }}</td>
+                        <td class="{% if row.net_brl >= 0 %}bb-pos{% else %}bb-neg{% endif %}" style="font-family:var(--bb14-mono);">
+                            {{ "%.2f"|format(row.net_brl) }}
+                        </td>
+                        <td><span class="bb-grade-{{ row.grade|lower }}">{{ row.grade }}</span></td>
+                        <td class="bb-muted">{{ row.note or '—' }}</td>
+                    </tr>
+                    {% else %}
+                    <tr><td colspan="9" class="bb-muted">No fills yet — motor + paper auto will populate.</td></tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </section>
+
+    <details class="bb-glass bb-journal-motor" open>
+        <summary style="padding:0.5rem 0.65rem;cursor:pointer;font-weight:600;">Motor log (today)</summary>
+        <ul class="bb-tj-log" style="margin:0;padding:0.5rem 0.65rem 0.65rem 1.5rem;">
+            {% for row in desk.motor_log %}
+            <li>
+                <span class="bb-muted">{{ row.time }}</span>
+                <span class="bb-pill" style="font-size:0.6rem;">{{ row.phase }}</span>
+                {{ row.message }}
+            </li>
+            {% else %}
+            <li class="bb-muted">No motor entries today.</li>
+            {% endfor %}
+        </ul>
+    </details>
+</div>
+{% endif %}

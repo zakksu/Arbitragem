@@ -26,7 +26,7 @@ def client(monkeypatch, tmp_path):
 def test_version_13():
     from src import __version__
 
-    assert __version__ == "13.0.0"
+    assert __version__ == "14.0.0-alpha"
 
 
 def test_core5_universe():

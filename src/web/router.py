@@ -260,10 +260,22 @@ def _api_error_detail(resp: httpx.Response) -> str:
 @router.get("/board", response_class=HTMLResponse)
 async def board_page(request: Request):
     settings = get_settings()
+    from src.services.board_layout import BOARD_TABS, board_tab_metadata
+
+    active_tab = (request.query_params.get("tab") or "desk").strip().lower()
+    if active_tab not in {t["id"] for t in BOARD_TABS}:
+        active_tab = "desk"
+
     return TEMPLATES.TemplateResponse(
         request,
         "board.html",
-        {"golden_path_mode": settings.golden_path_mode, "low_ram_mode": settings.low_ram_enabled},
+        {
+            "golden_path_mode": settings.golden_path_mode,
+            "low_ram_mode": settings.low_ram_enabled,
+            "board_tab_meta": board_tab_metadata(),
+            "board_tabs": BOARD_TABS,
+            "active_tab": active_tab,
+        },
     )
 
 
@@ -279,6 +291,47 @@ async def trade_journal_partial(request: Request):
         request,
         "partials/trade_journal_desk.html",
         {"desk": desk},
+    )
+
+
+@router.get("/board/partials/journal-tab", response_class=HTMLResponse)
+async def journal_tab_partial(request: Request):
+    """Full journal tab — filters + blotter (14.0-alpha)."""
+    params = request.query_params
+    range_key = params.get("range") or params.get("range_key")
+    symbol = params.get("symbol")
+    setup_tag = params.get("setup_tag") or params.get("tag")
+    days = int(params.get("days", "30") or 30)
+
+    def _desk(session):
+        from src.services.trade_journal_desk import build_trade_journal_desk
+
+        return build_trade_journal_desk(
+            session,
+            days=days,
+            range_key=range_key,
+            symbol=symbol,
+            setup_tag=setup_tag,
+        )
+
+    desk = await _to_thread(_with_db, _desk)
+    return TEMPLATES.TemplateResponse(
+        request,
+        "partials/journal_tab.html",
+        {"desk": desk, "filters": desk.get("filters", {}), "blotter_limit": 200},
+    )
+
+
+@router.get("/board/partials/pnl-tab", response_class=HTMLResponse)
+async def pnl_tab_partial(request: Request):
+    """PnL tab — intraday + projection cards (14.0-beta)."""
+    from src.services.pnl_intraday import build_pnl_tab_payload
+
+    payload = await _to_thread(_with_db, build_pnl_tab_payload)
+    return TEMPLATES.TemplateResponse(
+        request,
+        "partials/pnl_tab.html",
+        payload,
     )
 
 
@@ -1172,6 +1225,27 @@ async def trader_desk_stream(request: Request):
             payload = json.dumps({"html": html})
             yield f"event: desk\ndata: {payload}\n\n"
             await asyncio.sleep(interval)
+
+    return StreamingResponse(event_generator(), media_type="text/event-stream")
+
+
+@router.get("/board/stream/pnl")
+async def pnl_stream(request: Request):
+    """SSE — intraday PnL JSON every 5s (14.0-beta)."""
+    import asyncio
+    import json
+
+    from starlette.responses import StreamingResponse
+
+    from src.services.pnl_intraday import build_pnl_tab_payload
+
+    async def event_generator():
+        while True:
+            if await request.is_disconnected():
+                break
+            payload = await _to_thread(_with_db, build_pnl_tab_payload)
+            yield f"event: pnl\ndata: {json.dumps(payload)}\n\n"
+            await asyncio.sleep(5.0)
 
     return StreamingResponse(event_generator(), media_type="text/event-stream")
 

@@ -1290,10 +1290,54 @@ def replay_batch_run(
 
 
 @router.get("/journal/desk")
-def journal_desk(days: int = 30, db: Session = Depends(get_db)):
+def journal_desk(
+    days: int = 30,
+    range_key: str | None = None,
+    symbol: str | None = None,
+    setup_tag: str | None = None,
+    db: Session = Depends(get_db),
+):
     from src.services.trade_journal_desk import build_trade_journal_desk
 
-    return build_trade_journal_desk(db, days=min(max(days, 1), 365))
+    return build_trade_journal_desk(
+        db,
+        days=min(max(days, 1), 365),
+        range_key=range_key,
+        symbol=symbol,
+        setup_tag=setup_tag,
+    )
+
+
+@router.patch("/trades/{trade_id}/note")
+def patch_trade_journal_note(trade_id: int, payload: dict, db: Session = Depends(get_db)):
+    from src.services.trade_journal_desk import patch_trade_note
+
+    note = payload.get("note") if isinstance(payload, dict) else None
+    try:
+        return patch_trade_note(db, trade_id, note)
+    except ValueError as exc:
+        raise HTTPException(404, str(exc)) from exc
+
+
+@router.get("/pnl/intraday")
+def pnl_intraday(db: Session = Depends(get_db)):
+    from src.services.pnl_intraday import build_intraday_pnl
+
+    return build_intraday_pnl(db)
+
+
+@router.get("/pnl/projection")
+def pnl_projection(db: Session = Depends(get_db)):
+    from src.services.pnl_intraday import build_pnl_projection
+
+    return build_pnl_projection(db)
+
+
+@router.get("/board/tabs")
+def board_tabs():
+    from src.services.board_layout import board_tab_metadata
+
+    return board_tab_metadata()
 
 
 @router.get("/journal/export.csv")

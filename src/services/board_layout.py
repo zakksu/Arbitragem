@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from typing import Any
+
 from sqlalchemy.orm import Session
 
 from src.models import BoardLayout
@@ -15,6 +17,41 @@ DEFAULT_PRESETS: dict[str, dict] = {
     "options_hedge": {"watch_w": "200px", "board_w": "1.2fr", "ideas_w": "340px"},
     "pairs": {"watch_w": "240px", "board_w": "1fr", "ideas_w": "280px"},
 }
+
+# Release 14.0 — three-tab cockpit (desk / journal / pnl)
+BOARD_TABS: list[dict[str, Any]] = [
+    {
+        "id": "desk",
+        "label": "Desk",
+        "route": "/board",
+        "partial": None,
+        "description": "Live radar, watchlist, ideas, trade product",
+    },
+    {
+        "id": "journal",
+        "label": "Journal",
+        "route": "/board?tab=journal",
+        "partial": "/board/partials/journal-tab",
+        "description": "Blotter, grades, motor log, archaeology",
+    },
+    {
+        "id": "pnl",
+        "label": "PnL",
+        "route": "/board?tab=pnl",
+        "partial": "/board/partials/pnl-tab",
+        "description": "Intraday curve, projection, lane split",
+    },
+]
+
+
+def board_tab_metadata() -> dict[str, Any]:
+    """Tab routing metadata for Worker tab bar (A14.1)."""
+    return {
+        "default_tab": "desk",
+        "tabs": BOARD_TABS,
+        "storage_key": "bb_board_tab",
+        "query_param": "tab",
+    }
 
 
 class BoardLayoutService:

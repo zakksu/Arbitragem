@@ -1,0 +1,58 @@
+{% set intra = intraday or {} %}
+{% set proj = projection or {} %}
+{% set lanes = intra.lanes or {} %}
+{% set pts = intra.points or intra.buckets or [] %}
+{% set day_pnl = intra.day_pnl_brl or proj.day_pnl_brl or 0 %}
+{% set cash = lanes.cash or 0 %}
+{% set win = lanes.win or 0 %}
+{% set opt = lanes.opt or 0 %}
+{% set lane_total = (cash|abs + win|abs + opt|abs) or 1 %}
+<div class="bb-pnl-tab" id="pnl-tab-root"
+     data-stop="{{ risk.tightest_loss_limit_brl if risk else '' }}"
+     data-proj-low="{{ proj.projected_eod_low_brl or '' }}"
+     data-proj-high="{{ proj.projected_eod_high_brl or '' }}">
+    <div class="bb-glass bb-pnl-hero">
+        <p class="bb-muted" style="margin:0 0 0.35rem;text-transform:uppercase;letter-spacing:0.08em;font-size:0.62rem;">Day P&amp;L</p>
+        <div class="bb-pnl-hero-value {% if day_pnl >= 0 %}bb-pnl-pos{% else %}bb-pnl-neg{% endif %}" id="pnl-hero-value">
+            R$ {{ "%.2f"|format(day_pnl) }}
+        </div>
+        {% if risk %}
+        <p class="bb-muted" style="font-size:0.68rem;margin:0.35rem 0 0;">
+            Daily limit R$ {{ "%.0f"|format(risk.tightest_loss_limit_brl or risk.default_loss_limit_brl or 0) }}
+            · status <strong>{{ risk.status }}</strong>
+        </p>
+        {% endif %}
+    </div>
+
+    <div class="bb-glass bb-pnl-chart-wrap" style="margin-top:0.75rem;padding:0.5rem;">
+        <div class="bb-pnl-chart-head" style="display:flex;justify-content:space-between;align-items:center;margin-bottom:0.35rem;">
+            <strong style="font-size:0.72rem;">Intraday equity</strong>
+            <span class="bb-muted" style="font-size:0.62rem;">SSE · 5s</span>
+        </div>
+        <svg class="bb-pnl-chart" id="pnl-intraday-chart" viewBox="0 0 640 200" preserveAspectRatio="none" style="width:100%;height:200px;display:block;"></svg>
+        <p class="bb-muted bb-pnl-proj-label" style="font-size:0.65rem;margin:0.35rem 0 0;">
+            {% if proj.label %}{{ proj.label }}{% else %}Model estimate{% endif %}
+            · EOD band R$ {{ "%.2f"|format(proj.projected_eod_low_brl or 0) }}
+            – {{ "%.2f"|format(proj.projected_eod_high_brl or 0) }}
+            (mid {{ "%.2f"|format(proj.projected_eod_brl or 0) }})
+        </p>
+    </div>
+
+    <div class="bb-pnl-lanes">
+        <div class="bb-glass bb-pnl-lane">
+            <div class="bb-muted" style="font-size:0.62rem;text-transform:uppercase;">CASH</div>
+            <div style="font-family:var(--bb14-mono);font-size:0.95rem;" id="pnl-lane-cash">R$ {{ "%.2f"|format(cash) }}</div>
+            <div class="bb-pnl-lane-bar"><div class="bb-pnl-lane-fill" style="width:{{ (cash|abs / lane_total * 100)|round(1) }}%;"></div></div>
+        </div>
+        <div class="bb-glass bb-pnl-lane">
+            <div class="bb-muted" style="font-size:0.62rem;text-transform:uppercase;">WIN</div>
+            <div style="font-family:var(--bb14-mono);font-size:0.95rem;" id="pnl-lane-win">R$ {{ "%.2f"|format(win) }}</div>
+            <div class="bb-pnl-lane-bar"><div class="bb-pnl-lane-fill" style="width:{{ (win|abs / lane_total * 100)|round(1) }}%;background:#60a5fa;"></div></div>
+        </div>
+        <div class="bb-glass bb-pnl-lane">
+            <div class="bb-muted" style="font-size:0.62rem;text-transform:uppercase;">OPT</div>
+            <div style="font-family:var(--bb14-mono);font-size:0.95rem;" id="pnl-lane-opt">R$ {{ "%.2f"|format(opt) }}</div>
+            <div class="bb-pnl-lane-bar"><div class="bb-pnl-lane-fill" style="width:{{ (opt|abs / lane_total * 100)|round(1) }}%;background:#a78bfa;"></div></div>
+        </div>
+    </div>
+</div>

@@ -16,7 +16,7 @@ from src.services.crypto_universe import load_crypto_universe, symbol_list
 
 
 def test_version_is_4_2_alpha():
-    assert __version__ == "13.0.0"
+    assert __version__ == "14.0.0-alpha"
 
 
 @pytest.fixture

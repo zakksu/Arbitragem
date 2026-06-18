@@ -704,7 +704,31 @@ Response includes `autonomous_ops` and wizard step `autonomous_ops`:
 **Scripts:**
 
 - `python scripts/test_worker.py --once` — writes `data/.dev/test_status.json`
-- `python scripts/status_tick.py --json` — includes `golden_path`, `symbol_factory`, `ram_mb`, `live_radar`
+- `python scripts/status_tick.py --json` — includes `golden_path`, `symbol_factory`, `ram_mb`, `live_radar`, `phase_c`, `autonomy_gates`
+
+### Autonomy motor + Phase C (11.0)
+
+| Endpoint | Method | Purpose |
+|----------|--------|---------|
+| `/api/v1/orchestrator/run` | POST | One paper motor cycle (scan + autonomy confirm/execute + journal FILL) |
+| `/api/v1/orchestrator/status` | GET | Motor session, sleeves, last autonomy actions |
+| `/api/v1/autonomy/status` | GET | Autonomy engine last run + sleeve map |
+| `/api/v1/autonomy/gates` | GET | `golden_path` + `phase_c` + `paper_validation` snapshot |
+| `/api/v1/phase-c/status` | GET | Phase C criteria (5 paper days, 20 fills, motor error rate) |
+
+**Scripts (dev — no manual B3 session required when `PAPER_TRADING_MODE=true`):**
+
+```bash
+python scripts/autonomy_autopilot.py --cycles 10
+python scripts/autonomy_autopilot.py --cycles 5 --fast-track-days 5   # needs AUTONOMY_FAST_TRACK=true
+python scripts/autonomy_loop.py --max-cycles 20
+python scripts/paper_motor_now.py   # POST orchestrator via running API
+python scripts/autonomy_today.py    # scan + S1 replay + one autonomy cycle
+```
+
+**Structure types S1–S5** (`stock_scalp_vwap` … `pulse_scalp`) map to replay templates `s1_vwap_reclaim` … `s5_pulse` via `structure_types.replay_strategy_for_structure()`.
+
+**Env flags:** `ORCHESTRATOR_SCHEDULER_ENABLED=true` (background tick), `AUTONOMY_FAST_TRACK=true` (spread journal across weekdays for Phase C dev only — not production sign-off).
 
 **Streamlit slim:** `GOLDEN_PATH_MODE=true` or `STREAMLIT_SLIM_MODE=true` limits nav to Home, Performance, Journal, Settings.
 
@@ -821,4 +845,28 @@ Theory cards come from `build_theory_cards()` → FTS `search_chunks()` on `data
 
 `profile_snapshot()` includes `knowledge_enabled` for `/ops/memory` and status tick.
 
+### Release 14.0 — 3-tab cockpit (alpha/beta)
+
+#### Tab metadata (A14.1)
+
+| Endpoint | Purpose |
+|----------|---------|
+| `GET /api/v1/board/tabs` | `{ default_tab, tabs: [{id, label, route, partial}] }` |
+
+#### PnL (A14.2–A14.4)
+
+| Endpoint | Purpose |
+|----------|---------|
+| `GET /api/v1/pnl/intraday` | Today buckets `{ts, cumulative_brl, fees_brl}` + lane split CASH/WIN/OPT |
+| `GET /api/v1/pnl/projection` | Expectancy × remaining trades estimate (`model: expectancy_estimate`) |
+| `GET /board/stream/pnl` | SSE `event: pnl` every 5s — same payload as tab build |
+
+#### Journal tab
+
+| Endpoint | Purpose |
+|----------|---------|
+| `GET /board/partials/journal-tab` | Full journal UI; query `range=today\|5d`, `symbol`, `setup_tag` |
+| `GET /api/v1/journal/desk` | JSON desk; same filter query params |
+| `PATCH /api/v1/trades/{id}/note` | Body `{ "note": "..." }` — journal note edit |
+| `GET /board/partials/pnl-tab` | PnL tab partial (Worker styles in W14.5+) |
 

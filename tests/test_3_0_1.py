@@ -69,7 +69,7 @@ def test_normalize_drawdown_pct_missing():
 def test_version_is_4_0_beta():
     from src import __version__
 
-    assert __version__ == "13.0.0"
+    assert __version__ == "14.0.0-alpha"
 
 
 def test_bootstrap_includes_profit_bridge_flag(client):

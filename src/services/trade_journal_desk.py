@@ -50,24 +50,55 @@ def _grade_trade(pnl: float | None, fees: float) -> str:
     return "F"
 
 
-def build_trade_journal_desk(session: Session, *, days: int = 30) -> dict[str, Any]:
+def build_trade_journal_desk(
+    session: Session,
+    *,
+    days: int = 30,
+    range_key: str | None = None,
+    symbol: str | None = None,
+    setup_tag: str | None = None,
+) -> dict[str, Any]:
     """Aggregate trades, ideas, motor log, archaeology for board partial."""
     settings = get_settings()
-    since = datetime.combine((datetime.utcnow() - timedelta(days=days)).date(), time.min)
-    trades = (
-        session.query(Trade)
-        .filter(Trade.executed_at >= since)
-        .order_by(Trade.executed_at.desc())
-        .limit(200)
-        .all()
-    )
-    ideas = (
-        session.query(TradeIdea)
-        .filter(TradeIdea.created_at >= since)
-        .order_by(TradeIdea.created_at.desc())
-        .limit(100)
-        .all()
-    )
+    now = datetime.utcnow()
+    if range_key == "today":
+        since = datetime.combine(now.date(), time.min)
+        days = 1
+    elif range_key == "5d":
+        since = now - timedelta(days=5)
+        days = 5
+    else:
+        since = datetime.combine((now - timedelta(days=days)).date(), time.min)
+
+    q = session.query(Trade).filter(Trade.executed_at >= since)
+    if symbol:
+        q = q.filter(Trade.symbol == symbol.strip().upper())
+    trades = q.order_by(Trade.executed_at.desc()).limit(200).all()
+
+    tag_symbols: set[str] | None = None
+    if setup_tag:
+        tag = setup_tag.strip().lower()
+        tagged = (
+            session.query(TradeIdea)
+            .filter(TradeIdea.created_at >= since)
+            .order_by(TradeIdea.created_at.desc())
+            .limit(200)
+            .all()
+        )
+        tag_symbols = {
+            i.symbol.upper()
+            for i in tagged
+            if any(str(t).lower() == tag for t in (i.rationale_tags or []))
+        }
+        if tag_symbols:
+            trades = [t for t in trades if t.symbol.upper() in tag_symbols]
+
+    ideas_q = session.query(TradeIdea).filter(TradeIdea.created_at >= since)
+    if symbol:
+        ideas_q = ideas_q.filter(TradeIdea.symbol == symbol.strip().upper())
+    ideas = ideas_q.order_by(TradeIdea.created_at.desc()).limit(100).all()
+    if setup_tag and tag_symbols is not None:
+        ideas = [i for i in ideas if i.symbol.upper() in tag_symbols]
     truth = resolve_day_pnl(session)
     motor = list_today(session, limit=60)
 
@@ -115,6 +146,12 @@ def build_trade_journal_desk(session: Session, *, days: int = 30) -> dict[str, A
     n = len(trades) or 1
     return {
         "days": days,
+        "range_key": range_key or f"{days}d",
+        "filters": {
+            "symbol": symbol.upper() if symbol else None,
+            "setup_tag": setup_tag,
+            "range_key": range_key,
+        },
         "capital_brl": settings.paper_capital_brl if settings.paper_trading_mode else settings.live_capital_brl,
         "paper_mode": settings.paper_trading_mode,
         "summary": {
@@ -169,3 +206,19 @@ def export_journal_csv(session: Session, *, days: int = 90) -> str:
             ]
         )
     return buf.getvalue()
+
+
+def patch_trade_note(session: Session, trade_id: int, note: str | None) -> dict[str, Any]:
+    """Update journal note on a trade row (14.0 GA journal pro)."""
+    trade = session.get(Trade, trade_id)
+    if not trade:
+        raise ValueError("Trade not found")
+    trade.journal_note = (note or "").strip()[:2000] or None
+    session.commit()
+    session.refresh(trade)
+    return {
+        "id": trade.id,
+        "symbol": trade.symbol,
+        "journal_note": trade.journal_note,
+        "ok": True,
+    }
