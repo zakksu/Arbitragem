@@ -186,11 +186,16 @@ def _max_pain_from_chain(chain: dict) -> dict:
 
 @app.get("/health")
 def health():
+    import os
+
+    paper = os.getenv("PAPER_TRADING_MODE", "true").lower() in ("1", "true", "yes")
+    account_profile = os.getenv("PROFIT_LIVE_STYLE", "day") or "day"
     return {
         "status": "ok",
         "mode": "stub",
         "dll_mode": "stub",
-        "is_paper": True,
+        "is_paper": paper,
+        "account_profile": account_profile,
         "version": "12.0.0",
         "symbols": "core14+bova",
     }

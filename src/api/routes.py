@@ -240,6 +240,20 @@ def sync_journal(db: Session = Depends(get_db)):
     return JournalService(db).sync_all_sources()
 
 
+@router.post("/journal/sync/clear")
+def sync_journal_clear(db: Session = Depends(get_db)):
+    """Import today's Clear API fills into journal (A12.8)."""
+    svc = JournalService(db)
+    configured = svc.clear.is_configured()
+    imported = svc.sync_trades_from_clear()
+    return {
+        "clear_configured": configured,
+        "imported_clear": imported,
+        "source": "clear",
+        "ok": True,
+    }
+
+
 @router.get("/scanner/results", response_model=list[ScanResultResponse])
 def list_scan_results(
     limit: int = 200,
@@ -416,10 +430,13 @@ def execute_trade_idea(idea_id: int, db: Session = Depends(get_db)):
     from src.services.paper_execution import estimate_paper_fills
 
     try:
-        idea = TradeIdeaService(db).execute_idea(idea_id)
+        svc = TradeIdeaService(db)
+        idea = svc.execute_idea(idea_id)
     except ValueError as exc:
         raise HTTPException(400, str(exc)) from exc
-    payload = TradeIdeaService(db).to_dict(idea)
+    payload = svc.to_dict(idea)
+    if svc._last_execution_assist:
+        payload["execution_assist"] = svc._last_execution_assist
     if get_settings().paper_trading_mode:
         payload["paper_fill_preview"] = estimate_paper_fills(payload)
     payload["gates"] = build_idea_gates(db, idea_id)
@@ -916,6 +933,13 @@ def profit_account_profile():
     }
 
 
+@router.get("/integrations/profit/execution-ladder")
+def profit_execution_ladder():
+    from src.services.profit_execution_ladder import build_ladder_status
+
+    return build_ladder_status()
+
+
 @router.get("/integrations/profit/test")
 def test_profit_bridge():
     client = get_profit_client()
@@ -1144,6 +1168,20 @@ def universe_futures():
     }
 
 
+@router.get("/quotes/futures")
+def futures_quotes_api():
+    """WIN/WDO quotes with B3 session badges (4.1 A4.20)."""
+    from src.services.futures_quotes import build_futures_watchlist_rows, futures_session_status
+
+    rows = build_futures_watchlist_rows()
+    session = futures_session_status()
+    return {
+        "session": session,
+        "count": len(rows),
+        "quotes": rows,
+    }
+
+
 @router.get("/signals/social")
 def social_signals(limit: int = 12):
     from src.config import get_settings
@@ -1335,6 +1373,26 @@ def replay_batch_run(
         symbols=symbols,
         auto_promote=bool(payload.get("auto_promote", True)),
         speed=float(payload.get("speed", 10.0)),
+    )
+
+
+@router.post("/replay/archaeology/batch")
+def replay_archaeology_batch(
+    payload: dict = Body(default_factory=dict),
+    db: Session = Depends(get_db),
+):
+    """Replay top archaeology symbols — VALE3, WIN roll, etc. (A11.7)."""
+    from src.services.archaeology_replay import run_archaeology_replay_batch
+
+    symbols = payload.get("symbols")
+    if symbols is not None and not isinstance(symbols, list):
+        raise HTTPException(400, "symbols must be a list")
+    return run_archaeology_replay_batch(
+        db,
+        limit=int(payload.get("limit", 10)),
+        speed=float(payload.get("speed", 10.0)),
+        auto_promote=bool(payload.get("auto_promote", False)),
+        symbols=symbols,
     )
 
 
@@ -1818,6 +1876,30 @@ def ops_live_radar(db: Session = Depends(get_db)):
     from src.services.live_radar import build_live_radar
 
     return build_live_radar(db)
+
+
+@router.get("/ops/profit-bridge/health")
+def ops_profit_bridge_health():
+    """Profit bridge GET /health passthrough — dll_mode, is_paper (A11.14)."""
+    client = get_profit_client()
+    health = client.get_health()
+    if not health:
+        return {
+            "ok": False,
+            "reachable": client.is_available(),
+            "dll_mode": None,
+            "is_paper": None,
+        }
+    mode = health.get("dll_mode") or health.get("mode")
+    return {
+        "ok": True,
+        "reachable": True,
+        "dll_mode": mode,
+        "is_paper": health.get("is_paper"),
+        "account_profile": health.get("account_profile"),
+        "version": health.get("version"),
+        "status": health.get("status"),
+    }
 
 
 @router.get("/symbol-factory/status")

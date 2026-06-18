@@ -34,10 +34,10 @@ Work **together** on the `Arbitragem` folder. Split by layer, not by “who’s 
 |------------|----------------------------|-------------|--------|
 | A12.7 paper fills `fees_brl` from `clear_cost_model` | W12.3 trade product margin + fees row (100 lot) | no — extend `estimate_paper_fills` | **DONE** |
 | A11.3 `GET /archaeology/summary` | W11.4 layout preset **archaeology** (timeline hero) | no — partial exists | **DONE** |
-| A12.8 Clear API trade sync (optional, `CLEAR_API_KEY`) | W12.3 journal row shows synced Clear fill | no | backlog |
+| A12.8 Clear API trade sync (optional, `CLEAR_API_KEY`) | W12.3 journal row shows synced Clear fill | no | **DONE** |
 | A11.1 FIFO P&L on archaeology rows | A11.5 symbol panel “your history” chip | no | **DONE** |
 | A11.6 ingest insights → knowledge RAG | W11.1 Strategy Lab strip in hybrid layout | yes (static cards) | **DONE** |
-| A11.14 bridge `/health` `dll_mode` + `is_paper` | W11.7 outbox ticker polish (copy hint) | no | polish |
+| A11.14 bridge `/health` `dll_mode` + `is_paper` | W11.7 outbox ticker polish (copy hint) | no | **DONE** |
 | A11.10 `filipe_core17` scanner mode | W11.4 Core17 sector strip | no | **DONE** |
 
 Full 11.0 tables: [docs/RELEASE_11.0_SCOPE.md](docs/RELEASE_11.0_SCOPE.md).
@@ -137,10 +137,12 @@ Exit `0` = API + Streamlit healthy at http://localhost:8501
 **Next / backlog:**
 
 ```
-A12.8  Clear API trade sync (optional, CLEAR_API_KEY) — pairs W12.3 journal sync row
-A4.20  WIN/WDO quotes API — pairs W4.19 futures row styling
-A4.21  RSS/Twitter signals API — pairs W4.20 pulse social chips
-A11.14 bridge /health dll_mode + is_paper — pairs W11.7 outbox polish
+A11.7  Replay top archaeology symbols — POST /replay/archaeology/batch — **DONE**
+A12.8  Clear API journal sync — POST /journal/sync/clear — **DONE**
+A4.20  GET /quotes/futures — **DONE**
+A11.12 Patch proposals weighted by archaeology win rate — **DONE**
+A11.14 bridge /health account_profile + is_paper — **DONE** (stub + dll bridge)
+A4.21  RSS/Twitter signals API — exists GET /signals/social; polish only
 ```
 
 Blocked on Filipe / external: Phase C gate, DLL ctypes orders (12.0-rc), live crypto.

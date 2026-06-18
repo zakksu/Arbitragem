@@ -487,6 +487,10 @@ Strategy store scan response includes `pack_version`, `new_since_pack`, `removed
 
 CLI: `python scripts/ingest_knowledge.py --path data/.dev/b3_history_insights.json`
 
+| `/replay/archaeology/batch` | POST | Top archaeology symbols replay (A11.7) — `{"limit":10,"symbols":[]}` |
+| `/journal/sync/clear` | POST | Clear API fills → `Trade` rows (A12.8) |
+| `/quotes/futures` | GET | WIN/WDO rows + B3 session badge (A4.20) |
+
 #### Archaeology summary (A11.3)
 
 `GET /archaeology/summary?limit=15` — top symbols by trade count, win rate, net P&L, lane split, and **`fifo`** block (round trips, FIFO net P&L). Reads archaeology `Trade` rows first; falls back to `data/.dev/b3_history_insights.json` when DB is empty.
@@ -541,7 +545,43 @@ Futures watchlist rows include `front_month` from `futures_roll.resolve_futures_
 
 `GET /execution/clear/status` — `{ clear_configured, live_enabled, paper_trading_mode }`.
 
-Clear execute path journals fills via `JournalService.sync_trades_from_clear()` after order submission.
+Clear execute path journals fills via `JournalService.sync_trades_from_clear()` after order submission (only when `clear_configured`).
+
+#### Journal sync (A12.8)
+
+`POST /api/v1/journal/sync` — imports Profit fills always; Clear fills **only when** `CLEAR_API_KEY` is set.
+
+```json
+{
+  "clear_configured": false,
+  "imported_clear": 0,
+  "imported_profit": 2,
+  "imported": 2,
+  "analyzed": 0
+}
+```
+
+`POST /api/v1/journal/sync/clear` — Clear-only import; same `clear_configured` + `imported_clear` shape.
+
+When `clear_configured` is false, scheduler and autonomous sync skip Clear mock trades (no `MOCK-T-*` pollution).
+
+#### Profit bridge health (A11.14)
+
+Bridge stub `GET /health` (port 9100):
+
+```json
+{
+  "status": "ok",
+  "dll_mode": "stub",
+  "is_paper": true,
+  "account_profile": "day",
+  "version": "12.0.0"
+}
+```
+
+`GET /api/v1/ops/profit-bridge/health` — API passthrough when bridge reachable.
+
+`GET /api/v1/ops/live-radar` — `bridge` object includes `dll_mode`, `is_paper`; `lamps.bridge` echoes both for W11.7 outbox polish.
 
 #### VWAP reclaim (A2.5b)
 
@@ -712,6 +752,7 @@ Response includes `autonomous_ops` and wizard step `autonomous_ops`:
 | `/api/v1/golden-path/reconcile` | GET | PETR4 P&L reconcile (journal vs Profit) |
 | `/api/v1/ops/memory` | GET | RAM, motor_cycle_ms, motor_cycle_p95_ms, test badge |
 | `/api/v1/ops/live-radar` | GET | Six lamps (api, bridge, motor, scanner, mind, sleeves), `all_green`, `ready_to_scan`, `ready_to_execute` (false until Phase C), `outbox`, `blockers` |
+| `/api/v1/ops/profit-bridge/health` | GET | `dll_mode`, `is_paper`, `account_profile` from bridge `/health` (A11.14) |
 | `/api/v1/symbol-factory/status` | GET | Factory locked/unlocked, shadow list, Core14 candidates |
 | `/api/v1/symbol-factory/shadow` | POST | `{"symbol":"PRIO3"}` — add shadow symbol (409 if locked) |
 | `/api/v1/symbol-factory/promote` | POST | `{"symbol":"PRIO3"}` — promote after 3 shadow sessions |
