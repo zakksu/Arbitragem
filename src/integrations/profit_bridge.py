@@ -108,6 +108,19 @@ class ProfitBridgeClient:
             return False
         return self._bridge_reachable()
 
+    def get_health(self) -> dict[str, Any] | None:
+        """Bridge GET /health — dll_mode, is_paper, account_profile when reachable."""
+        if not self._bridge_reachable():
+            return None
+        try:
+            with self._client(timeout=2.0) as client:
+                r = client.get("/health")
+                if r.status_code == 200:
+                    return r.json()
+        except Exception as exc:
+            logger.debug("profit_health_failed", error=str(exc))
+        return None
+
     def get_quote(self, symbol: str) -> ProfitQuote | None:
         sym = symbol.upper()
         batch = self.get_quotes_batch([sym])

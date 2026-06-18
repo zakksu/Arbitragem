@@ -23,6 +23,9 @@ class JournalService:
 
     def sync_trades_from_clear(self) -> int:
         """Import today's trades from Clear API; skip duplicates by external_id."""
+        if not self.clear.is_configured():
+            logger.debug("clear_sync_skipped", reason="clear_api_key_not_configured")
+            return 0
         imported = 0
         for ct in self.clear.get_trades_today():
             exists = (
@@ -82,8 +85,9 @@ class JournalService:
         logger.info("trades_synced_profit", count=imported)
         return imported
 
-    def sync_all_sources(self, analyze: bool | None = None) -> dict[str, int]:
-        clear_n = self.sync_trades_from_clear()
+    def sync_all_sources(self, analyze: bool | None = None) -> dict[str, int | bool]:
+        clear_configured = self.clear.is_configured()
+        clear_n = self.sync_trades_from_clear() if clear_configured else 0
         profit_n = self.sync_trades_from_profit()
         do_analyze = (
             analyze
@@ -96,6 +100,7 @@ class JournalService:
                 limit=get_settings().journal_analyze_limit
             )
         return {
+            "clear_configured": clear_configured,
             "imported_clear": clear_n,
             "imported_profit": profit_n,
             "imported": clear_n + profit_n,

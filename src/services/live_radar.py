@@ -55,6 +55,8 @@ def _bridge_meta() -> dict[str, Any]:
                     "ok": True,
                     "mode": mode,
                     "dll_mode": body.get("dll_mode") or body.get("mode", "stub"),
+                    "is_paper": body.get("is_paper"),
+                    "account_profile": body.get("account_profile"),
                     "version": body.get("version"),
                     "is_stub": mode in ("stub", "mock", "offline"),
                 }
@@ -147,12 +149,14 @@ def build_live_radar(session: Session | None = None) -> dict[str, Any]:
                 "yellow",
                 str(bridge.get("dll_mode") or "stub"),
                 dll_mode=bridge.get("dll_mode"),
+                is_paper=bridge.get("is_paper"),
             )
         else:
             bridge_lamp = _lamp(
                 "green",
                 str(bridge.get("dll_mode") or bridge.get("mode", "ok")),
                 dll_mode=bridge.get("dll_mode"),
+                is_paper=bridge.get("is_paper"),
             )
     elif profit_ok:
         bridge_lamp = _lamp("yellow", "reachable")
@@ -254,6 +258,9 @@ def build_live_radar(session: Session | None = None) -> dict[str, Any]:
         blockers.append("cash_sleeve_paused")
 
     outbox = _read_outbox()
+    from src.services.profit_execution_ladder import build_ladder_status
+
+    ladder = build_ladder_status()
     ready_to_scan = api_ok and profit_ok and sym_count > 0
     dll_live = profit_ok and bridge.get("ok") and not bridge.get("is_stub")
     ready_to_execute = bool(
@@ -273,6 +280,7 @@ def build_live_radar(session: Session | None = None) -> dict[str, Any]:
         "phase_c": phase_c,
         "lamps": lamps,
         "outbox": outbox,
+        "execution_ladder": ladder,
         "blockers": blockers,
         "paper_trading_mode": settings.paper_trading_mode,
         "execution_backend": settings.execution_backend,

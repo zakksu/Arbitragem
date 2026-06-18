@@ -40,6 +40,9 @@ def test_sync_all_sources_returns_breakdown(db_session, monkeypatch):
           ]
 
   class FakeClear:
+      def is_configured(self):
+          return False
+
       def get_trades_today(self):
           return []
 
@@ -54,6 +57,7 @@ def test_sync_all_sources_returns_breakdown(db_session, monkeypatch):
   result = svc.sync_all_sources()
   assert result["imported_profit"] == 1
   assert result["imported_clear"] == 0
+  assert result["clear_configured"] is False
   assert (
       db_session.query(Trade).filter(Trade.external_id == f"profit-{ext}").count() == 1
   )
