@@ -34,6 +34,7 @@ class Settings(BaseSettings):
     ollama_timeout_seconds: int = 120
     ollama_probe_timeout_seconds: float = 1.5
     ollama_enabled: bool = True
+    ollama_force_enabled: bool = False
     scanner_ollama_on_scan: bool = False
 
     clear_api_base_url: str = "https://api.clear.com.br/smarttrader"
@@ -244,7 +245,7 @@ class Settings(BaseSettings):
 
     @property
     def ollama_runtime_enabled(self) -> bool:
-        return self.ollama_enabled and not self.low_ram_enabled
+        return self.ollama_enabled and (not self.low_ram_enabled or self.ollama_force_enabled)
 
     @property
     def social_signals_runtime_enabled(self) -> bool:
