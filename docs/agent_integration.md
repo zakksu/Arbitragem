@@ -728,6 +728,17 @@ python scripts/autonomy_today.py    # scan + S1 replay + one autonomy cycle
 
 **Structure types S1–S5** (`stock_scalp_vwap` … `pulse_scalp`) map to replay templates `s1_vwap_reclaim` … `s5_pulse` via `structure_types.replay_strategy_for_structure()`.
 
+### 11.0-beta — Strategy Lab strip (Desk) + NTSL match (Worker W11.1–W11.3)
+
+| Partial | Query | Purpose |
+|---------|-------|---------|
+| `GET /board/partials/strategy-lab-strip` | — | Collapsible Desk strip: S1–S5 structure chips, rankings, strategy store, link to `/board/strategy-lab` |
+| `GET /board/partials/rankings-table` | `detail_target=strategy-lab-detail-slot`, `type={structure_id}` | Rankings filtered by structure; row click targets `#strategy-lab-detail-slot` on Desk |
+| `GET /board/partials/replay-player` | `symbol`, `structure_type` | Default replay strategy from `match_ntsl_for_structure()` |
+| `GET /board/partials/trade-product` | — | NTSL match chip + “Replay {strategy}” → `#replay-player-slot` |
+
+**Service:** `strategy_store.match_ntsl_for_structure(session, structure_type, symbol=)` scores indexed NTSL rows by tags/name/symbol; falls back to `replay_strategy_for_structure()` when no index hit.
+
 **Env flags:** `ORCHESTRATOR_SCHEDULER_ENABLED=true` (background tick), `AUTONOMY_FAST_TRACK=true` (spread journal across weekdays for Phase C dev only — not production sign-off).
 
 **Streamlit slim:** `GOLDEN_PATH_MODE=true` or `STREAMLIT_SLIM_MODE=true` limits nav to Home, Performance, Journal, Settings.

@@ -125,7 +125,18 @@
                             {{ "%.2f"|format(row.net_brl) }}
                         </td>
                         <td><span class="bb-grade-{{ row.grade|lower }}">{{ row.grade }}</span></td>
-                        <td class="bb-muted">{{ row.note or '—' }}</td>
+                        <td>
+                            <input type="text"
+                                   class="bb-journal-note-input"
+                                   name="note"
+                                   value="{{ row.note or '' }}"
+                                   placeholder="—"
+                                   hx-post="/board/partials/journal-tab/{{ row.id }}/note"
+                                   hx-trigger="change, keyup[key=='Enter']"
+                                   hx-target="closest td"
+                                   hx-swap="innerHTML"
+                                   style="width:100%;min-width:5rem;font-size:0.72rem;background:transparent;border:1px solid transparent;">
+                        </td>
                     </tr>
                     {% else %}
                     <tr><td colspan="9" class="bb-muted">No fills yet — motor + paper auto will populate.</td></tr>

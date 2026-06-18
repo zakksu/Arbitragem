@@ -32,15 +32,11 @@
         <span class="bb-muted">Live radar…</span>
     </div>
     {% if not golden_path_mode %}
-    <details class="bb-strategy-lab-strip bb-glass" id="bb-strategy-lab-strip">
-        <summary>Strategy Lab</summary>
-        <div id="strategy-store-desk-slot"
-             hx-get="/board/partials/strategy-store"
-             hx-trigger="load delay:200ms"
-             hx-swap="innerHTML">
-            <span class="bb-muted">Strategies…</span>
-        </div>
-    </details>
+    <div hx-get="/board/partials/strategy-lab-strip"
+         hx-trigger="load delay:150ms"
+         hx-swap="innerHTML">
+        <details class="bb-strategy-lab-strip bb-glass"><summary>Strategy Lab…</summary></details>
+    </div>
     <div class="bb-learning-rail-thin bb-glass"
          id="learning-rail-desk-slot"
          hx-get="/board/partials/learning-rail"

@@ -82,3 +82,34 @@ def test_pnl_intraday_api(client: TestClient):
 def test_blackboard_14_css_linked(client: TestClient):
     r = client.get("/board")
     assert "blackboard_14_0.css" in r.text
+
+
+def test_pnl_tab_range_5d(client: TestClient):
+    r = client.get("/board/partials/pnl-tab?range=5d")
+    assert r.status_code == 200
+    assert "pnl-tab-root" in r.text
+
+
+def test_journal_note_patch_api(client: TestClient):
+    from datetime import datetime
+
+    from src.models import Trade, get_session_factory
+
+    session = get_session_factory()()
+    t = Trade(
+        external_id="j14",
+        source="paper",
+        symbol="PETR4",
+        side="buy",
+        quantity=100,
+        price=38.0,
+        executed_at=datetime.utcnow(),
+    )
+    session.add(t)
+    session.commit()
+    tid = t.id
+    session.close()
+
+    r = client.patch(f"/api/v1/trades/{tid}/note", json={"note": "scalp A"})
+    assert r.status_code == 200
+    assert r.json()["journal_note"] == "scalp A"

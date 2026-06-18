@@ -322,6 +322,31 @@ async def journal_tab_partial(request: Request):
     )
 
 
+@router.post("/board/partials/journal-tab/{trade_id}/note", response_class=HTMLResponse)
+async def journal_tab_note_save(request: Request, trade_id: int):
+    from src.services.trade_journal_desk import patch_trade_note
+
+    form = await request.form()
+    note = str(form.get("note", ""))
+
+    def _save(session):
+        return patch_trade_note(session, trade_id, note)
+
+    try:
+        result = await _to_thread(_with_db, _save)
+    except ValueError:
+        return HTMLResponse('<span class="bb-muted">—</span>', status_code=404)
+    import html as html_mod
+
+    saved = html_mod.escape(result.get("journal_note") or "")
+    return HTMLResponse(
+        f'<input type="text" class="bb-journal-note-input" name="note" value="{saved}" '
+        f'placeholder="—" hx-post="/board/partials/journal-tab/{trade_id}/note" '
+        f'hx-trigger="change, keyup[key==\'Enter\']" hx-target="closest td" hx-swap="innerHTML" '
+        f'style="width:100%;min-width:5rem;font-size:0.72rem;background:transparent;border:1px solid var(--bb14-accent);">'
+    )
+
+
 @router.get("/board/partials/pnl-tab", response_class=HTMLResponse)
 async def pnl_tab_partial(request: Request):
     """PnL tab — intraday + projection cards (14.0-beta)."""
@@ -545,6 +570,20 @@ async def strategy_lab_page(request: Request):
     return TEMPLATES.TemplateResponse(request, "strategy_lab.html", {})
 
 
+@router.get("/board/partials/strategy-lab-strip", response_class=HTMLResponse)
+async def strategy_lab_strip_partial(request: Request):
+    from src.services.structure_types import PAPER_MOTOR_STRUCTURES, STRUCTURE_CATALOG
+
+    active = (request.query_params.get("structure") or "").strip().lower() or None
+    by_id = {row["id"]: row for row in STRUCTURE_CATALOG}
+    structures = [by_id[sid] for sid in PAPER_MOTOR_STRUCTURES if sid in by_id]
+    return TEMPLATES.TemplateResponse(
+        request,
+        "partials/strategy_lab_strip.html",
+        {"structures": structures, "active_structure": active},
+    )
+
+
 @router.get("/board/partials/rankings-table", response_class=HTMLResponse)
 async def rankings_table_partial(request: Request):
     from src.autonomous.backtest_rankings import BacktestRankingsService
@@ -556,6 +595,7 @@ async def rankings_table_partial(request: Request):
     period_raw = params.get("period")
     period_days = int(period_raw) if period_raw else None
     sort_by = params.get("sort_by") or "idea_score"
+    detail_target = params.get("detail_target") or "lab-detail"
 
     def _load(session):
         return BacktestRankingsService(session).list_rankings(
@@ -570,7 +610,7 @@ async def rankings_table_partial(request: Request):
     return TEMPLATES.TemplateResponse(
         request,
         "partials/rankings_table.html",
-        {"rankings": rankings},
+        {"rankings": rankings, "detail_target": detail_target},
     )
 
 
@@ -1328,10 +1368,20 @@ async def trade_product_partial(request: Request, symbol: str):
                 )
 
             cost = await _to_thread(_cost)
+    ntsl_match = None
+    if product and product.get("structure_type"):
+        def _match(session):
+            from src.services.strategy_store import match_ntsl_for_structure
+
+            return match_ntsl_for_structure(
+                session, product.get("structure_type") or "scalp", symbol=sym
+            )
+
+        ntsl_match = await _to_thread(_with_db, _match)
     return TEMPLATES.TemplateResponse(
         request,
         "partials/trade_product.html",
-        {"product": product, "theory_cards": theory_cards, "cost": cost},
+        {"product": product, "theory_cards": theory_cards, "cost": cost, "ntsl_match": ntsl_match},
     )
 
 
@@ -1615,9 +1665,12 @@ async def replay_player_partial(request: Request):
     sym = (request.query_params.get("symbol") or "PETR4").strip().upper()
     speed = int(request.query_params.get("speed", "8") or 8)
     job_id = (request.query_params.get("job_id") or "").strip() or None
+    structure_type = (request.query_params.get("structure_type") or "").strip() or None
 
     def _load(session):
-        return build_replay_player_context(session, sym, speed=speed, job_id=job_id)
+        return build_replay_player_context(
+            session, sym, speed=speed, job_id=job_id, structure_type=structure_type
+        )
 
     ctx = await _to_thread(_with_db, _load)
     return TEMPLATES.TemplateResponse(request, "partials/replay_player.html", ctx)
@@ -1632,6 +1685,7 @@ async def replay_player_run(request: Request):
     sym = str(form.get("symbol", "PETR4")).strip().upper()
     strategy = str(form.get("strategy", "scalp_default")).strip()
     speed = int(form.get("speed", 8) or 8)
+    structure_type = str(form.get("structure_type", "")).strip() or None
 
     def _run(session):
         run = start_replay(
@@ -1647,6 +1701,7 @@ async def replay_player_run(request: Request):
             speed=speed,
             job_id=run.get("job_id"),
             last_run=run,
+            structure_type=structure_type,
         )
 
     ctx = await _to_thread(_with_db, _run)

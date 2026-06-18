@@ -1,6 +1,6 @@
 # Agent instructions — Arbitragem Dashboard
 
-**Current sprint:** [RELEASE_12.0.0.md](RELEASE_12.0.0.md) **12.0-beta** + [docs/RELEASE_11.0_SCOPE.md](docs/RELEASE_11.0_SCOPE.md) **11.0-alpha** (parallel). Tracker: [RELEASE_12.0.0_PROGRESS.md](RELEASE_12.0.0_PROGRESS.md). Version: `12.0.0-alpha` · **343 tests** green.
+**Current sprint:** [RELEASE_14.0.0.md](RELEASE_14.0.0.md) **14.0.0 GA** shipped. Tracker: [RELEASE_14.0.0_PROGRESS.md](RELEASE_14.0.0_PROGRESS.md). Version: `14.0.0`.
 
 ## Two-agent workflow (always on)
 
@@ -32,16 +32,9 @@ Work **together** on the `Arbitragem` folder. Split by layer, not by “who’s 
 
 | Supervisor | Worker (start same sprint) | Before API? | Status |
 |------------|----------------------------|-------------|--------|
-| A12.7 paper fills `fees_brl` from `clear_cost_model` | W12.3 trade product margin + fees row (100 lot) | no — extend `estimate_paper_fills` | **NEXT** |
+| A12.7 paper fills `fees_brl` from `clear_cost_model` | W12.3 trade product margin + fees row (100 lot) | no — extend `estimate_paper_fills` | **DONE** |
+| A11.3 `GET /archaeology/summary` | W11.4 layout preset **archaeology** (timeline hero) | no — partial exists | **DONE** |
 | A12.8 Clear API trade sync (optional, `CLEAR_API_KEY`) | W12.3 journal row shows synced Clear fill | no | backlog |
-
-**12.0-alpha GA (done):** A12.1–A12.6, W12.1–W12.2, W12.4 · Live Radar + cost chip + breakeven gate.
-
-### 11.0-alpha kickoff matrix (parallel — archaeology + Core17)
-
-| Supervisor | Worker (start same sprint) | Before API? | Status |
-|------------|----------------------------|-------------|--------|
-| A11.3 `GET /archaeology/summary` | W11.4 layout preset **archaeology** (timeline hero) | no — partial exists | **NEXT** |
 | A11.1 FIFO P&L on archaeology rows | A11.5 symbol panel “your history” chip | no | **NEXT** |
 | A11.6 ingest insights → knowledge RAG | W11.1 Strategy Lab strip in hybrid layout | yes (static cards) | queued |
 | A11.14 bridge `/health` `dll_mode` + `is_paper` | W11.7 outbox ticker polish (copy hint) | no | polish |

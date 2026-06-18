@@ -10,6 +10,14 @@
         {% include "partials/help_tip.html" %}
         {% endwith %}
         <span class="bb-structure-badge">{{ product.structure_type|replace("_", " ") }}</span>
+        {% if ntsl_match %}
+        <span class="bb-ntsl-match-chip" title="{{ ntsl_match.file_path or ntsl_match.summary }}">
+            NTSL <strong>{{ ntsl_match.name }}</strong>
+            {% if ntsl_match.replay_strategy %}
+            · replay <em>{{ ntsl_match.replay_strategy }}</em>
+            {% endif %}
+        </span>
+        {% endif %}
         <span class="bb-side-{{ product.side }}">{{ product.side|upper }}</span>
     </div>
     {% if cost is defined %}
@@ -114,6 +122,14 @@
             {% include "partials/help_tip.html" %}
             {% endwith %}
         </button>
+        {% if ntsl_match and ntsl_match.replay_strategy %}
+        <button type="button" class="bb-btn-secondary"
+                hx-get="/board/partials/replay-player?symbol={{ product.symbol }}&structure_type={{ product.structure_type }}"
+                hx-target="#replay-player-slot"
+                hx-swap="innerHTML">
+            Replay {{ ntsl_match.replay_strategy }}
+        </button>
+        {% endif %}
     </div>
 </div>
 <script>

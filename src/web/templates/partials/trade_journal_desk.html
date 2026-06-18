@@ -44,7 +44,7 @@
                 </tr>
             </thead>
             <tbody>
-                {% for row in desk.blotter[:40] %}
+                {% for row in desk.blotter[:blotter_limit|default(40)] %}
                 <tr>
                     <td>{{ row.time }}</td>
                     <td>{{ row.symbol }}</td>

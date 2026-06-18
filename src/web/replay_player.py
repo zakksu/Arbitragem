@@ -133,6 +133,7 @@ def build_replay_player_context(
     speed: int = 8,
     job_id: str | None = None,
     last_run: dict[str, Any] | None = None,
+    structure_type: str | None = None,
 ) -> dict[str, Any]:
     sym = symbol.strip().upper()
     fills: list[dict[str, Any]] = []
@@ -142,11 +143,15 @@ def build_replay_player_context(
     if run:
         fills = run.get("fills") or []
 
+    from src.services.strategy_store import match_ntsl_for_structure
+
     strategies = list_stored_strategies(session, limit=30)
-    sessions = list_recent_sessions(session, limit=8)
-    default_strategy = "scalp_default"
-    if strategies:
+    ntsl_match = match_ntsl_for_structure(session, structure_type or "scalp", symbol=sym)
+    default_strategy = ntsl_match.get("replay_strategy") or "scalp_default"
+    if not ntsl_match.get("match_score") and strategies:
         default_strategy = strategies[0]["name"]
+
+    sessions = list_recent_sessions(session, limit=8)
 
     return {
         "symbol": sym,
@@ -155,6 +160,8 @@ def build_replay_player_context(
         "strategies": strategies,
         "sessions": sessions,
         "default_strategy": default_strategy,
+        "structure_type": structure_type,
+        "ntsl_match": ntsl_match,
         "last_run": run,
         "job_id": job_id or (run.get("job_id") if run else None),
     }

@@ -212,7 +212,7 @@
          hx-trigger="load"
          hx-swap="innerHTML"></div>
     <div id="replay-player-slot"
-         hx-get="/board/partials/replay-player?symbol={{ symbol }}"
+         hx-get="/board/partials/replay-player?symbol={{ symbol }}{% if top_idea and top_idea.structure_type %}&structure_type={{ top_idea.structure_type }}{% endif %}"
          hx-trigger="load"
          hx-swap="innerHTML"></div>
     {% endif %}

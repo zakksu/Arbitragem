@@ -81,10 +81,82 @@
     font-weight: 600;
     list-style: none;
     color: #c9d1d9;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
 }
 
 .bb-strategy-lab-strip > summary::-webkit-details-marker {
     display: none;
+}
+
+.bb-sl-full-link {
+    margin-left: auto;
+    font-size: 0.65rem;
+    text-decoration: none;
+}
+
+.bb-sl-body {
+    padding: 0 0.5rem 0.55rem;
+}
+
+.bb-sl-structure-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.3rem;
+    align-items: center;
+    margin-bottom: 0.45rem;
+    font-size: 0.68rem;
+}
+
+.bb-sl-structure-chip {
+    appearance: none;
+    border: 1px solid var(--bb14-glass-border);
+    background: rgba(255, 255, 255, 0.03);
+    color: #c9d1d9;
+    font-size: 0.65rem;
+    padding: 0.2rem 0.5rem;
+    border-radius: 999px;
+    cursor: pointer;
+}
+
+.bb-sl-structure-chip.is-active,
+.bb-sl-structure-chip:hover {
+    border-color: var(--bb14-accent);
+    color: var(--bb14-accent);
+    background: var(--bb14-accent-dim);
+}
+
+.bb-sl-rankings {
+    max-height: 200px;
+    overflow: auto;
+    margin-bottom: 0.35rem;
+}
+
+.bb-sl-rankings .bb-rankings-table {
+    font-size: 0.65rem;
+}
+
+.bb-sl-detail {
+    margin: 0.35rem 0;
+    font-size: 0.68rem;
+}
+
+.bb-sl-store .bb-strategy-store {
+    font-size: 0.68rem;
+}
+
+.bb-ntsl-match-chip {
+    font-size: 0.62rem;
+    padding: 0.15rem 0.4rem;
+    border-radius: 4px;
+    border: 1px solid rgba(61, 214, 140, 0.25);
+    background: var(--bb14-accent-dim);
+    color: #c9d1d9;
+}
+
+.bb-ntsl-match-chip strong {
+    color: var(--bb14-accent);
 }
 
 .bb-learning-rail-thin {

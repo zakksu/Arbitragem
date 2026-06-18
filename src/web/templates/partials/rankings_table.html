@@ -1,4 +1,4 @@
-<table class="bb-strategies-table bb-rankings-table" id="rankings-table">
+<table class="bb-strategies-table bb-rankings-table" id="rankings-table" data-detail-target="{{ detail_target|default('lab-detail') }}">
     <thead>
         <tr>
             <th data-sort="symbol">Symbol</th>
@@ -18,7 +18,7 @@
         {% for r in rankings %}
         <tr class="bb-ranking-row"
             hx-get="/board/strategy-lab/{{ r.id }}"
-            hx-target="#lab-detail"
+            hx-target="#{{ detail_target|default('lab-detail') }}"
             hx-swap="innerHTML"
             role="button"
             tabindex="0">
