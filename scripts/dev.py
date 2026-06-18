@@ -95,6 +95,80 @@ def _http_ok(url: str, timeout: float = 3.0) -> bool:
         return False
 
 
+def _fetch_json(url: str, timeout: float = 3.0) -> dict[str, Any] | None:
+    try:
+        with urllib.request.urlopen(url, timeout=timeout) as resp:
+            data = json.loads(resp.read().decode("utf-8"))
+            return data if isinstance(data, dict) else None
+    except (urllib.error.URLError, TimeoutError, OSError, json.JSONDecodeError, ValueError):
+        return None
+
+
+def _expected_api_version() -> str:
+    sys.path.insert(0, str(ROOT))
+    from src import __version__
+
+    return __version__
+
+
+def _services_managed_and_current() -> bool:
+    """True when dev.py owns live API+dashboard and version matches repo."""
+    state = _load_state()
+    api_pid = int(state.get("api_pid", 0) or 0)
+    dash_pid = int(state.get("dashboard_pid", 0) or 0)
+    if not (_pid_alive(api_pid) and _pid_alive(dash_pid)):
+        return False
+    health = _fetch_json(API_HEALTH_FULL)
+    if not health:
+        return False
+    return health.get("version") == _expected_api_version()
+
+
+def _kill_port_listeners(port: int) -> None:
+    """Stop orphan processes listening on a dev port (stale uvicorn/streamlit)."""
+    if sys.platform == "win32":
+        try:
+            out = subprocess.run(
+                ["netstat", "-ano"],
+                capture_output=True,
+                text=True,
+                check=False,
+            ).stdout
+            for line in out.splitlines():
+                if f":{port}" not in line or "LISTENING" not in line.upper():
+                    continue
+                parts = line.split()
+                if not parts:
+                    continue
+                try:
+                    pid = int(parts[-1])
+                except ValueError:
+                    continue
+                if pid > 0 and pid != os.getpid():
+                    print(f"[dev] Killing orphan PID {pid} on port {port}...")
+                    _kill_pid(pid)
+        except Exception:
+            pass
+        return
+    try:
+        out = subprocess.run(
+            ["lsof", "-ti", f":{port}"],
+            capture_output=True,
+            text=True,
+            check=False,
+        ).stdout.strip()
+        for token in out.split():
+            try:
+                pid = int(token)
+            except ValueError:
+                continue
+            if pid > 0 and pid != os.getpid():
+                print(f"[dev] Killing orphan PID {pid} on port {port}...")
+                _kill_pid(pid)
+    except Exception:
+        pass
+
+
 def _load_state() -> dict[str, Any]:
     if not STATE_FILE.exists():
         return {}
@@ -401,12 +475,22 @@ def cmd_start(args: argparse.Namespace) -> int:
         cmd_setup(args)
 
     healthy, _ = _wait_healthy(timeout=2)
-    if healthy:
+    if healthy and _services_managed_and_current():
         print("[dev] Services already running and healthy.")
         _print_urls()
         if args.json:
             print(json.dumps(get_status_dict(), indent=2))
         return 0
+
+    if healthy:
+        running = _fetch_json(API_HEALTH_FULL) or {}
+        print(
+            f"[dev] Stale or orphan stack on :{API_PORT} "
+            f"(running {running.get('version', '?')}, expect {_expected_api_version()}) — recycling..."
+        )
+        _kill_port_listeners(API_PORT)
+        _kill_port_listeners(DASHBOARD_PORT)
+        time.sleep(1)
 
     cmd_stop(args)
 

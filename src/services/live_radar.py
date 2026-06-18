@@ -88,8 +88,9 @@ def _scan_stale(session: Session | None, *, max_age_minutes: int = 15) -> bool:
 
 
 def _circuit_open(healing: dict[str, Any]) -> bool:
-    circuits = healing.get("circuit_breakers") or {}
-    for val in circuits.values():
+    circuits = healing.get("circuit_breakers") or []
+    items = circuits.values() if isinstance(circuits, dict) else circuits
+    for val in items:
         if isinstance(val, dict) and val.get("open"):
             return True
     return False

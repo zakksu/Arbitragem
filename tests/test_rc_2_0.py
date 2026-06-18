@@ -12,12 +12,15 @@ from src.services.trade_ideas import TradeIdeaService
 
 
 @pytest.fixture
-def client(monkeypatch):
+def client(monkeypatch, tmp_path):
     get_settings.cache_clear()
     set_active(False)
+    monkeypatch.setenv("DATABASE_URL", f"sqlite:///{tmp_path / 'rc20.db'}")
     monkeypatch.setenv("PROFIT_BRIDGE_ENABLED", "false")
+    monkeypatch.setenv("PAPER_TRADING_MODE", "true")
     monkeypatch.setenv("SCANNER_OLLAMA_ON_SCAN", "false")
     monkeypatch.setenv("OLLAMA_ENABLED", "false")
+    get_settings.cache_clear()
     init_db()
     return TestClient(create_app())
 

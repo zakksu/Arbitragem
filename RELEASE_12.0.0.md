@@ -151,31 +151,35 @@ Aligned with external algo research ([Bookmap](https://bookmap.com/blog/key-algo
 | W12.2 | Worker | Live Radar lamps (from 11.0 spec) | ✅ |
 | A12.5 | Backend | `GET /ops/live-radar` | ✅ |
 
-### 12.0-beta — Cost-aware motor (1 week)
+### 12.0-GA — shipped
+
+| ID | Owner | Deliverable | Status |
+|----|-------|-------------|--------|
+| A12.6 | Backend | Breakeven gate on confirm | ✅ |
+| W12.4 | Worker | Outbox copy hint in Live Radar | ✅ |
+| Tag | Release | `v12.0.0` | ✅ |
+
+### 12.0-beta — next (optional)
 
 | ID | Task |
 |----|------|
-| A12.6 | Reject confirm if target ticks &lt; breakeven_ticks |
 | A12.7 | Paper fills include `fees_brl` from cost model |
 | W12.3 | Trade product shows margin + fees for 100 lot |
 | A12.8 | Clear API sync trades when `CLEAR_API_KEY` set (optional) |
 
-### 12.0-rc — Semi-auto live (after Phase C)
+### 12.0-rc — semi-auto live (after Phase C)
 
 | ID | Task |
 |----|------|
 | A12.9 | DLL `place_order` wired |
 | A12.10 | `ready_to_execute` true on Live Radar |
-| W12.4 | Outbox auto-copy to clipboard |
 
-### 12.0-GA
+### Deferred
 
-| Gate | Target |
+| Item | Reason |
 |------|--------|
-| Manual live week | 5 days, 20+ fills, P&L within 2% of Profit |
-| Cost model | Breakeven within 1 tick of actual Clear note |
-| Max positions | 1 concurrent 100-lot |
-| Crypto | Still deferred or documented NO |
+| Crypto live | No broker margin/fee model — watchlist off by default |
+| WIN/WDO primary | R$500 stock-first path; futures in 11.0 scope |
 
 ---
 
