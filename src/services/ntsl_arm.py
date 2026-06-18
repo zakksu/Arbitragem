@@ -62,3 +62,16 @@ def _ntsl_from_legs(
         target_ticks=target_ticks or 8,
     )
     return ntsl_for_idea(idea)
+
+
+def arm_ntsl_for_idea(idea: dict) -> dict:
+    """Export NTSL for a trade idea dict (execution ladder)."""
+    legs = idea.get("legs") or []
+    return arm_ntsl(
+        symbol=str(idea.get("symbol", "PETR4")),
+        structure_type=str(idea.get("structure_type") or "scalp"),
+        side=str(idea.get("side") or "buy"),
+        legs=legs,
+        stop_ticks=idea.get("stop_ticks"),
+        target_ticks=idea.get("target_ticks"),
+    )

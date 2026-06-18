@@ -37,6 +37,8 @@ def main() -> int:
     settings = get_settings()
     health = _get("http://127.0.0.1:8000/api/v1/health/live")
     bridge = _get("http://127.0.0.1:9100/health")
+    ladder = _get("http://127.0.0.1:8000/api/v1/integrations/profit/execution-ladder")
+    session = _get("http://127.0.0.1:8000/api/v1/session/prep")
     orch = _get("http://127.0.0.1:8000/api/v1/orchestrator/status")
     clear_st = _get("http://127.0.0.1:8000/api/v1/execution/clear/status")
 
@@ -67,6 +69,8 @@ def main() -> int:
         "blockers": blockers,
         "paper_trading_mode": settings.paper_trading_mode,
         "execution_backend": settings.execution_backend,
+        "execution_ladder": (ladder or {}).get("active_mode"),
+        "session_prep": session,
         "symbol": args.symbol,
         "lot_shares": args.lot,
         "capital_brl": args.capital_brl,

@@ -11,7 +11,7 @@
     <script src="https://unpkg.com/htmx.org@2.0.4"></script>
     <script src="https://unpkg.com/htmx-ext-sse@2.2.2/sse.js"></script>
 </head>
-<body class="bb-app bb-cockpit-14" data-active-tab="{{ active_tab or 'desk' }}">
+<body class="bb-app bb-cockpit-14" data-active-tab="{{ active_tab or 'desk' }}" data-profit-auto-copy="{{ '1' if profit_manual_auto_copy else '0' }}">
     <header class="bb-status" id="status-bar"
             hx-get="/board/partials/status"
             hx-trigger="load, every 30s"
@@ -30,6 +30,12 @@
          hx-trigger="load, every 15s"
          hx-swap="innerHTML">
         <span class="bb-muted">Live radar…</span>
+    </div>
+    <div id="session-prep-slot" class="bb-session-prep-slot"
+         hx-get="/board/partials/session-prep"
+         hx-trigger="load, every 60s"
+         hx-swap="innerHTML">
+        <span class="bb-muted">Session prep…</span>
     </div>
     {% if not golden_path_mode %}
     <div id="sector-strip-slot" class="bb-sector-strip-slot"
@@ -1101,6 +1107,19 @@
                         setTimeout(function () { btn.textContent = "Copy"; }, 1200);
                     });
                 }
+            });
+            document.body.addEventListener("htmx:afterSwap", function (ev) {
+                if (document.body.dataset.profitAutoCopy !== "1") return;
+                var tgt = ev.detail && ev.detail.target;
+                if (!tgt || tgt.id !== "live-radar-slot") return;
+                var hintEl = tgt.querySelector(".bb-outbox-hint");
+                if (!hintEl || !navigator.clipboard) return;
+                var hint = hintEl.textContent.trim();
+                if (!hint) return;
+                navigator.clipboard.writeText(hint).then(function () {
+                    var msg = tgt.querySelector(".bb-outbox-copied");
+                    if (msg) msg.hidden = false;
+                });
             });
             var slot = document.getElementById("trader-desk-slot");
             if (slot && typeof EventSource !== "undefined") {

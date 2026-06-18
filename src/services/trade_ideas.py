@@ -29,6 +29,7 @@ class TradeIdeaService:
     def __init__(self, session: Session) -> None:
         self.session = session
         self.profit = get_profit_client()
+        self._last_execution_assist: dict | None = None
 
     def list_ideas(
         self, limit: int = 20, status: str | None = None, symbol: str | None = None
@@ -838,12 +839,22 @@ class TradeIdeaService:
 
         hints = [f.get("chart_trading_hint", "") for f in fills if f.get("chart_trading_hint")]
         ticket_ids = [f.get("ticket_id") for f in fills if f.get("ticket_id")]
+
+        from src.services.profit_execution_ladder import assist_after_profit_execute
+
+        assist = assist_after_profit_execute(idea_dict, fills)
+        ntsl_note = ""
+        if assist.get("ntsl"):
+            ntsl_note = f"\n[NTSL] {assist['ntsl'].get('path', '')}"
+
         idea.rationale = (
             (idea.rationale or "")
             + f"\n[Profit] {len(fills)} ticket(s) — ids {', '.join(ticket_ids)}."
             + (f" Chart: {' | '.join(hints)}" if hints else "")
+            + ntsl_note
             + " See data/profit_outbox/next_order.json"
         )
+        self._last_execution_assist = assist
         self.session.add(
             JournalEntry(
                 title=f"Profit execute #{idea.id} {idea.symbol}",

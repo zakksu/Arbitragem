@@ -901,6 +901,13 @@ def scan_exports(db: Session = Depends(get_db)):
     return scan_profit_exports(db)
 
 
+@router.get("/session/prep")
+def session_prep_api(db: Session = Depends(get_db)):
+    from src.services.session_prep import build_session_prep
+
+    return build_session_prep(db)
+
+
 @router.get("/setup/status")
 def setup_status():
     """Integration wizard — what is connected vs what Filipe must provide."""
@@ -1180,6 +1187,14 @@ def futures_quotes_api():
         "count": len(rows),
         "quotes": rows,
     }
+
+
+@router.get("/futures/sizer/{symbol}")
+def futures_contract_sizer_api(symbol: str, capital: float = 2000.0):
+    """Margin-aware contract cap for WIN/WDO (A11.16)."""
+    from src.services.futures_contract_sizer import max_futures_contracts
+
+    return max_futures_contracts(symbol, capital_brl=max(0.0, capital))
 
 
 @router.get("/signals/social")

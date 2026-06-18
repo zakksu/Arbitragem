@@ -73,6 +73,10 @@ def test_social_signals_api(client):
     assert data["count"] >= 3
     assert any(s["source"] == "twitter" for s in data["signals"])
     assert data["disclaimer"]
+    assert "twitter" in data["sources_active"]
+    assert data["fetched_at"]
+    assert data["session"]["market"] == "b3_futures"
+    assert data["freshness_minutes"] is not None
 
 
 def test_social_signals_no_auto_trade():

@@ -43,12 +43,25 @@ PAPER_MOTOR_STRUCTURES: tuple[str, ...] = (
     "archaeology_bias_long",
 )
 
+FUTURES_MOTOR_STRUCTURES: tuple[str, ...] = (
+    "futures_open_drive",
+    "futures_vwap_reclaim",
+    "futures_lunch_fade",
+    "futures_afternoon_trend",
+    "futures_failed_breakout",
+)
+
 STRUCTURE_TO_REPLAY_STRATEGY: dict[str, str] = {
     "stock_scalp_vwap": "s1_vwap_reclaim",
     "opening_range_break": "s2_orb_break",
     "mean_reversion_band": "s3_bb_fade",
     "archaeology_bias_long": "s4_arch_bias",
     "pulse_scalp": "s5_pulse",
+    "futures_open_drive": "f1_open_drive",
+    "futures_vwap_reclaim": "f2_vwap_reclaim",
+    "futures_lunch_fade": "f3_lunch_fade",
+    "futures_afternoon_trend": "f4_afternoon_trend",
+    "futures_failed_breakout": "f5_failed_breakout",
     "scalp_long": "s1_vwap_reclaim",
     "scalp_short": "scalp_short",
     "scalp": "scalp_default",
@@ -120,6 +133,36 @@ STRUCTURE_CATALOG: list[dict] = [
         "label": "Pulse scalp (S5)",
         "legs_min": 1,
         "description": "Live Radar all green + CASH sleeve — max 3/day",
+    },
+    {
+        "id": "futures_open_drive",
+        "label": "Open drive (F1)",
+        "legs_min": 1,
+        "description": "WIN/WDO first-hour momentum",
+    },
+    {
+        "id": "futures_vwap_reclaim",
+        "label": "Futures VWAP (F2)",
+        "legs_min": 1,
+        "description": "Front-month reclaim of session VWAP",
+    },
+    {
+        "id": "futures_lunch_fade",
+        "label": "Lunch fade (F3)",
+        "legs_min": 1,
+        "description": "Mean reversion into lunch lull",
+    },
+    {
+        "id": "futures_afternoon_trend",
+        "label": "Afternoon trend (F4)",
+        "legs_min": 1,
+        "description": "13:00–17:00 continuation",
+    },
+    {
+        "id": "futures_failed_breakout",
+        "label": "Failed breakout (F5)",
+        "legs_min": 1,
+        "description": "Fade false range extension",
     },
 ]
 

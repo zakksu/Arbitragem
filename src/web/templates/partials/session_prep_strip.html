@@ -1,0 +1,29 @@
+{% if prep %}
+<section class="bb-session-prep bb-glass" id="session-prep-strip">
+    <div class="bb-session-prep-head">
+        <strong>Session prep</strong>
+        {% if prep.ready_paper_session %}
+        <span class="bb-pill bb-pill-auto">PAPER READY</span>
+        {% elif prep.ready_manual_session %}
+        <span class="bb-pill bb-pill-live">MANUAL READY</span>
+        {% else %}
+        <span class="bb-pill bb-pill-warn">CHECK</span>
+        {% endif %}
+        <span class="bb-muted">Exec: {{ prep.active_execution_mode }}</span>
+    </div>
+    <ol class="bb-session-prep-steps">
+        {% for step in prep.steps_pre %}
+        <li class="{% if step.ok %}bb-ok{% else %}bb-warn{% endif %}">
+            {{ step.label }}
+            {% if not step.ok %}<em class="bb-muted"> — {{ step.detail }}</em>{% endif %}
+        </li>
+        {% endfor %}
+    </ol>
+    {% if prep.blockers %}
+    <p class="bb-muted" style="font-size:0.68rem;margin:0.35rem 0 0;">{{ prep.blockers|join(' · ') }}</p>
+    {% endif %}
+    <p class="bb-muted" style="font-size:0.62rem;margin:0.35rem 0 0;">
+        Routine: <code>python scripts/session_prep.py</code> · docs/MARKET_SESSION_ROUTINE.md
+    </p>
+</section>
+{% endif %}

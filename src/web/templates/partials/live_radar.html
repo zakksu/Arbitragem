@@ -23,12 +23,21 @@
         </span>
         {% endfor %}
     </div>
+    {% if radar.execution_ladder %}
+    <div class="bb-lr-ladder bb-muted" style="font-size:0.68rem;margin-top:0.35rem;">
+        Exec: <strong>{{ radar.execution_ladder.active_mode }}</strong>
+        {% if radar.execution_ladder.automation_module_missing %}
+        · <span title="{{ radar.execution_ladder.automation_hint }}">DLL missing — manual / paper OK</span>
+        {% endif %}
+    </div>
+    {% endif %}
     {% if radar.outbox and radar.outbox.pending and radar.outbox.chart_trading_hint %}
-    <div class="bb-lr-outbox">
+    <div class="bb-lr-outbox" id="bb-lr-outbox">
         <strong>Outbox</strong>
-        <code>{{ radar.outbox.chart_trading_hint }}</code>
+        <code class="bb-outbox-hint">{{ radar.outbox.chart_trading_hint }}</code>
         <button type="button" class="bb-btn-secondary bb-lr-copy"
                 data-hint="{{ radar.outbox.chart_trading_hint }}">Copy</button>
+        <span class="bb-muted bb-outbox-copied" hidden>Copied — paste in Profit Chart Trading</span>
     </div>
     {% endif %}
     {% if radar.blockers %}

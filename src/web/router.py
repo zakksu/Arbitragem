@@ -290,6 +290,7 @@ async def board_page(request: Request):
             "board_tab_meta": board_tab_metadata(),
             "board_tabs": BOARD_TABS,
             "active_tab": active_tab,
+            "profit_manual_auto_copy": settings.profit_manual_auto_copy,
         },
     )
 
@@ -385,6 +386,18 @@ async def live_radar_partial(request: Request):
         request,
         "partials/live_radar.html",
         {"radar": radar},
+    )
+
+
+@router.get("/board/partials/session-prep", response_class=HTMLResponse)
+async def session_prep_partial(request: Request):
+    from src.services.session_prep import build_session_prep
+
+    prep = await _to_thread(_with_db, build_session_prep)
+    return TEMPLATES.TemplateResponse(
+        request,
+        "partials/session_prep_strip.html",
+        {"prep": prep},
     )
 
 

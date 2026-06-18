@@ -145,6 +145,12 @@ class Settings(BaseSettings):
     phase_c_max_motor_error_pct: float = 5.0
     profit_win_cross_order: bool = True
 
+    # Profit execution ladder (no DLL required for paper / manual / NTSL)
+    profit_exec_ladder: str = "auto"  # auto | paper_stub | manual_outbox | ntsl_export | dll_auto
+    profit_ntsl_on_execute: bool = True
+    profit_manual_auto_copy: bool = True
+    profit_open_export_folder: bool = True
+
     # 4.1 — futures watchlist + read-only social signals
     futures_watchlist_enabled: bool = True
     social_signals_enabled: bool = True

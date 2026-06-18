@@ -46,6 +46,10 @@ def _avg_volume_map() -> dict[str, int]:
     prof = get_resource_profile(settings)
 
     def _load() -> dict[str, int]:
+        if settings.scanner_mode == "filipe_core17":
+            from src.services.filipe_universe import load_filipe_core17
+
+            return {s.symbol: s.avg_volume_30d for s in load_filipe_core17()}
         if settings.scanner_mode == "filipe_core14":
             from src.services.filipe_universe import load_filipe_core14
 
@@ -77,6 +81,18 @@ class PatternScanner:
         logger.info("scan_start", mode=self.settings.scanner_mode, symbols=len(symbols))
 
         quote_map = self.profit.get_quotes_batch(symbols)
+        if self.settings.futures_watchlist_enabled:
+            from src.services.futures_roll import resolve_futures_quote_symbol
+            from src.services.futures_universe import symbol_list as fut_symbols
+
+            fut_batch = self.profit.get_quotes_batch(
+                [resolve_futures_quote_symbol(s)["resolved"] for s in fut_symbols()]
+            )
+            for root in fut_symbols():
+                meta = resolve_futures_quote_symbol(root)
+                resolved = meta.get("resolved")
+                if resolved and resolved in fut_batch:
+                    quote_map[root] = fut_batch[resolved]
 
         for symbol in symbols:
             try:

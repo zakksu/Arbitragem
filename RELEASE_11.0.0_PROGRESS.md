@@ -9,6 +9,7 @@
 | 11.0-alpha | FIFO archaeology P&L, summary API, insights ingest, layout presets | ✅ |
 | 11.0-beta | Strategy Lab strip, structure replay, NTSL match | ✅ |
 | 11.0-rc | Core17 scanner, sector strip + corr, motor queue 12, pack version, options refresh | ✅ |
+| 11.0-GA software | F1–F5 structures, futures sizer, WIN roll, execution ladder, `ship_11_0_ga.py` | ✅ |
 
 ## API highlights
 
@@ -27,5 +28,6 @@
 ## Tests
 
 ```powershell
-pytest tests/test_filipe_core17.py tests/test_11_0_strategy_lab.py tests/test_b3_history_import.py -q
+python scripts/ship_11_0_ga.py --json
+pytest tests/test_filipe_core17.py tests/test_11_0_ga_structures.py tests/test_supervisor_backlog.py tests/test_profit_execution_ladder.py -q
 ```

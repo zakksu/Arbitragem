@@ -1,6 +1,6 @@
 # Agent instructions — Arbitragem Dashboard
 
-**Current sprint:** [RELEASE_14.0.0.md](RELEASE_14.0.0.md) **14.0.0 GA** shipped. Tracker: [RELEASE_14.0.0_PROGRESS.md](RELEASE_14.0.0_PROGRESS.md). Version: `14.0.0`.
+**Current sprint:** [RELEASE_14.1_EXECUTION.md](RELEASE_14.1_EXECUTION.md) **14.1.0** shipped (execution ladder + session prep). Board: [RELEASE_14.0.0.md](RELEASE_14.0.0.md). Version: `14.1.0`.
 
 ## Two-agent workflow (always on)
 
@@ -143,6 +143,10 @@ A4.20  GET /quotes/futures — **DONE**
 A11.12 Patch proposals weighted by archaeology win rate — **DONE**
 A11.14 bridge /health account_profile + is_paper — **DONE** (stub + dll bridge)
 A4.21  RSS/Twitter signals API — exists GET /signals/social; polish only
+A11.16 futures_contract_sizer — GET /futures/sizer/{symbol} — **DONE**
+A11.17 WIN front-month in scanner quotes — **DONE**
+A11.18 F1–F5 structure_type + replay hooks — **DONE**
+Profit execution ladder — GET /integrations/profit/execution-ladder — **DONE**
 ```
 
 Blocked on Filipe / external: Phase C gate, DLL ctypes orders (12.0-rc), live crypto.

@@ -562,6 +562,37 @@
     background: var(--bb14-accent-dim);
 }
 
+.bb-session-prep-slot {
+    margin: 0.25rem 0.75rem;
+}
+
+.bb-session-prep {
+    padding: 0.5rem 0.65rem;
+    font-size: 0.72rem;
+}
+
+.bb-session-prep-head {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.4rem;
+    margin-bottom: 0.35rem;
+}
+
+.bb-session-prep-steps {
+    margin: 0;
+    padding-left: 1.1rem;
+    line-height: 1.45;
+}
+
+.bb-session-prep-steps .bb-ok {
+    color: var(--bb14-accent);
+}
+
+.bb-session-prep-steps .bb-warn {
+    color: #f59e0b;
+}
+
 @media (max-width: 768px) {
     .bb-journal-hero {
         grid-template-columns: repeat(2, 1fr);
