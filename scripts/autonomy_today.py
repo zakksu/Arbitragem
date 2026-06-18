@@ -38,7 +38,13 @@ def main() -> int:
         TradeIdeaService(session).generate_from_latest_scan(limit=8)
 
         print("[autonomy_today] Replay lab job...")
-        summary["replay"] = start_replay(strategy="scalp_default", symbol="PETR4", speed=10.0)
+        from src.services.structure_types import replay_strategy_for_structure
+
+        summary["replay"] = start_replay(
+            strategy=replay_strategy_for_structure("stock_scalp_vwap"),
+            symbol="PETR4",
+            speed=10.0,
+        )
 
         settings = get_settings()
         if settings.autonomy_enabled:

@@ -14,6 +14,7 @@ from src.services.idea_score import score_idea
 from src.services.risk_cockpit import build_risk_cockpit
 from src.services.risk_summary import build_risk_summary
 from src.services.trade_ideas import TradeIdeaService
+from src.services.structure_types import is_cash_scalp
 from src.services.trading_sleeves import SLEEVES, is_open, sleeve_for_idea, status as sleeves_status
 
 logger = get_logger(__name__)
@@ -123,7 +124,11 @@ def run_autonomy_cycle(session: Session) -> dict[str, Any]:
     ranked = sorted(by_sleeve.values(), key=lambda x: x.get("idea_score", 0), reverse=True)
     max_pick = 1 if settings.paper_trading_mode and settings.auto_trading_on_sleeves else 3
     if settings.paper_trading_mode:
-        ranked = [i for i in ranked if sleeve_for_idea(i) == "cash" or i.get("structure_type") == "scalp_long"]
+        ranked = [
+            i
+            for i in ranked
+            if sleeve_for_idea(i) == "cash" or is_cash_scalp(i.get("structure_type", ""))
+        ]
     picked = ranked[: min(max_pick, budget)]
 
     for idea in picked:

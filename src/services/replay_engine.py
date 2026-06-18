@@ -206,6 +206,28 @@ def _iter_ticks(candles: list[dict[str, Any]]) -> Generator[tuple[int, float, di
                 idx += 1
 
 
+def _normalize_replay_strategy(strategy: str) -> str:
+    """Map S1–S5 / F1–F5 template ids to tick-sim modes."""
+    from src.services.structure_types import STRUCTURE_TO_REPLAY_STRATEGY, replay_strategy_for_structure
+
+    key = strategy.strip().lower()
+    if key in STRUCTURE_TO_REPLAY_STRATEGY:
+        key = replay_strategy_for_structure(key)
+    sim_map = {
+        "s1_vwap_reclaim": "scalp_long",
+        "s2_orb_break": "scalp_long",
+        "s3_bb_fade": "scalp_long",
+        "s4_arch_bias": "scalp_long",
+        "s5_pulse": "scalp_long",
+        "f1_open_drive": "scalp_long",
+        "f2_vwap_reclaim": "scalp_long",
+        "f3_lunch_fade": "scalp_short",
+        "f4_afternoon_trend": "scalp_long",
+        "f5_failed_breakout": "scalp_short",
+    }
+    return sim_map.get(key, key)
+
+
 def _run_tick_simulation(
     symbol: str,
     strategy: str,
@@ -213,6 +235,7 @@ def _run_tick_simulation(
     speed: float,
 ) -> tuple[list[dict[str, Any]], dict[str, Any]]:
     """Scalp replay on session candles — VWAP reclaim long/short logic."""
+    strategy = _normalize_replay_strategy(strategy)
     from src.integrations.profit_bridge import get_profit_client
 
     settings = get_settings()

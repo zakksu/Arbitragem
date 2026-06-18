@@ -39,7 +39,22 @@ def client(monkeypatch, tmp_path):
     return TestClient(create_app())
 
 
-def test_scalp_structure_types_catalog():
+def test_quick_seed_rotates_scalp_structures(db_session):
+    from src.services.trade_ideas import TradeIdeaService
+
+    svc = TradeIdeaService(db_session)
+    structures = set()
+    for sym in ("PETR4", "VALE3", "ITUB4", "BBDC4", "ABEV3"):
+        idea = svc.quick_seed_paper_idea(sym)
+        structures.add(idea.structure_type)
+    assert "stock_scalp_vwap" in structures or "pulse_scalp" in structures
+
+
+def test_replay_strategy_for_structure():
+    from src.services.structure_types import replay_strategy_for_structure
+
+    assert replay_strategy_for_structure("stock_scalp_vwap") == "s1_vwap_reclaim"
+    assert replay_strategy_for_structure("pulse_scalp") == "s5_pulse"
     ids = {row["id"] for row in STRUCTURE_CATALOG}
     assert "stock_scalp_vwap" in ids
     assert "pulse_scalp" in ids

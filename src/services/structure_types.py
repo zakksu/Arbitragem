@@ -22,6 +22,38 @@ class LegType(str, Enum):
     BOVA_PUT = "bova_put"
 
 
+SCALP_STRUCTURE_IDS: frozenset[str] = frozenset(
+    {
+        StructureType.SCALP.value,
+        "scalp_long",
+        "scalp_short",
+        "stock_scalp_vwap",
+        "opening_range_break",
+        "mean_reversion_band",
+        "archaeology_bias_long",
+        "pulse_scalp",
+    }
+)
+
+PAPER_MOTOR_STRUCTURES: tuple[str, ...] = (
+    "stock_scalp_vwap",
+    "pulse_scalp",
+    "opening_range_break",
+    "mean_reversion_band",
+    "archaeology_bias_long",
+)
+
+STRUCTURE_TO_REPLAY_STRATEGY: dict[str, str] = {
+    "stock_scalp_vwap": "s1_vwap_reclaim",
+    "opening_range_break": "s2_orb_break",
+    "mean_reversion_band": "s3_bb_fade",
+    "archaeology_bias_long": "s4_arch_bias",
+    "pulse_scalp": "s5_pulse",
+    "scalp_long": "s1_vwap_reclaim",
+    "scalp_short": "scalp_short",
+    "scalp": "scalp_default",
+}
+
 STRUCTURE_CATALOG: list[dict] = [
     {
         "id": StructureType.SCALP.value,
@@ -90,6 +122,14 @@ STRUCTURE_CATALOG: list[dict] = [
         "description": "Live Radar all green + CASH sleeve — max 3/day",
     },
 ]
+
+
+def is_cash_scalp(structure: str) -> bool:
+    return structure.lower() in SCALP_STRUCTURE_IDS
+
+
+def replay_strategy_for_structure(structure: str) -> str:
+    return STRUCTURE_TO_REPLAY_STRATEGY.get(structure.lower(), "scalp_default")
 
 
 def enabled_structure_types(enabled_csv: str) -> list[dict]:

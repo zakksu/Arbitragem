@@ -93,7 +93,9 @@ class Settings(BaseSettings):
 
     # 3.0 — Structure Deck
     structure_types_enabled: str = (
-        "scalp,covered_call,vertical,collar,bova_hedge,pair_spread"
+        "scalp,covered_call,vertical,collar,bova_hedge,pair_spread,"
+        "stock_scalp_vwap,opening_range_break,mean_reversion_band,"
+        "archaeology_bias_long,pulse_scalp"
     )
     max_pain_signal_enabled: bool = True
     greeks_stub_mode: bool = True

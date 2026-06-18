@@ -51,11 +51,13 @@ def test_ideas_endpoint():
 
 
 def test_setup_status():
+    from src import __version__
+
     r = _client().get("/api/v1/setup/status")
     assert r.status_code == 200
     data = r.json()
     assert "steps" in data
-    assert data.get("release", "").startswith("12.")
+    assert data.get("release") == __version__
 
 
 def test_board_page():

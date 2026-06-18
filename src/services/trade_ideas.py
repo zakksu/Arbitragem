@@ -22,6 +22,7 @@ _PAPER_SEED_PRICE = {
     "BBDC4": 14.0,
     "ABEV3": 12.0,
 }
+_PAPER_SEED_IDX = 0
 
 
 class TradeIdeaService:
@@ -187,10 +188,24 @@ class TradeIdeaService:
         logger.info("structure_idea_created", symbol=sym, structure=structure)
         return idea
 
-    def quick_seed_paper_idea(self, symbol: str, *, side: str = "long") -> TradeIdea:
+    def quick_seed_paper_idea(
+        self,
+        symbol: str,
+        *,
+        side: str = "long",
+        structure_type: str | None = None,
+    ) -> TradeIdea:
         """Fast paper motor seed — no backtest/IV calls."""
+        global _PAPER_SEED_IDX
+        from src.services.structure_types import PAPER_MOTOR_STRUCTURES
+
         sym = symbol.upper()
-        if self._has_open_idea(sym, "scalp_long"):
+        if structure_type is None:
+            structure = PAPER_MOTOR_STRUCTURES[_PAPER_SEED_IDX % len(PAPER_MOTOR_STRUCTURES)]
+            _PAPER_SEED_IDX += 1
+        else:
+            structure = structure_type.lower()
+        if self._has_open_idea(sym, structure):
             raise ValueError(f"open idea exists for {sym}")
 
         last = _PAPER_SEED_PRICE.get(sym, 30.0)
@@ -203,7 +218,7 @@ class TradeIdeaService:
         target_p = round(last + 8 * tick, 4)
         idea = TradeIdea(
             symbol=sym,
-            structure_type="scalp_long",
+            structure_type=structure,
             side=side,
             status="backtested",
             reliability=60.0,
@@ -212,7 +227,7 @@ class TradeIdeaService:
             target_price=target_p,
             stop_ticks=5,
             target_ticks=8,
-            title=f"Paper motor — {sym} scalp",
+            title=f"Paper motor — {sym} {structure.replace('_', ' ')}",
             rationale_tags=["paper_motor", "backtest_pass"],
             legs=[{"symbol": sym, "side": "buy", "quantity": 100, "leg_type": "cash"}],
             backtest_proof={
@@ -589,7 +604,17 @@ class TradeIdeaService:
     ) -> str:
         if requested:
             return requested
-        tags = scan.pattern_tags or []
+        tags = [t.lower() for t in (scan.pattern_tags or [])]
+        if "vwap_reclaim" in tags:
+            return "stock_scalp_vwap"
+        if any(t in tags for t in ("opening_range", "orb_break", "opening_range_break")):
+            return "opening_range_break"
+        if any(t in tags for t in ("mean_reversion", "bb_fade", "rsi_oversold")):
+            return "mean_reversion_band"
+        if any(t in tags for t in ("archaeology", "archaeology_bias", "history_bias")):
+            return "archaeology_bias_long"
+        if "pulse_scalp" in tags or "live_radar_green" in tags:
+            return "pulse_scalp"
         if "near_max_pain" in tags or "max_pain" in tags:
             if side == "long":
                 return "covered_call"
@@ -605,6 +630,11 @@ class TradeIdeaService:
             "collar": f"{symbol} collar",
             "bova_hedge": f"{symbol} + BOVA hedge",
             "pair_spread": f"{symbol} pair spread",
+            "stock_scalp_vwap": f"{symbol} VWAP reclaim",
+            "opening_range_break": f"{symbol} opening range break",
+            "mean_reversion_band": f"{symbol} mean reversion",
+            "archaeology_bias_long": f"{symbol} archaeology bias",
+            "pulse_scalp": f"{symbol} pulse scalp",
         }
         if structure in labels:
             return labels[structure]
@@ -613,9 +643,11 @@ class TradeIdeaService:
     def _legs_for_structure(
         self, structure: str, symbol: str, side: str, quote
     ) -> list[dict]:
+        from src.services.structure_types import is_cash_scalp
+
         sym = symbol.upper()
         cash_side = "buy" if side == "long" else "sell" if side == "short" else "flat"
-        if structure in ("scalp", "scalp_long", "scalp_short"):
+        if is_cash_scalp(structure):
             return [
                 {
                     "symbol": sym,
