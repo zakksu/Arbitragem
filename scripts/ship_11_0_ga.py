@@ -45,9 +45,9 @@ def main() -> int:
     pack_ok = pack_path.is_file()
 
     checks = {
-        "archaeology_rows_db": {"ok": arch_count >= 100, "value": arch_count, "target": "≥9000 manual"},
+        "archaeology_rows_db": {"ok": arch_count >= 100, "value": arch_count, "target": ">=9000 manual"},
         "archaeology_summary_api": {"ok": arch_summary is not None, "value": arch_summary.get("total_trades") if arch_summary else 0},
-        "ntsl_indexed": {"ok": ntsl_count >= 10, "value": ntsl_count, "target": "≥50 after scan"},
+        "ntsl_indexed": {"ok": ntsl_count >= 10, "value": ntsl_count, "target": ">=50 after scan"},
         "ntsl_pack_version": {"ok": pack_ok, "path": str(pack_path)},
         "core17_universe": {"ok": (core17 or {}).get("count") == 17, "value": (core17 or {}).get("count")},
         "execution_ladder": {"ok": ladder is not None, "mode": (ladder or {}).get("active_mode")},
