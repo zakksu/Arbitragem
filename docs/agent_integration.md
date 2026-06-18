@@ -470,6 +470,13 @@ Requires `PAPER_TRADING_MODE=true` and `CRYPTO_PAPER_ENABLED=true`. Crypto ideas
 
 **Env:** `SCANNER_MODE=filipe_core17` expands motor/scanner universe to 17 names.
 
+| Endpoint | Method | Purpose |
+|----------|--------|---------|
+| `/options/core17/refresh` | POST | Verify option tickers vs Profit bridge; writes `data/.dev/core17_options_meta.json` |
+| `/options/core17/status` | GET | Last refresh metadata |
+
+Strategy store scan response includes `pack_version`, `new_since_pack`, `removed_since_pack` when `data/.dev/ntsl_pack_version.json` exists (from `generate_core14_ntsl_pack.py`).
+
 #### Knowledge ingest (A11.6)
 
 | Endpoint | Method | Purpose |

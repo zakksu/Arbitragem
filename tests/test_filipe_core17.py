@@ -74,3 +74,27 @@ def test_knowledge_ingest_insights_api(client: TestClient, tmp_path, monkeypatch
     assert r.status_code == 200
     body = r.json()
     assert body.get("ok") is True or body.get("chunks", 0) > 0
+
+
+def test_motor_universe_core17_queue(monkeypatch, tmp_path):
+    monkeypatch.setenv("DATABASE_URL", f"sqlite:///{tmp_path / 'motor.db'}")
+    monkeypatch.setenv("SCANNER_MODE", "filipe_core17")
+    get_settings.cache_clear()
+    init_db()
+    from src.models import get_session_factory
+    from src.services.motor_universe import motor_universe_policy
+
+    session = get_session_factory()()
+    body = motor_universe_policy(session)
+    session.close()
+    assert body["universe_mode"] == "filipe_core17"
+    assert body["universe_count"] == 17
+    assert len(body["queued"]) <= 12
+
+
+def test_core17_options_refresh_api(client: TestClient):
+    r = client.post("/api/v1/options/core17/refresh")
+    assert r.status_code == 200
+    body = r.json()
+    assert body.get("ok") is True
+    assert body.get("rows", 0) >= 1

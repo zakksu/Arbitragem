@@ -13,6 +13,8 @@ def test_detect_returns_structure():
     assert "found" in result
     assert "candidates" in result
     assert "platform" in result
+    assert "profitchart_exe" in result
+    assert "automation_module_missing" in result
 
 
 def test_find_candidates_with_env(tmp_path, monkeypatch):

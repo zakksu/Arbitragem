@@ -38,7 +38,7 @@ Work **together** on the `Arbitragem` folder. Split by layer, not by “who’s 
 | A11.1 FIFO P&L on archaeology rows | A11.5 symbol panel “your history” chip | no | **DONE** |
 | A11.6 ingest insights → knowledge RAG | W11.1 Strategy Lab strip in hybrid layout | yes (static cards) | **DONE** |
 | A11.14 bridge `/health` `dll_mode` + `is_paper` | W11.7 outbox ticker polish (copy hint) | no | polish |
-| A11.10 `filipe_core17` scanner mode | W11.4 Core17 sector strip | no | **DONE** (API) · W11.4 UI queued |
+| A11.10 `filipe_core17` scanner mode | W11.4 Core17 sector strip | no | **DONE** |
 
 Full 11.0 tables: [docs/RELEASE_11.0_SCOPE.md](docs/RELEASE_11.0_SCOPE.md).
 
@@ -131,6 +131,8 @@ Exit `0` = API + Streamlit healthy at http://localhost:8501
 ### Supervisor (backend) — **12.0-beta + 11.0-alpha**
 
 **Done (11.0-alpha pack):** A11.1 FIFO archaeology P&L · A11.3 archaeology summary · A11.6 knowledge insights ingest · A11.10 `filipe_core17` scanner + `GET /universe/filipe-core17` · A12.7 paper `fees_brl`.
+
+**Done (11.0-rc pack):** W11.4 sector strip on Desk · A11.8 NTSL pack version + store diff · A11.9 options refresh API · A11.11 motor queue 12 + core17 universe.
 
 **Next / backlog:**
 

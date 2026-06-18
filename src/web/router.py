@@ -12,7 +12,13 @@ from fastapi.responses import HTMLResponse
 from src.config import get_settings
 from src.integrations.profit_bridge import ProfitBridgeClient, get_profit_client
 from src.services.bootstrap_context import build_bootstrap
-from src.services.filipe_universe import load_filipe_core14, SECTOR_BASKETS
+from src.services.filipe_universe import (
+    CORE17_SECTOR_BASKETS,
+    SECTOR_BASKETS,
+    core17_symbol_list,
+    load_filipe_core14,
+    load_filipe_core17,
+)
 from src.services.risk_cockpit import build_risk_cockpit
 from src.services.risk_summary import build_risk_summary
 from src.web.deps import TEMPLATES
@@ -101,13 +107,22 @@ async def _fetch_json(request: Request, path: str, *, timeout: float = 2.0) -> d
 
 
 def _universe_payload_sync() -> dict[str, Any]:
+    settings = get_settings()
+    if settings.scanner_mode == "filipe_core17":
+        symbols = load_filipe_core17()
+        return {
+            "mode": "filipe_core17",
+            "symbols": [s.to_dict() for s in symbols],
+            "sector_baskets": CORE17_SECTOR_BASKETS,
+        }
     symbols = load_filipe_core14()
     if symbols:
         return {
+            "mode": "filipe_core14",
             "symbols": [s.to_dict() for s in symbols],
             "sector_baskets": SECTOR_BASKETS,
         }
-    return {"symbols": [dict(s) for s in _CORE14_FALLBACK], "sector_baskets": SECTOR_BASKETS}
+    return {"mode": "fallback", "symbols": [dict(s) for s in _CORE14_FALLBACK], "sector_baskets": SECTOR_BASKETS}
 
 
 async def _fetch_universe_payload(request: Request) -> dict[str, Any]:
@@ -964,6 +979,11 @@ _SECTOR_LABELS: dict[str, str] = {
     "steel": "Siderurgia",
     "energy": "Energia",
     "defensive": "Defensivo",
+    "varejo": "Varejo",
+    "index": "Índice",
+    "mineração": "Mineração",
+    "papel": "Papel",
+    "industrial": "Industrial",
 }
 
 _FALLBACK_BASKETS: dict[str, list[str]] = {
@@ -978,10 +998,40 @@ _FALLBACK_BASKETS: dict[str, list[str]] = {
 async def sector_strip_partial(request: Request):
     payload = await _fetch_universe_payload(request)
     baskets = payload.get("sector_baskets") or _FALLBACK_BASKETS
+    pair_signals: list[dict[str, Any]] = []
+    try:
+        symbols: list[str] = []
+        for group in baskets.values():
+            symbols.extend(group)
+        symbols = list(dict.fromkeys(s.upper() for s in symbols))[:24]
+        quotes = await _to_thread(_quote_map, symbols)
+        member_data = {
+            sym: {"price_change_pct": float((q or {}).get("change_pct") or 0)}
+            for sym, q in quotes.items()
+            if q
+        }
+        from src.services.sector_pairs import detect_sector_pairs
+
+        pair_signals = [
+            {
+                "basket": p.basket,
+                "pair": p.pair_label(),
+                "spread_pct": p.spread_pct,
+                "reliability": p.reliability,
+            }
+            for p in detect_sector_pairs(member_data)
+        ]
+    except Exception:
+        pair_signals = []
     return TEMPLATES.TemplateResponse(
         request,
         "partials/sector_strip.html",
-        {"baskets": baskets, "labels": _SECTOR_LABELS},
+        {
+            "baskets": baskets,
+            "labels": _SECTOR_LABELS,
+            "mode": payload.get("mode") or "filipe_core14",
+            "pair_signals": pair_signals,
+        },
     )
 
 

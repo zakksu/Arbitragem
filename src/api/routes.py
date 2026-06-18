@@ -328,6 +328,29 @@ def filipe_core17():
     }
 
 
+@router.post("/options/core17/refresh")
+def core17_options_refresh():
+    """Verify option tickers against Profit bridge; write refresh metadata (A11.9)."""
+    from src.services.core17_options import refresh_core17_options
+
+    return refresh_core17_options()
+
+
+@router.get("/options/core17/status")
+def core17_options_status():
+    from src.config import PROJECT_ROOT
+
+    meta = PROJECT_ROOT / "data" / ".dev" / "core17_options_meta.json"
+    if not meta.is_file():
+        return {"ok": False, "reason": "never_refreshed"}
+    import json
+
+    try:
+        return {"ok": True, **json.loads(meta.read_text(encoding="utf-8"))}
+    except (OSError, ValueError, TypeError):
+        return {"ok": False, "reason": "meta_read_error"}
+
+
 @router.get("/ideas")
 def list_trade_ideas(
     limit: int = 20,

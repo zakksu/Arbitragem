@@ -78,6 +78,15 @@ def test_sector_strip_partial(client):
     r = client.get("/board/partials/sector-strip")
     assert r.status_code == 200
     assert "bb-sector-strip" in r.text
+
+
+def test_sector_strip_core17_mode(client, monkeypatch):
+    monkeypatch.setenv("SCANNER_MODE", "filipe_core17")
+    get_settings.cache_clear()
+    r = client.get("/board/partials/sector-strip")
+    assert r.status_code == 200
+    assert 'data-universe="filipe_core17"' in r.text
+    assert "RADL3" in r.text or "varejo" in r.text.lower()
     assert "PETR4" in r.text or "Energia" in r.text
 
 

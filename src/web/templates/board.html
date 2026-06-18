@@ -32,6 +32,12 @@
         <span class="bb-muted">Live radar…</span>
     </div>
     {% if not golden_path_mode %}
+    <div id="sector-strip-slot" class="bb-sector-strip-slot"
+         hx-get="/board/partials/sector-strip"
+         hx-trigger="load, every 60s"
+         hx-swap="innerHTML">
+        <span class="bb-muted">Sector map…</span>
+    </div>
     <div hx-get="/board/partials/strategy-lab-strip"
          hx-trigger="load delay:150ms"
          hx-swap="innerHTML">

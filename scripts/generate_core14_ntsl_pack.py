@@ -111,6 +111,7 @@ def main() -> int:
     OUT_DIR.mkdir(parents=True, exist_ok=True)
     written = 0
     idx = 0
+    files: list[str] = []
     for underlying in CORE17:
         o = opts.get(underlying, {})
         for st_key, st_hint, desc in STRUCTURES:
@@ -138,8 +139,27 @@ def main() -> int:
             )
             written += 1
             idx += 1
+            files.append(str(path.resolve()))
         if written >= 50:
             break
+
+    import json
+    from datetime import datetime, timezone
+
+    version_path = PROJECT_ROOT / "data" / ".dev" / "ntsl_pack_version.json"
+    version_path.parent.mkdir(parents=True, exist_ok=True)
+    version_path.write_text(
+        json.dumps(
+            {
+                "version": f"core17-{written}",
+                "generated_at": datetime.now(timezone.utc).isoformat(),
+                "files": files,
+                "count": written,
+            },
+            indent=2,
+        ),
+        encoding="utf-8",
+    )
 
     print(f"Wrote {written} NTSL files to {OUT_DIR}")
     return 0

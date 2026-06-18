@@ -8,12 +8,39 @@ from typing import Any
 
 from sqlalchemy.orm import Session
 
-from src.config import get_settings
+from src.config import PROJECT_ROOT, get_settings
 from src.logging_config import get_logger
 from src.models import StoredStrategy, Strategy
 from src.services.ntsl_parser import content_hash, extract_ntsl_features
 
 logger = get_logger(__name__)
+
+_PACK_VERSION_PATH = PROJECT_ROOT / "data" / ".dev" / "ntsl_pack_version.json"
+
+
+def read_ntsl_pack_version() -> dict[str, Any]:
+    if not _PACK_VERSION_PATH.is_file():
+        return {}
+    try:
+        import json
+
+        return json.loads(_PACK_VERSION_PATH.read_text(encoding="utf-8"))
+    except (OSError, ValueError, TypeError):
+        return {}
+
+
+def _pack_diff(session: Session) -> dict[str, Any]:
+    pack = read_ntsl_pack_version()
+    if not pack:
+        return {"pack_version": None, "new_since_pack": 0, "removed_since_pack": 0}
+    indexed = {r.file_path for r in session.query(StoredStrategy).all()}
+    pack_files = set(pack.get("files") or [])
+    return {
+        "pack_version": pack.get("version"),
+        "pack_generated_at": pack.get("generated_at"),
+        "new_since_pack": len(indexed - pack_files),
+        "removed_since_pack": len(pack_files - indexed),
+    }
 
 
 def _strategy_name_from_path(path: Path) -> str:
@@ -99,8 +126,15 @@ def scan_strategy_directories(session: Session, paths: list[Path] | None = None)
             except OSError as exc:
                 errors.append(f"{path.name}:{exc}")
     session.commit()
+    diff = _pack_diff(session)
     logger.info("strategy_store_scan", indexed=indexed, dirs=len(dirs))
-    return {"scanned": indexed, "indexed": indexed, "dirs": [str(d) for d in dirs], "errors": errors}
+    return {
+        "scanned": indexed,
+        "indexed": indexed,
+        "dirs": [str(d) for d in dirs],
+        "errors": errors,
+        **diff,
+    }
 
 
 def list_stored_strategies(session: Session, *, limit: int = 50) -> list[dict[str, Any]]:

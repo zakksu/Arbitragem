@@ -1,8 +1,26 @@
-<div class="bb-sector-strip" data-sector-count="{{ baskets|length }}">
+<div class="bb-sector-strip" data-sector-count="{{ baskets|length }}" data-universe="{{ mode or 'filipe_core14' }}">
     {% for key, syms in baskets.items() %}
     <div class="bb-sector-group" title="{{ syms|join(', ') }}">
         <span class="bb-sector-label">{{ labels.get(key, key) }}</span>
-        <span class="bb-sector-syms">{{ syms|join(" · ") }}</span>
+        <span class="bb-sector-syms">
+            {% for sym in syms %}
+            <button type="button"
+                    class="bb-sector-sym"
+                    hx-get="/board/partials/symbol/{{ sym }}"
+                    hx-target="#symbol-panel"
+                    hx-swap="innerHTML">{{ sym }}</button>{% if not loop.last %} · {% endif %}
+            {% endfor %}
+        </span>
     </div>
     {% endfor %}
+    {% if pair_signals %}
+    <div class="bb-sector-corr" title="Intraday sector pair spreads">
+        <span class="bb-sector-label">Pairs</span>
+        {% for p in pair_signals %}
+        <span class="bb-corr-chip" title="spread {{ p.spread_pct }}%">
+            {{ p.pair }} <em>{{ "%.2f"|format(p.spread_pct) }}%</em>
+        </span>
+        {% endfor %}
+    </div>
+    {% endif %}
 </div>
