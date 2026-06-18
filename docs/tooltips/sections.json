@@ -27,6 +27,10 @@
     "en": "Learn preset — hides idea stack; focus on Trade Product and education rail.",
     "pt": "Layout aprendizado"
   },
+  "layout.archaeology": {
+    "en": "Archaeology preset — timeline hero under the board; wider symbol panel for your B3 history.",
+    "pt": "Layout arqueologia"
+  },
   "toolbar.shortcuts": {
     "en": "S scan · K kill toggle · 1-9 watchlist row · R refresh · Enter top idea.",
     "pt": "Atalhos de teclado"

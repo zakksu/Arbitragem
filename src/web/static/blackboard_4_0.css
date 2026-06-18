@@ -142,6 +142,92 @@ body.bb-layout-learn .bb-col-ideas {
     display: none !important;
 }
 
+body.bb-layout-golden .bb-col-watch.bb-col-hidden,
+body.bb-layout-golden .bb-col-watch {
+    display: none !important;
+}
+
+body.bb-layout-golden .bb-col-board {
+    grid-column: span 2;
+}
+
+.bb-arch-lanes {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.35rem;
+    margin: 0.35rem 0 0.5rem;
+}
+
+.bb-arch-lane,
+.bb-arch-lane-tag {
+    font-size: 0.6rem;
+    padding: 0.1rem 0.35rem;
+    border-radius: 3px;
+    border: 1px solid var(--arb-border);
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
+}
+
+.bb-arch-lane-futures { background: rgba(59, 130, 246, 0.12); }
+.bb-arch-lane-cash { background: rgba(34, 197, 94, 0.1); }
+.bb-arch-lane-options { background: rgba(168, 85, 247, 0.1); }
+
+body.bb-layout-archaeology .bb-archaeology-hero-slot {
+    display: block;
+    margin: 0.35rem 0.75rem 0;
+    padding: 0;
+}
+
+body:not(.bb-layout-archaeology) .bb-archaeology-hero-slot {
+    display: none;
+}
+
+body.bb-layout-archaeology .bb-strategy-store-slot {
+    display: none !important;
+}
+
+body.bb-layout-archaeology .bb-archaeology-drawer {
+    display: none;
+}
+
+.bb-history-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+    margin-top: 0.35rem;
+    padding: 0.2rem 0.45rem;
+    font-size: 0.62rem;
+    font-weight: 600;
+    letter-spacing: 0.03em;
+    text-transform: uppercase;
+    border: 1px solid var(--arb-border);
+    border-radius: 3px;
+    background: rgba(0, 0, 0, 0.2);
+    color: var(--arb-muted);
+}
+
+.bb-history-chip strong {
+    color: var(--arb-accent);
+    text-transform: none;
+    letter-spacing: normal;
+    font-size: 0.68rem;
+}
+
+.bb-history-chip-stub em {
+    font-style: normal;
+    font-size: 0.6rem;
+    text-transform: none;
+    letter-spacing: normal;
+}
+
+.bb-archaeology-hero-slot .bb-archaeology {
+    margin-top: 0;
+}
+
+.bb-trade-product .bb-scalp-cost {
+    margin: 0.45rem 0 0.55rem;
+}
+
 .bb-fill-preview {
     margin: 0.65rem 0;
     padding: 0.5rem 0.65rem;

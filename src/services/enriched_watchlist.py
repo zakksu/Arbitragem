@@ -10,7 +10,7 @@ from src.config import get_settings
 from src.services.resource_profile import get_resource_profile
 from src.integrations.profit_bridge import get_profit_client
 from src.services.crypto_quotes import build_crypto_watchlist_rows
-from src.services.filipe_universe import load_filipe_core14
+from src.services.filipe_universe import CORE5_STOCKS, load_filipe_core14, load_filipe_core5
 from src.services.futures_quotes import build_futures_watchlist_rows
 from src.services.risk_profile import get_or_create_profile
 from src.services.trade_ideas import TradeIdeaService
@@ -44,7 +44,10 @@ def build_enriched_watchlist(session: Session) -> dict[str, Any]:
             {"symbol": sym, "name": "Petrobras PN", "sector": "Energia", "asset_class": "equity"}
         ]
     else:
-        symbols = load_filipe_core14()
+        if settings.scanner_mode == "filipe_core5":
+            symbols = load_filipe_core5()
+        else:
+            symbols = load_filipe_core14()
         rows = (
             [s.to_dict() for s in symbols] if symbols else [dict(s) for s in _CORE14_FALLBACK]
         )

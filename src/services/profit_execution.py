@@ -30,8 +30,9 @@ def submit_order(
     """POST order to Profit bridge — sim auto-fill or live ticket outbox."""
     client = get_profit_client()
     account = resolve_profit_account()
+    sym = symbol.upper()
     payload = {
-        "symbol": symbol.upper(),
+        "symbol": sym,
         "side": side.lower(),
         "quantity": int(quantity),
         "order_type": order_type,
@@ -43,6 +44,9 @@ def submit_order(
         "account_id": account["account_id"],
         "is_paper": account["is_paper"],
     }
+    settings = get_settings()
+    if settings.profit_win_cross_order and sym.startswith("WIN"):
+        payload["cross_order"] = True
     result = client.place_order(payload)
     logger.info(
         "profit_order_submitted",

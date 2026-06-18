@@ -9,7 +9,9 @@
         {% else %}
         <span class="bb-pill bb-pill-warn">CHECK</span>
         {% endif %}
-        {% if radar.ready_manual_live %}
+        {% if radar.ready_to_execute %}
+        <span class="bb-pill bb-pill-auto">AUTO LIVE</span>
+        {% elif radar.ready_manual_live %}
         <span class="bb-pill bb-pill-live">MANUAL LIVE</span>
         {% endif %}
     </div>

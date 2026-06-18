@@ -26,13 +26,23 @@ def main() -> int:
     path = Path(args.path)
     results: list[dict] = []
 
-    suffixes = (".md", ".txt", ".ntsl", ".vtt", ".pdf")
+    suffixes = (".md", ".txt", ".ntsl", ".vtt", ".pdf", ".json")
     if path.is_dir():
         for fp in sorted(path.rglob("*")):
             if fp.suffix.lower() in suffixes:
-                results.append(ingest_file(fp, tags=tags, symbols=symbols, offline=True))
+                if fp.suffix.lower() == ".json" and "insights" in fp.name.lower():
+                    from src.services.knowledge.insights_ingest import ingest_b3_insights
+
+                    results.append(ingest_b3_insights(path=str(fp), offline=True))
+                else:
+                    results.append(ingest_file(fp, tags=tags, symbols=symbols, offline=True))
     else:
-        results.append(ingest_file(path, tags=tags, symbols=symbols, offline=True))
+        if path.suffix.lower() == ".json":
+            from src.services.knowledge.insights_ingest import ingest_b3_insights
+
+            results.append(ingest_b3_insights(path=str(path), offline=True))
+        else:
+            results.append(ingest_file(path, tags=tags, symbols=symbols, offline=True))
 
     ok = sum(1 for r in results if r.get("ok"))
     skipped = sum(1 for r in results if r.get("skipped"))

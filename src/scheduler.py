@@ -129,6 +129,23 @@ def _run_journal_maintenance() -> None:
         session.close()
 
 
+def _run_orchestrator_tick() -> None:
+    settings = get_settings()
+    if not settings.orchestrator_scheduler_enabled:
+        return
+    if not settings.paper_trading_mode and not settings.autonomy_enabled:
+        return
+    session = get_session_factory()()
+    try:
+        from src.services.trader_agent import run_trader_cycle
+
+        run_trader_cycle(session)
+    except Exception as exc:
+        logger.error("orchestrator_tick_failed", error=str(exc))
+    finally:
+        session.close()
+
+
 def start_scheduler() -> None:
     global _scheduler
     settings = get_settings()
@@ -187,6 +204,17 @@ def start_scheduler() -> None:
     from src.autonomous.scheduler import register_autonomous_jobs
 
     register_autonomous_jobs(_scheduler)
+    if settings.orchestrator_scheduler_enabled and (
+        settings.autonomy_enabled or (settings.paper_trading_mode and settings.auto_trading_on_sleeves)
+    ):
+        interval = max(30, int(settings.orchestrator_interval_sec))
+        _scheduler.add_job(
+            _run_orchestrator_tick,
+            "interval",
+            seconds=interval,
+            id="orchestrator_tick",
+            replace_existing=True,
+        )
     _scheduler.start()
     logger.info("scheduler_started")
 

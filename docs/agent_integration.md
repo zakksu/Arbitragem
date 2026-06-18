@@ -291,6 +291,7 @@ When `paper_trading_mode=true`, confirm response adds `paper_fill_preview`:
     "slippage_model": "spread_plus_1_tick",
     "paper_trading_mode": true,
     "total_slippage_brl": 4.0,
+    "total_fees_brl": 0.874,
     "legs": [
       {
         "symbol": "PETR4",
@@ -300,6 +301,7 @@ When `paper_trading_mode=true`, confirm response adds `paper_fill_preview`:
         "expected_fill": 38.04,
         "slippage_ticks": 4.0,
         "slippage_brl": 4.0,
+        "fees_brl": 0.874,
         "quote_bid": 37.98,
         "quote_ask": 38.02
       }
@@ -307,6 +309,8 @@ When `paper_trading_mode=true`, confirm response adds `paper_fill_preview`:
   }
 }
 ```
+
+`fees_brl` per leg from `clear_cost_model.b3_fee_per_leg` (cash equities only). `POST /ideas/{id}/execute` includes the same `paper_fill_preview` when paper mode is on.
 
 Worker: show ideal vs expected per leg in confirm modal before execute.
 
@@ -460,6 +464,44 @@ Requires `PAPER_TRADING_MODE=true` and `CRYPTO_PAPER_ENABLED=true`. Crypto ideas
 #### Archaeology insights (A4.32)
 
 `GET /archaeology/symbol/{sym}/insights` — merges imported trade stats + `BacktestRun` rows for timeline badges.
+
+#### Archaeology summary (A11.3)
+
+`GET /archaeology/summary?limit=15` — top symbols by trade count, win rate, net P&L, lane split, and **`fifo`** block (round trips, FIFO net P&L). Reads archaeology `Trade` rows first; falls back to `data/.dev/b3_history_insights.json` when DB is empty.
+
+`GET /archaeology/timeline` — events include `lane` (futures/cash/options) plus `fifo` aggregate.
+
+Futures watchlist rows include `front_month` from `futures_roll.resolve_futures_quote_symbol()` (WINFUT → active `WIN*` series).
+
+```json
+{
+  "total_trades": 9770,
+  "net_pnl": 12450.5,
+  "symbol_count": 142,
+  "source": "db",
+  "top_symbols": [
+    {
+      "symbol": "WINV25",
+      "trade_count": 8420,
+      "win_rate": 0.512,
+      "net_pnl": 8200.0
+    },
+    {
+      "symbol": "PETR4",
+      "trade_count": 186,
+      "win_rate": 0.548,
+      "net_pnl": 420.5
+    }
+  ],
+  "lanes": {
+    "futures": 8420,
+    "cash": 1120,
+    "options": 273
+  }
+}
+```
+
+`source` is `"db"` when archaeology trades exist, else `"b3_history_insights.json"`.
 
 #### CEI parser + import (A4.31)
 

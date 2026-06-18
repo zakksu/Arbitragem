@@ -27,8 +27,10 @@ def test_build_live_radar_shape():
     assert "lamps" in radar
     assert set(radar["lamps"]) == {"api", "bridge", "motor", "scanner", "mind", "sleeves"}
     assert "ready_to_scan" in radar
-    assert radar["ready_to_execute"] is False
-    assert "phase_c_gate" in radar["blockers"]
+    assert "ready_to_execute" in radar
+    assert "phase_c" in radar
+    if not radar.get("ready_to_execute"):
+        assert "phase_c_gate" in radar["blockers"] or radar.get("paper_trading_mode")
     assert "blockers" in radar
     assert isinstance(radar["outbox"], dict)
 

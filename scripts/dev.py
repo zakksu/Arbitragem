@@ -372,7 +372,9 @@ def _ensure_env_profit_bridge() -> None:
 
     os.environ["PROFIT_BRIDGE_ENABLED"] = "true"
     os.environ["PROFIT_BRIDGE_URL"] = "http://localhost:9100"
-    os.environ["SCANNER_MODE"] = "filipe_core14"
+    os.environ["SCANNER_MODE"] = "filipe_core5"
+    os.environ.setdefault("AUTONOMY_MAX_TRADES_PER_DAY", "0")
+    os.environ.setdefault("PAPER_CAPITAL_BRL", "1000")
     sys.path.insert(0, str(ROOT))
     from src.config import get_settings
 

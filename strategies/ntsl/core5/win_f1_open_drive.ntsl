@@ -1,0 +1,16 @@
+// Arbitragem 13.0 — Open drive 09:05-09:20
+// Momentum — Cross Order ON
+// Symbol: set in Profit Replay / Editor
+Input
+  StopTicks(80);
+  TargetTicks(120);
+Var
+  vwap : Float;
+Begin
+  vwap := VWAP(1);
+// CrossOrder(true); // enable in Profit for WINFUT
+  // Entry: pattern-specific — arm on replay for WINFUT
+  // Stop: StopTicks * tick from entry
+  // Target: TargetTicks * tick
+  Plot(vwap);
+End.

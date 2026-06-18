@@ -307,8 +307,13 @@ def place_order(payload: dict):
     side = str(payload.get("side", "buy")).lower()
     qty = int(payload.get("quantity", 100))
     is_paper = bool(payload.get("is_paper", True))
+    cross_order = bool(payload.get("cross_order")) or sym.startswith("WIN")
     q = _quote_for(sym)
     fill_price = round(q["ask"] if side == "buy" else q["bid"], 4)
+
+    hint = f"{'C' if side == 'buy' else 'V'} Mercado · {qty} · {sym}"
+    if cross_order and sym.startswith("WIN"):
+        hint += " · Cross"
 
     ticket = {
         "ticket_id": ticket_id,
@@ -322,10 +327,9 @@ def place_order(payload: dict):
         "idea_id": payload.get("idea_id"),
         "account_profile": payload.get("account_profile", "sim"),
         "account_id": payload.get("account_id"),
+        "cross_order": cross_order,
         "created_at": datetime.utcnow().isoformat() + "Z",
-        "chart_trading_hint": (
-            f"{'C' if side == 'buy' else 'V'} Mercado · {qty} · {sym}"
-        ),
+        "chart_trading_hint": hint,
     }
     (OUTBOX / "next_order.json").write_text(json.dumps(ticket, indent=2), encoding="utf-8")
     (OUTBOX / "pending" / f"{ticket_id}.json").write_text(

@@ -1,9 +1,23 @@
 {% if timeline and timeline.events %}
-<p class="bb-muted bb-arch-count">{{ timeline.count }} event(s){% if timeline.symbol_filter %} · {{ timeline.symbol_filter }}{% endif %}</p>
+<p class="bb-muted bb-arch-count">
+    {{ timeline.count }} event(s){% if timeline.symbol_filter %} · {{ timeline.symbol_filter }}{% endif %}
+    {% if timeline.fifo %}
+    · FIFO <strong>{{ timeline.fifo.round_trips }}</strong> trips
+    · net <strong>R$ {{ "%.2f"|format(timeline.fifo.net_pnl) }}</strong>
+    {% endif %}
+</p>
+{% if timeline.lanes %}
+<div class="bb-arch-lanes">
+    {% for lane, n in timeline.lanes.items() %}
+    {% if n %}<span class="bb-arch-lane bb-arch-lane-{{ lane }}">{{ lane }} {{ n }}</span>{% endif %}
+    {% endfor %}
+</div>
+{% endif %}
 <table class="bb-arch-table">
     <thead>
         <tr>
             <th>When</th>
+            <th>Lane</th>
             <th>Symbol</th>
             <th>Side</th>
             <th style="text-align:right">Qty</th>
@@ -15,6 +29,7 @@
         {% for ev in timeline.events %}
         <tr>
             <td><time>{{ ev.executed_at[:10] if ev.executed_at else '—' }}</time></td>
+            <td><span class="bb-arch-lane-tag">{{ ev.lane or 'cash' }}</span></td>
             <td><span class="bb-desk-sym">{{ ev.symbol }}</span></td>
             <td class="bb-arch-side-{{ ev.side }}">{{ ev.side|upper }}</td>
             <td style="text-align:right">{{ ev.quantity }}</td>

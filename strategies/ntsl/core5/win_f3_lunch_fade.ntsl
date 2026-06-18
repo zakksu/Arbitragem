@@ -1,0 +1,16 @@
+// Arbitragem 13.0 — Lunch fade
+// 12:00-13:00 mean reversion
+// Symbol: set in Profit Replay / Editor
+Input
+  StopTicks(50);
+  TargetTicks(80);
+Var
+  vwap : Float;
+Begin
+  vwap := VWAP(1);
+// CrossOrder(true); // enable in Profit for WINFUT
+  // Entry: pattern-specific — arm on replay for WINFUT
+  // Stop: StopTicks * tick from entry
+  // Target: TargetTicks * tick
+  Plot(vwap);
+End.

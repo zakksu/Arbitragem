@@ -59,6 +59,36 @@ STRUCTURE_CATALOG: list[dict] = [
         "legs_min": 2,
         "description": "Sector pair relative value (cash legs)",
     },
+    {
+        "id": "stock_scalp_vwap",
+        "label": "VWAP reclaim (S1)",
+        "legs_min": 1,
+        "description": "Close back above session VWAP — 4 tick stop, 6 tick target",
+    },
+    {
+        "id": "opening_range_break",
+        "label": "Opening range (S2)",
+        "legs_min": 1,
+        "description": "15m high/low break 10:00–12:00",
+    },
+    {
+        "id": "mean_reversion_band",
+        "label": "Mean reversion (S3)",
+        "legs_min": 1,
+        "description": "Lower band touch + RSI oversold, target VWAP",
+    },
+    {
+        "id": "archaeology_bias_long",
+        "label": "Archaeology bias (S4)",
+        "legs_min": 1,
+        "description": "Long when your B3 history net flow is green",
+    },
+    {
+        "id": "pulse_scalp",
+        "label": "Pulse scalp (S5)",
+        "legs_min": 1,
+        "description": "Live Radar all green + CASH sleeve — max 3/day",
+    },
 ]
 
 

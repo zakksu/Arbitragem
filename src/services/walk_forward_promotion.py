@@ -7,7 +7,7 @@ from sqlalchemy.orm import Session
 from src.config import get_settings
 from src.logging_config import get_logger
 from src.models import Strategy, TradeIdea
-from src.services.filipe_universe import symbol_list
+from src.services.filipe_universe import core5_symbol_list, symbol_list
 from src.services.profit_export_watcher import scan_profit_exports
 from src.services.strategy_manager import StrategyService
 from src.services.trade_ideas import TradeIdeaService
@@ -20,7 +20,7 @@ DEFAULT_PARAMETER_SPACE: dict[str, list] = {
     "target_ticks": [6, 8, 10],
 }
 
-PROMOTE_SYMBOLS = ("PETR4", "VALE3", "ITUB4")
+PROMOTE_SYMBOLS = core5_symbol_list() or ("PETR4", "VALE3", "ITUB4", "BOVA11", "PRIO3")
 
 
 def _folds_pass(run) -> tuple[int, int]:

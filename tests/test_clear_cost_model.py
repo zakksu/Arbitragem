@@ -8,6 +8,7 @@ from src.services.clear_cost_model import (
     round_trip_fees_brl,
     scalp_pnl_net_brl,
 )
+from src.services.paper_execution import estimate_paper_fills
 
 
 def test_round_trip_fees_petr4():
@@ -34,3 +35,26 @@ def test_scalp_pnl_net():
     r = scalp_pnl_net_brl(price=38.0, exit_price=38.05, quantity=100, side="long")
     assert r["gross_brl"] == 5.0
     assert r["net_brl"] < r["gross_brl"]
+
+
+def test_paper_fill_preview_includes_fees_per_leg():
+    preview = estimate_paper_fills(
+        {
+            "symbol": "PETR4",
+            "side": "long",
+            "entry_price": 38.0,
+            "legs": [
+                {"symbol": "PETR4", "side": "buy", "quantity": 100},
+                {"symbol": "PETR4", "side": "sell", "quantity": 100},
+            ],
+        }
+    )
+    assert preview["total_fees_brl"] > 0
+    assert len(preview["legs"]) == 2
+    for leg in preview["legs"]:
+        assert leg["fees_brl"] > 0
+        rt = round_trip_fees_brl(price=leg["expected_fill"], quantity=100)
+        assert leg["fees_brl"] == rt["b3_fee_per_leg_brl"]
+    assert preview["total_fees_brl"] == round(
+        sum(l["fees_brl"] for l in preview["legs"]), 4
+    )

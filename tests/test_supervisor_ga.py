@@ -89,6 +89,35 @@ def test_archaeology_insights(client):
     assert body["archaeology"]["trade_count"] >= 1
 
 
+def test_archaeology_summary_api(client):
+    from src.models import get_session_factory
+
+    session = get_session_factory()()
+    session.add(
+        Trade(
+            external_id="arch-sum-1",
+            source="archaeology",
+            symbol="VALE3",
+            side="buy",
+            quantity=100,
+            price=62.0,
+            pnl=20.0,
+            executed_at=__import__("datetime").datetime.utcnow(),
+        )
+    )
+    session.commit()
+    session.close()
+
+    r = client.get("/api/v1/archaeology/summary?limit=5")
+    assert r.status_code == 200
+    body = r.json()
+    assert body["total_trades"] >= 1
+    assert body["source"] == "db"
+    assert "top_symbols" in body
+    assert "lanes" in body
+    assert any(s["symbol"] == "VALE3" for s in body["top_symbols"])
+
+
 def test_cei_parse_upload(client):
     csv_text = "Data;Ativo;Tipo;Quantidade;Preco;Resultado\n01/06/2025;VALE3;C;10;62,00;20,00\n"
     files = {"file": ("cei.csv", io.BytesIO(csv_text.encode("utf-8")), "text/csv")}

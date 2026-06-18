@@ -97,7 +97,9 @@ def _seed_paper_ideas_if_needed(session: Session) -> int:
     if open_n >= 3:
         return 0
 
-    seeds = [settings.golden_path_symbol] if settings.golden_path_mode else ["PETR4", "VALE3", "ITUB4", "BBDC4", "ABEV3"]
+    from src.services.filipe_universe import CORE5_STOCKS
+
+    seeds = [settings.golden_path_symbol] if settings.golden_path_mode else list(CORE5_STOCKS)
     created = 0
     for sym in seeds:
         if open_n + created >= 3:

@@ -457,6 +457,15 @@ class TradeIdeaService:
                 + "\n[Paper crypto] Filled via Binance quote stub — no Clear/Profit route."
             )
         elif backend == "profit":
+            from src.services.capital_manager import apply_sizing_to_legs
+            from src.services.live_capital_gate import live_capital_block
+
+            legs = apply_sizing_to_legs(self.to_dict(idea))
+            sym = str(idea.symbol or "")
+            qty = int((legs[0] if legs else {}).get("quantity") or settings.motor_fixed_lot_shares or 100)
+            block = live_capital_block(self.session, sym, qty)
+            if block:
+                raise ValueError(block)
             self._execute_profit_legs(idea)
         elif settings.paper_trading_mode:
             self._log_paper_trades(idea)
@@ -714,6 +723,13 @@ class TradeIdeaService:
             quote = quote_for_symbol(sym)
             price = paper_fill_price(quote, side, idea.entry_price)
             source = "paper_crypto" if is_crypto(sym) else "paper"
+            leg_fees = 0.0
+            if source == "paper":
+                from src.services.clear_cost_model import round_trip_fees_brl
+                from src.services.paper_execution import _b3_fees_apply
+
+                if _b3_fees_apply(sym):
+                    leg_fees = round_trip_fees_brl(price=price, quantity=qty)["b3_fee_per_leg_brl"]
             trade = Trade(
                 external_id=f"idea-{idea.id}-{sym}-{side}",
                 source=source,
@@ -721,18 +737,21 @@ class TradeIdeaService:
                 side=side,
                 quantity=qty,
                 price=price,
-                fees=0.0,
+                fees=leg_fees,
                 executed_at=datetime.utcnow(),
                 raw_payload={
                     "idea_id": idea.id,
                     "legs": idea.legs,
                     "slippage_model": "spread_plus_1_tick",
+                    "fees_brl": leg_fees,
                     "quote_bid": quote.bid if quote else None,
                     "quote_ask": quote.ask if quote else None,
                 },
             )
             self.session.add(trade)
-            fills.append({"symbol": sym, "side": side, "price": price, "quantity": qty})
+            fills.append(
+                {"symbol": sym, "side": side, "price": price, "quantity": qty, "fees_brl": leg_fees}
+            )
         self.session.flush()
         self.session.add(
             JournalEntry(

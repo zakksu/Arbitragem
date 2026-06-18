@@ -97,11 +97,15 @@ def run_autonomy_cycle(session: Session) -> dict[str, Any]:
     open_stack = [i for i in ideas if i.get("status") not in ("rejected", "executed")]
 
     trades_today = _trades_today_count(session)
-    budget = max(0, settings.autonomy_max_trades_per_day - trades_today)
-    if budget <= 0:
-        out = {"skipped": "daily_trade_cap", "actions": [], "errors": []}
-        _last_result = {**out, "enabled": True, "last_run": datetime.utcnow().isoformat()}
-        return out
+    cap = settings.autonomy_max_trades_per_day
+    if cap > 0:
+        budget = max(0, cap - trades_today)
+        if budget <= 0:
+            out = {"skipped": "daily_trade_cap", "actions": [], "errors": []}
+            _last_result = {**out, "enabled": True, "last_run": datetime.utcnow().isoformat()}
+            return out
+    else:
+        budget = 9999
 
     by_sleeve: dict[str, dict[str, Any]] = {}
     for idea in open_stack:
@@ -133,7 +137,9 @@ def run_autonomy_cycle(session: Session) -> dict[str, Any]:
                     errors.append(f"#{idea_id} backtest gate failed")
                     continue
                 svc.confirm_idea(idea_id, paper_override=paper_ov or not gate_ok)
-                actions.append({"action": "confirm", "idea_id": idea_id, "sleeve": sleeve})
+                actions.append(
+                    {"action": "confirm", "idea_id": idea_id, "sleeve": sleeve, "symbol": idea.get("symbol")}
+                )
                 idea = svc.to_dict(session.get(TradeIdea, idea_id) or idea)
 
             if idea.get("status") == "confirmed":
@@ -141,7 +147,15 @@ def run_autonomy_cycle(session: Session) -> dict[str, Any]:
                 if backend == "profit" or settings.paper_trading_mode:
                     svc.execute_idea(idea_id)
                     mode = backend if backend == "profit" else "paper"
-                    actions.append({"action": "execute", "idea_id": idea_id, "mode": mode})
+                    actions.append(
+                        {
+                            "action": "execute",
+                            "idea_id": idea_id,
+                            "mode": mode,
+                            "symbol": idea.get("symbol"),
+                            "sleeve": sleeve,
+                        }
+                    )
                 elif backend == "clear":
                     from src.integrations.clear_api import get_clear_client
 

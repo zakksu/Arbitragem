@@ -7,6 +7,18 @@ from typing import Any
 from src.integrations.profit_bridge import ProfitQuote
 
 
+def _b3_fees_apply(symbol: str) -> bool:
+    """B3 day-trade fee model applies to cash equities only (12.0)."""
+    sym = symbol.upper()
+    from src.services.crypto_universe import is_crypto
+
+    if is_crypto(sym):
+        return False
+    if sym.startswith(("WIN", "WDO", "IND", "DOL", "BIT")):
+        return False
+    return len(sym) <= 6 and sym[-1].isdigit()
+
+
 def tick_size(price: float | None, symbol: str | None = None) -> float:
     if symbol:
         return crypto_tick_size(symbol, price)
@@ -70,6 +82,11 @@ def estimate_leg_fill(
     tick = tick_size(ideal or entry_price, symbol)
     slip_ticks = round(abs(expected - ideal) / tick, 2) if tick else 0.0
     slip_brl = round(abs(expected - ideal) * quantity, 2)
+    fees_brl = 0.0
+    if _b3_fees_apply(symbol):
+        from src.services.clear_cost_model import round_trip_fees_brl
+
+        fees_brl = round_trip_fees_brl(price=expected, quantity=quantity)["b3_fee_per_leg_brl"]
     return {
         "symbol": symbol.upper(),
         "side": side,
@@ -78,6 +95,7 @@ def estimate_leg_fill(
         "expected_fill": expected,
         "slippage_ticks": slip_ticks,
         "slippage_brl": slip_brl,
+        "fees_brl": fees_brl,
         "quote_bid": quote.bid if quote else None,
         "quote_ask": quote.ask if quote else None,
     }
@@ -111,9 +129,11 @@ def estimate_paper_fills(
             )
         )
     total_slip = round(sum(l["slippage_brl"] for l in leg_fills), 2)
+    total_fees = round(sum(l["fees_brl"] for l in leg_fills), 4)
     return {
         "slippage_model": "spread_plus_1_tick",
         "legs": leg_fills,
         "total_slippage_brl": total_slip,
+        "total_fees_brl": total_fees,
         "paper_trading_mode": True,
     }

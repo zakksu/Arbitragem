@@ -119,10 +119,19 @@ def build_timeline(
     symbol: str | None = None,
 ) -> dict[str, Any]:
     """Chronological trade events from archaeology imports."""
+    from src.services.archaeology_fifo import fifo_stats, trade_lane
+
     q = session.query(Trade).filter(Trade.source == "archaeology")
     if symbol:
         q = q.filter(Trade.symbol == symbol.strip().upper())
     rows = q.order_by(Trade.executed_at.desc()).limit(max(1, min(limit, 500))).all()
+
+    fifo_q = session.query(Trade).filter(Trade.source == "archaeology")
+    if symbol:
+        fifo_q = fifo_q.filter(Trade.symbol == symbol.strip().upper())
+    fifo_trades = fifo_q.order_by(Trade.executed_at.asc()).all()
+    fifo = fifo_stats(fifo_trades)
+
     events = [
         {
             "id": t.id,
@@ -131,13 +140,20 @@ def build_timeline(
             "quantity": t.quantity,
             "price": t.price,
             "pnl": t.pnl,
+            "lane": trade_lane(t.symbol),
             "executed_at": t.executed_at.isoformat() if t.executed_at else None,
             "source": t.source,
         }
         for t in rows
     ]
+    lanes = {"futures": [], "cash": [], "options": []}
+    for ev in events:
+        lanes.setdefault(ev["lane"], []).append(ev)
+
     return {
         "events": events,
         "count": len(events),
         "symbol_filter": symbol.upper() if symbol else None,
+        "fifo": fifo,
+        "lanes": {k: len(v) for k, v in lanes.items()},
     }

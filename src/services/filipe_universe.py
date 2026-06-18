@@ -10,6 +10,8 @@ from pathlib import Path
 from src.config import PROJECT_ROOT
 
 CSV_PATH = PROJECT_ROOT / "data" / "filipe_core14.csv"
+CORE5_CSV_PATH = PROJECT_ROOT / "data" / "filipe_core5.csv"
+CORE5_STOCKS = ("PETR4", "VALE3", "ITUB4", "BOVA11", "PRIO3")
 
 SECTOR_BASKETS: dict[str, list[str]] = {
     "banks": ["ITUB4", "BBAS3", "BBDC4", "BBSE3", "B3SA3"],
@@ -53,6 +55,28 @@ def load_filipe_core14() -> list[CoreSymbol]:
                 )
             )
     return rows[:14]
+
+
+@lru_cache
+def load_filipe_core5() -> list[CoreSymbol]:
+    if not CORE5_CSV_PATH.exists():
+        return [s for s in _fallback() if s.symbol in CORE5_STOCKS]
+    rows: list[CoreSymbol] = []
+    with CORE5_CSV_PATH.open(encoding="utf-8") as f:
+        for row in csv.DictReader(f):
+            rows.append(
+                CoreSymbol(
+                    symbol=row["symbol"].strip().upper(),
+                    name=row.get("name", "").strip(),
+                    avg_volume_30d=int(float(row.get("avg_volume_30d", 0))),
+                    sector=row.get("sector", "").strip(),
+                )
+            )
+    return rows[:5]
+
+
+def core5_symbol_list() -> list[str]:
+    return [s.symbol for s in load_filipe_core5()]
 
 
 def symbol_list() -> list[str]:

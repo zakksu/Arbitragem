@@ -5,6 +5,18 @@
             {% if meta %}
             <p>{{ meta.name }}{% if meta.sector %} · {{ meta.sector }}{% endif %}</p>
             {% endif %}
+            <span class="bb-history-chip{% if not has_live_history %} bb-history-chip-stub{% endif %}"
+                  title="Your B3 trade history on this symbol">
+                Your history
+                {% if has_live_history %}
+                <strong>{{ history_fill_count|default(0) }} fills</strong>
+                {% else %}
+                <em class="bb-muted">— import CSV</em>
+                {% endif %}
+                {% with key="section.history" %}
+                {% include "partials/help_tip.html" %}
+                {% endwith %}
+            </span>
         </div>
         {% if quote and quote.last is not none %}
         <div class="bb-metric" style="min-width:7rem;text-align:right">

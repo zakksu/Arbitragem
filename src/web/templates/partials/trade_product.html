@@ -12,6 +12,14 @@
         <span class="bb-structure-badge">{{ product.structure_type|replace("_", " ") }}</span>
         <span class="bb-side-{{ product.side }}">{{ product.side|upper }}</span>
     </div>
+    {% if cost is defined %}
+    {% include "partials/scalp_cost_chip.html" %}
+    {% elif product.symbol %}
+    <div id="scalp-cost-slot-{{ product.symbol }}"
+         hx-get="/board/partials/symbol/{{ product.symbol }}/scalp-cost"
+         hx-trigger="load"
+         hx-swap="innerHTML"></div>
+    {% endif %}
     <div class="bb-tp-tabs" role="tablist">
         <button type="button" class="bb-tp-tab is-active" data-tp-tab="thesis">Thesis
             {% with key="trade.thesis" %}{% include "partials/help_tip.html" %}{% endwith %}

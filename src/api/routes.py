@@ -362,13 +362,17 @@ def confirm_trade_idea(
 
 @router.post("/ideas/{idea_id}/execute")
 def execute_trade_idea(idea_id: int, db: Session = Depends(get_db)):
+    from src.config import get_settings
     from src.services.idea_gates import build_idea_gates
+    from src.services.paper_execution import estimate_paper_fills
 
     try:
         idea = TradeIdeaService(db).execute_idea(idea_id)
     except ValueError as exc:
         raise HTTPException(400, str(exc)) from exc
     payload = TradeIdeaService(db).to_dict(idea)
+    if get_settings().paper_trading_mode:
+        payload["paper_fill_preview"] = estimate_paper_fills(payload)
     payload["gates"] = build_idea_gates(db, idea_id)
     return payload
 
@@ -687,6 +691,13 @@ def autonomy_status_endpoint():
     from src.services.autonomy import autonomy_status
 
     return autonomy_status()
+
+
+@router.get("/autonomy/gates")
+def autonomy_gates(db: Session = Depends(get_db)):
+    from src.services.autonomy_fast_track import autonomy_gate_snapshot
+
+    return autonomy_gate_snapshot(db)
 
 
 @router.post("/strategies/pause-all")
@@ -1257,6 +1268,53 @@ def pulse_rail():
     from src.services.pulse_rail import get_pulse_rail
 
     return get_pulse_rail()
+
+
+@router.post("/replay/batch")
+def replay_batch_run(
+    payload: dict = Body(default_factory=dict),
+    db: Session = Depends(get_db),
+):
+    """Run Profit Replay training for Core5 + WIN/WDO symbols (13.0-beta)."""
+    from src.services.replay_batch import run_replay_batch
+
+    symbols = payload.get("symbols")
+    if symbols is not None and not isinstance(symbols, list):
+        raise HTTPException(400, "symbols must be a list")
+    return run_replay_batch(
+        db,
+        symbols=symbols,
+        auto_promote=bool(payload.get("auto_promote", True)),
+        speed=float(payload.get("speed", 10.0)),
+    )
+
+
+@router.get("/journal/desk")
+def journal_desk(days: int = 30, db: Session = Depends(get_db)):
+    from src.services.trade_journal_desk import build_trade_journal_desk
+
+    return build_trade_journal_desk(db, days=min(max(days, 1), 365))
+
+
+@router.get("/journal/export.csv")
+def journal_export_csv(days: int = 90, db: Session = Depends(get_db)):
+    from fastapi.responses import PlainTextResponse
+
+    from src.services.trade_journal_desk import export_journal_csv
+
+    body = export_journal_csv(db, days=min(max(days, 1), 365))
+    return PlainTextResponse(
+        content=body,
+        media_type="text/csv",
+        headers={"Content-Disposition": 'attachment; filename="arbitragem_journal.csv"'},
+    )
+
+
+@router.get("/phase-c/status")
+def phase_c_status(db: Session = Depends(get_db)):
+    from src.services.phase_c_gate import evaluate_phase_c_gate
+
+    return evaluate_phase_c_gate(db)
 
 
 @router.post("/replay/run")

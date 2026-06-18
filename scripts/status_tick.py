@@ -123,10 +123,14 @@ def main() -> int:
         healing = _get("http://127.0.0.1:8000/api/v1/self-healing/health")
         replay_training = _read_json_file("replay_training_status.json")
         live_radar = _get("http://127.0.0.1:8000/api/v1/ops/live-radar")
+        phase_c = _get("http://127.0.0.1:8000/api/v1/phase-c/status")
+        autonomy_gates = _get("http://127.0.0.1:8000/api/v1/autonomy/gates")
         payload = {
             "timestamp": now,
             "api": {"ok": health is not None, "health": health},
             "live_radar": live_radar,
+            "phase_c": phase_c,
+            "autonomy_gates": autonomy_gates,
             "motor": orch,
             "sleeves": sleeves,
             "test_status": test_status,

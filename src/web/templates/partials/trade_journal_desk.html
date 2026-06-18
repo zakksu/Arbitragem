@@ -1,0 +1,76 @@
+{% if desk %}
+<section class="bb-trade-journal bb-accent-rail" id="trade-journal-desk">
+    <div class="bb-tj-head">
+        <strong>Trade Journal</strong>
+        <span class="bb-muted">prop desk · {{ desk.days }}d</span>
+        {% if desk.paper_mode %}
+        <span class="bb-pill">PAPER</span>
+        {% else %}
+        <span class="bb-pill bb-pill-live">LIVE</span>
+        {% endif %}
+        <a class="bb-btn-secondary" href="/api/v1/journal/export.csv" download="arbitragem_journal.csv">Export CSV</a>
+    </div>
+
+    <div class="bb-tj-summary">
+        <span>Trades <strong>{{ desk.summary.trade_count }}</strong></span>
+        <span>Net <strong>R$ {{ "%.2f"|format(desk.summary.net_pnl_brl) }}</strong></span>
+        <span>Win <strong>{{ desk.summary.win_rate_pct }}%</strong></span>
+        <span>Expect <strong>R$ {{ "%.2f"|format(desk.summary.expectancy_brl) }}</strong></span>
+        <span>Day <strong>R$ {{ "%.2f"|format(desk.summary.day_pnl_brl or 0) }}</strong></span>
+        <span>Capital <strong>R$ {{ "%.0f"|format(desk.capital_brl) }}</strong></span>
+    </div>
+
+    {% if desk.win_archaeology and desk.win_archaeology.top_win_series %}
+    <div class="bb-tj-arch">
+        <strong>WIN archaeology</strong>
+        <span class="bb-muted">{{ desk.win_archaeology.win_trade_count or 0 }} historical WIN fills</span>
+        <div class="bb-tj-win-tags">
+            {% for sym, n in desk.win_archaeology.top_win_series %}
+            <span class="bb-pill" title="{{ n }} trades">{{ sym }}</span>
+            {% endfor %}
+        </div>
+        {% if desk.win_archaeology.note %}
+        <p class="bb-muted">{{ desk.win_archaeology.note }}</p>
+        {% endif %}
+    </div>
+    {% endif %}
+
+    <div class="bb-tj-blotter-wrap">
+        <table class="bb-tj-table">
+            <thead>
+                <tr>
+                    <th>Time</th><th>Sym</th><th>Side</th><th>Qty</th>
+                    <th>Price</th><th>Fees</th><th>Net</th><th>G</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for row in desk.blotter[:40] %}
+                <tr>
+                    <td>{{ row.time }}</td>
+                    <td>{{ row.symbol }}</td>
+                    <td>{{ row.side|upper }}</td>
+                    <td>{{ row.qty }}</td>
+                    <td>{{ "%.2f"|format(row.price) }}</td>
+                    <td>{{ "%.2f"|format(row.fees_brl) }}</td>
+                    <td class="{% if row.net_brl >= 0 %}bb-pos{% else %}bb-neg{% endif %}">
+                        {{ "%.2f"|format(row.net_brl) }}
+                    </td>
+                    <td><span class="bb-grade-{{ row.grade|lower }}">{{ row.grade }}</span></td>
+                </tr>
+                {% else %}
+                <tr><td colspan="8" class="bb-muted">No fills yet — motor + paper auto will populate.</td></tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+
+    <details class="bb-tj-motor">
+        <summary>Motor log (today)</summary>
+        <ul class="bb-tj-log">
+            {% for row in desk.motor_log[-20:] %}
+            <li><span class="bb-muted">{{ row.time }}</span> {{ row.phase }} — {{ row.message }}</li>
+            {% endfor %}
+        </ul>
+    </details>
+</section>
+{% endif %}

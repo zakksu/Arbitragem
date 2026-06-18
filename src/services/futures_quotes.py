@@ -65,7 +65,13 @@ def get_futures_quotes(symbols: list[str] | None = None) -> dict[str, ProfitQuot
         if fut.symbol not in wanted:
             continue
         if fut.symbol not in out:
-            out[fut.symbol] = _stub_quote(fut)
+            stub = _stub_quote(fut)
+            from src.services.futures_roll import resolve_futures_quote_symbol
+
+            meta = resolve_futures_quote_symbol(fut.symbol)
+            if meta.get("resolved") and meta["resolved"] != fut.symbol:
+                stub.symbol = fut.symbol
+            out[fut.symbol] = stub
     return out
 
 
@@ -78,6 +84,12 @@ def build_futures_watchlist_rows() -> list[dict]:
         q = quotes.get(fut.symbol)
         row = fut.to_dict()
         row.update(session)
+        from src.services.futures_roll import resolve_futures_quote_symbol
+
+        roll = resolve_futures_quote_symbol(fut.symbol)
+        if roll.get("resolved"):
+            row["front_month"] = roll["resolved"]
+            row["roll_root"] = roll.get("root")
         if q:
             row["last"] = q.last
             row["bid"] = q.bid

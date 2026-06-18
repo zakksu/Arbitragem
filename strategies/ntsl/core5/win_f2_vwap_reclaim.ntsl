@@ -1,0 +1,16 @@
+// Arbitragem 13.0 — WIN VWAP reclaim
+// Reclaim session VWAP
+// Symbol: set in Profit Replay / Editor
+Input
+  StopTicks(60);
+  TargetTicks(100);
+Var
+  vwap : Float;
+Begin
+  vwap := VWAP(1);
+// CrossOrder(true); // enable in Profit for WINFUT
+  // Entry: pattern-specific — arm on replay for WINFUT
+  // Stop: StopTicks * tick from entry
+  // Target: TargetTicks * tick
+  Plot(vwap);
+End.

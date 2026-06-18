@@ -1,6 +1,6 @@
 # Agent instructions — Arbitragem Dashboard
 
-**Current sprint:** [RELEASE_4.0.0.md](RELEASE_4.0.0.md) — **4.0.0 GA** shipped. Tracker: [RELEASE_4.0.0_PROGRESS.md](RELEASE_4.0.0_PROGRESS.md).
+**Current sprint:** [RELEASE_12.0.0.md](RELEASE_12.0.0.md) **12.0-beta** + [docs/RELEASE_11.0_SCOPE.md](docs/RELEASE_11.0_SCOPE.md) **11.0-alpha** (parallel). Tracker: [RELEASE_12.0.0_PROGRESS.md](RELEASE_12.0.0_PROGRESS.md). Version: `12.0.0-alpha` · **343 tests** green.
 
 ## Two-agent workflow (always on)
 
@@ -28,7 +28,28 @@ Work **together** on the `Arbitragem` folder. Split by layer, not by “who’s 
 | A4.18 paper validation API | W4.18 mobile banner + empty states | **DONE** |
 | A4.19 SCALPER_COCKPIT docs | W4.18 paper gate banner on status | **DONE** |
 
-### 4.1 kickoff matrix (active)
+### 12.0-beta kickoff matrix (active)
+
+| Supervisor | Worker (start same sprint) | Before API? | Status |
+|------------|----------------------------|-------------|--------|
+| A12.7 paper fills `fees_brl` from `clear_cost_model` | W12.3 trade product margin + fees row (100 lot) | no — extend `estimate_paper_fills` | **NEXT** |
+| A12.8 Clear API trade sync (optional, `CLEAR_API_KEY`) | W12.3 journal row shows synced Clear fill | no | backlog |
+
+**12.0-alpha GA (done):** A12.1–A12.6, W12.1–W12.2, W12.4 · Live Radar + cost chip + breakeven gate.
+
+### 11.0-alpha kickoff matrix (parallel — archaeology + Core17)
+
+| Supervisor | Worker (start same sprint) | Before API? | Status |
+|------------|----------------------------|-------------|--------|
+| A11.3 `GET /archaeology/summary` | W11.4 layout preset **archaeology** (timeline hero) | no — partial exists | **NEXT** |
+| A11.1 FIFO P&L on archaeology rows | A11.5 symbol panel “your history” chip | no | **NEXT** |
+| A11.6 ingest insights → knowledge RAG | W11.1 Strategy Lab strip in hybrid layout | yes (static cards) | queued |
+| A11.14 bridge `/health` `dll_mode` + `is_paper` | W11.7 outbox ticker polish (copy hint) | no | polish |
+| A11.10 `filipe_core17` scanner mode | W11.4 Core17 sector strip | no | queued |
+
+Full 11.0 tables: [docs/RELEASE_11.0_SCOPE.md](docs/RELEASE_11.0_SCOPE.md).
+
+### 4.1 kickoff matrix (backlog)
 
 | Supervisor | Worker (start same sprint) | Before API? |
 |------------|----------------------------|-------------|
@@ -74,21 +95,20 @@ Full matrix with checkmarks: [RELEASE_2.0.0.md §11.1](RELEASE_2.0.0.md).
 **Supervisor (Alpha):**
 
 ```
-You are Supervisor (Alpha). Read AGENTS.md + RELEASE_2.0.0.md §11–§11.1.
-2.0-rc core is done (SSE, reports, execute, kill switch). Remaining: A2.5b → A2.10 → A2.6b.
-When you pick an A2.x task, Worker MUST start the mapped W2.x in parallel (see kickoff matrix).
-Do NOT touch src/web/ or dashboard/views/. Update docs/agent_integration.md per endpoint.
-Run pytest after each task. python scripts/dev.py restart --wait after API changes.
+You are Supervisor (Alpha). Read AGENTS.md + RELEASE_12.0.0.md + docs/RELEASE_11.0_SCOPE.md.
+Active: A12.7 (paper fees_brl) + A11.3/A11.1 (archaeology API). Worker starts mapped W12.3 / W11.4 in parallel.
+Own src/, scripts/, tests/. Do NOT touch src/web/ or dashboard/views/.
+Update docs/agent_integration.md per endpoint. pytest after each task. dev.py restart --wait after API changes.
+Use .venv\Scripts\python.exe scripts\dev.py (orphan port recycle is in dev.py).
 ```
 
-**Worker (Beta):**
+**Worker (Agent 2):**
 
 ```
-You are Worker (Beta). Read AGENTS.md + RELEASE_2.0.0.md §11–§11.1.
-When Supervisor starts A2.x, start mapped W2.x immediately — do not wait unless "Can start before API?" = no.
-Remaining: ~~W2.3 notes → W2.10 board link → W2.9 mobile~~ **DONE** · W2.4 live path when A2.6b lands **DONE**
-Own src/web/ and dashboard/views/. Do NOT edit src/api/ or api_cache.py.
-Wire endpoints via HTMX or cached_get() only. Test http://localhost:8000/board after each change.
+You are Worker (Agent 2). Read AGENTS.md kickoff matrices (12.0-beta + 11.0-alpha).
+When Supervisor picks A12.7, start W12.3 same turn. When A11.3 lands, wire archaeology preset + history chip.
+Own src/web/, dashboard/views/, dashboard/components/ (not api_cache.py).
+HTMX + cached_get() only. Test http://localhost:8000/board after each change.
 ```
 
 ### Release cadence
@@ -115,21 +135,26 @@ python scripts/dev.py start --wait --json
 Exit `0` = API + Streamlit healthy at http://localhost:8501  
 **Blackboard (2.0):** http://localhost:8000/board
 
-### Supervisor (backend) — **idle at 4.3.0-alpha**
-
-Backend complete through 4.3 (autonomous engine, CEI, 2.0 GA debt). Resume when:
-
-- Worker ships W4.21–W4.22b (4.2-beta) and files API bugs
-- New phase scoped (4.4+) in `RELEASE_4.0.0.md`
-- Integration work: ProfitDLL ctypes, Clear live hardening, tick walk-forward
-
-### Worker (frontend) — **parallel with every A2.x pick**
+### Supervisor (backend) — **12.0-beta + 11.0-alpha**
 
 ```
-W2.3   Board notes persist — **DONE**
-W2.9   Mobile watchlist + confirm — **DONE**
-W2.10  Streamlit ↔ board link — **DONE**
-W2.4   Live confirm path — **DONE**
+A12.7  Paper fills include fees_brl (clear_cost_model) — pairs W12.3
+A12.8  Clear API trade sync (optional)
+A11.3  GET /archaeology/summary — pairs W11.4 preset
+A11.1  FIFO archaeology P&L — pairs W11.5 history chip
+A11.6  Ingest b3_history_insights → knowledge FTS
+A11.10 filipe_core17 scanner mode
+```
+
+Blocked on Filipe / external: Phase C gate, DLL ctypes orders (12.0-rc), live crypto.
+
+### Worker (Agent 2) — **parallel with every A12.x / A11.x pick**
+
+```
+W12.3  Trade product margin + fees (100 lot) — when A12.7 lands
+W11.4  Archaeology layout preset + sector strip
+W11.5  Symbol panel “your history” chip
+W11.1  Strategy Lab strip (can stub before A11.8)
 ```
 
 Always pair via [Parallel release protocol](#parallel-release-protocol-mandatory) · full split: [RELEASE_2.0.0.md §11](RELEASE_2.0.0.md)

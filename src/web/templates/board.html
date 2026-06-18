@@ -23,6 +23,12 @@
          hx-swap="innerHTML">
         <span class="bb-muted">Live radar…</span>
     </div>
+    <div id="trade-journal-slot" class="bb-trade-journal-slot"
+         hx-get="/board/partials/trade-journal"
+         hx-trigger="load, every 60s"
+         hx-swap="innerHTML">
+        <span class="bb-muted">Trade journal…</span>
+    </div>
     <div id="mobile-banner" class="bb-mobile-banner-slot"
          hx-get="/board/partials/mobile-banner"
          hx-trigger="load, every 30s"
@@ -118,6 +124,13 @@
             </div>
         </section>
     </main>
+
+    <div id="archaeology-hero-slot" class="bb-archaeology-hero-slot"
+         hx-get="/board/partials/archaeology"
+         hx-trigger="bb-arch-load from:body"
+         hx-swap="innerHTML">
+        <span class="bb-muted">Archaeology timeline loads with Archaeology layout…</span>
+    </div>
 
     <footer class="bb-footer">
         {% if golden_path_mode %}
@@ -509,6 +522,8 @@
             scalp: { watch: "220px", ideas: "300px", hideIdeas: false },
             structure: { watch: "200px", ideas: "340px", hideIdeas: false },
             learn: { watch: "240px", ideas: "0px", hideIdeas: true },
+            archaeology: { watch: "200px", ideas: "280px", hideIdeas: false },
+            golden: { watch: "0px", ideas: "360px", hideIdeas: false, hideWatch: true },
             options_hedge: { watch: "200px", ideas: "340px", hideIdeas: false },
             pairs: { watch: "240px", ideas: "280px", hideIdeas: false },
         };
@@ -518,10 +533,19 @@
             document.documentElement.style.setProperty("--arb-watch-w", cols.watch);
             document.documentElement.style.setProperty("--arb-ideas-w", cols.ideas);
             document.body.classList.toggle("bb-layout-learn", !!cols.hideIdeas);
+            document.body.classList.toggle("bb-layout-archaeology", preset === "archaeology");
+            document.body.classList.toggle("bb-layout-golden", preset === "golden");
+            document.querySelector(".bb-col-watch")?.classList.toggle("bb-col-hidden", !!cols.hideWatch);
             try { sessionStorage.setItem("bb_layout_preset", preset); } catch (e) { /* ignore */ }
             document.querySelectorAll(".bb-btn-layout").forEach(function (b) {
                 b.classList.toggle("is-active", b.dataset.preset === preset);
             });
+            if (preset === "archaeology") {
+                var hero = document.getElementById("archaeology-hero-slot");
+                if (hero && !hero.querySelector("#archaeology-panel")) {
+                    if (window.htmx) htmx.trigger(document.body, "bb-arch-load");
+                }
+            }
         };
 
         try {

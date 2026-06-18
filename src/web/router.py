@@ -267,6 +267,21 @@ async def board_page(request: Request):
     )
 
 
+@router.get("/board/partials/trade-journal", response_class=HTMLResponse)
+async def trade_journal_partial(request: Request):
+    def _desk(session):
+        from src.services.trade_journal_desk import build_trade_journal_desk
+
+        return build_trade_journal_desk(session)
+
+    desk = await _to_thread(_with_db, _desk)
+    return TEMPLATES.TemplateResponse(
+        request,
+        "partials/trade_journal_desk.html",
+        {"desk": desk},
+    )
+
+
 @router.get("/board/partials/live-radar", response_class=HTMLResponse)
 async def live_radar_partial(request: Request):
     from src.services.live_radar import build_live_radar
@@ -389,6 +404,18 @@ async def symbol_partial(request: Request, symbol: str):
             tags=pattern_tags if isinstance(pattern_tags, list) else [],
         )
 
+    def _history(session):
+        from src.models import Trade
+
+        count = (
+            session.query(Trade)
+            .filter(Trade.source == "archaeology", Trade.symbol == sym)
+            .count()
+        )
+        return count
+
+    history_fill_count = await _to_thread(_with_db, _history)
+
     return TEMPLATES.TemplateResponse(
         request,
         "partials/symbol_panel.html",
@@ -406,6 +433,8 @@ async def symbol_partial(request: Request, symbol: str):
             "top_idea": top_idea,
             "session_vwap": session_vwap,
             "theory_cards": theory_cards,
+            "has_live_history": history_fill_count > 0,
+            "history_fill_count": history_fill_count,
         },
     )
 
@@ -1192,10 +1221,67 @@ async def trade_product_partial(request: Request, symbol: str):
             )
     except Exception:
         pass
+    cost = None
+    if product:
+        lv = product.get("chart_levels") or {}
+        entry = lv.get("entry")
+        if entry:
+
+            def _cost():
+                from src.services.scalp_cost_gate import scalp_cost_gate
+
+                return scalp_cost_gate(
+                    {
+                        "entry_price": entry,
+                        "target_price": lv.get("target"),
+                        "stop_price": lv.get("stop"),
+                        "side": product.get("side") or "long",
+                    }
+                )
+
+            cost = await _to_thread(_cost)
     return TEMPLATES.TemplateResponse(
         request,
         "partials/trade_product.html",
-        {"product": product, "theory_cards": theory_cards},
+        {"product": product, "theory_cards": theory_cards, "cost": cost},
+    )
+
+
+@router.get("/board/partials/symbol/{symbol}/scalp-cost", response_class=HTMLResponse)
+async def symbol_scalp_cost_partial(request: Request, symbol: str, price: float | None = None):
+    sym = symbol.strip().upper()
+    entry = price
+    target = None
+    side = "long"
+    if entry is None:
+        try:
+            data = await _fetch_json(request, f"/api/v1/symbols/{sym}/trade-product")
+            if isinstance(data, dict):
+                lv = data.get("chart_levels") or {}
+                entry = lv.get("entry")
+                target = lv.get("target")
+                side = data.get("side") or "long"
+        except Exception:
+            pass
+
+    def _cost():
+        from src.services.scalp_cost_gate import scalp_cost_gate
+
+        if not entry:
+            return {"skipped": True, "reason": "no_entry_price"}
+        return scalp_cost_gate(
+            {
+                "entry_price": entry,
+                "target_price": target,
+                "side": side,
+            }
+        )
+
+    cost = await _to_thread(_cost)
+    return TEMPLATES.TemplateResponse(
+        request,
+        "partials/scalp_cost_chip.html",
+        {"cost": cost},
     )
 
 

@@ -786,6 +786,60 @@
     margin-top: 0.35rem;
 }
 
+/* Trade journal desk (13.0) */
+.bb-trade-journal-slot {
+    margin: 0.25rem 0.5rem 0.5rem;
+}
+
+.bb-trade-journal {
+    border: 1px solid var(--arb-border);
+    border-radius: var(--arb-radius);
+    padding: 0.55rem 0.65rem;
+    background: var(--arb-panel);
+    font-size: 0.72rem;
+}
+
+.bb-tj-head {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.5rem;
+    margin-bottom: 0.4rem;
+}
+
+.bb-tj-summary,
+.bb-tj-arch {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.65rem 1rem;
+    margin: 0.35rem 0;
+}
+
+.bb-tj-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.68rem;
+}
+
+.bb-tj-table th,
+.bb-tj-table td {
+    padding: 0.2rem 0.35rem;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+    text-align: left;
+}
+
+.bb-tj-blotter-wrap {
+    max-height: 14rem;
+    overflow: auto;
+    margin-top: 0.35rem;
+}
+
+.bb-grade-a { color: #3dd68c; }
+.bb-grade-b { color: #7dd3a8; }
+.bb-grade-c { color: #ffb347; }
+.bb-grade-d { color: #ff9f66; }
+.bb-grade-f { color: #ff6b6b; }
+
 .bb-lr-patch-row {
     cursor: pointer;
     padding: 0.3rem 0.4rem;

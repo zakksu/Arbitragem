@@ -239,7 +239,13 @@ def build_live_radar(session: Session | None = None) -> dict[str, Any]:
         blockers.append("motor_idle")
     if settings.paper_trading_mode:
         blockers.append("paper_trading_mode")
-    blockers.append("phase_c_gate")
+
+    from src.services.phase_c_gate import evaluate_phase_c_gate
+
+    phase_c = evaluate_phase_c_gate(session)
+    if not phase_c.get("passed"):
+        blockers.append("phase_c_gate")
+
     if healing.get("degraded"):
         blockers.append("degraded_mode")
     if open_count == 0:
@@ -249,13 +255,22 @@ def build_live_radar(session: Session | None = None) -> dict[str, Any]:
 
     outbox = _read_outbox()
     ready_to_scan = api_ok and profit_ok and sym_count > 0
-    ready_to_execute = False
+    dll_live = profit_ok and bridge.get("ok") and not bridge.get("is_stub")
+    ready_to_execute = bool(
+        all_green
+        and phase_c.get("passed")
+        and dll_live
+        and not settings.paper_trading_mode
+        and cash
+        and motor_active
+    )
 
     return {
         "all_green": all_green,
         "ready_to_scan": ready_to_scan,
         "ready_to_execute": ready_to_execute,
         "ready_manual_live": ready_to_scan and all_green and not settings.paper_trading_mode and cash,
+        "phase_c": phase_c,
         "lamps": lamps,
         "outbox": outbox,
         "blockers": blockers,

@@ -90,6 +90,8 @@ def test_confirm_includes_paper_fill_preview(client, monkeypatch):
     assert data["status"] == "confirmed"
     assert "paper_fill_preview" in data
     assert data["paper_fill_preview"]["total_slippage_brl"] >= 0
+    assert data["paper_fill_preview"]["total_fees_brl"] > 0
+    assert data["paper_fill_preview"]["legs"][0]["fees_brl"] > 0
     db.close()
 
 

@@ -55,7 +55,7 @@ class Settings(BaseSettings):
     profit_account_live_name: str = "Filipe G. Monteiro"
     profit_live_style: str = "day"  # day | swing when PAPER_TRADING_MODE=false
 
-    default_daily_loss_limit_brl: float = 500.0
+    default_daily_loss_limit_brl: float = 100.0
     default_max_contracts: int = 10
     default_max_open_positions: int = 3
     motor_fixed_lot_shares: int = 100  # 12.0 — B3 standard lot; 0 = risk-based sizing
@@ -65,7 +65,7 @@ class Settings(BaseSettings):
     scanner_cron_minute: int = 30
     scanner_min_volume: int = 5000
     scanner_symbols: str = "BOVA11"
-    scanner_mode: str = "filipe_core14"  # filipe_core14 | ibov_top20 | custom
+    scanner_mode: str = "filipe_core5"  # filipe_core5 | filipe_core14 | ibov_top20 | custom
     scanner_include_bova_options: bool = True
     scanner_include_stock_options: bool = True
     bova_options_symbols: str = "BOVAX125,BOVAY125,BOVA11"
@@ -121,16 +121,26 @@ class Settings(BaseSettings):
     profitchart_co_start: bool = True
 
     # 4.0 GA — autonomy engine (auto confirm/execute per sleeve)
-    autonomy_enabled: bool = False
-    autonomy_max_trades_per_day: int = 3
+    autonomy_enabled: bool = True
+    autonomy_max_trades_per_day: int = 0  # 0 = unlimited (13.0)
     auto_trading_on_sleeves: bool = True
     orchestrator_interval_sec: int = 45
     paper_orchestrator_interval_sec: int = 20
     paper_motor_ignore_b3_hours: bool = True
     paper_motor_auto_seed_ideas: bool = True
-    paper_capital_brl: float = 30_000.0
+    orchestrator_scheduler_enabled: bool = True
+    autonomy_fast_track: bool = False
+    paper_capital_brl: float = 1_000.0
+    live_capital_brl: float = 1_000.0
     max_risk_per_trade_pct: float = 1.0
     max_position_pct: float = 15.0
+
+    # 13.0 — Phase C + WIN cross-order
+    phase_c_signed_off: bool = False
+    phase_c_min_paper_days: int = 5
+    phase_c_min_executed_fills: int = 20
+    phase_c_max_motor_error_pct: float = 5.0
+    profit_win_cross_order: bool = True
 
     # 4.1 — futures watchlist + read-only social signals
     futures_watchlist_enabled: bool = True
@@ -283,7 +293,11 @@ class Settings(BaseSettings):
     def scanner_symbol_list(self) -> list[str]:
         if self.golden_path_mode:
             return [self.golden_path_symbol]
-        if self.scanner_mode == "filipe_core14":
+        if self.scanner_mode == "filipe_core5":
+            from src.services.filipe_universe import core5_symbol_list
+
+            symbols = core5_symbol_list()
+        elif self.scanner_mode == "filipe_core14":
             from src.services.filipe_universe import symbol_list
 
             symbols = symbol_list()

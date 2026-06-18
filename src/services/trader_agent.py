@@ -58,8 +58,13 @@ def run_trader_cycle(session: Session) -> dict[str, Any]:
             )
 
         for act in actions:
-            sym = act.get("symbol") or ""
             iid = act.get("idea_id")
+            sym = act.get("symbol") or ""
+            if not sym and iid:
+                from src.models import TradeIdea
+
+                row = session.get(TradeIdea, iid)
+                sym = row.symbol if row else ""
             kind = act.get("action", "action")
             if kind in ("confirm", "execute"):
                 append_journal(
@@ -71,6 +76,16 @@ def run_trader_cycle(session: Session) -> dict[str, Any]:
                     idea_id=iid,
                     meta=act,
                 )
+                if kind == "execute":
+                    append_journal(
+                        session,
+                        "FILL",
+                        f"Paper fill {sym} idea #{iid}",
+                        level="fill",
+                        symbol=sym or None,
+                        idea_id=iid,
+                        meta=act,
+                    )
             elif kind == "filled":
                 append_journal(
                     session,

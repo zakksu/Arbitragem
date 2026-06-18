@@ -53,4 +53,14 @@ def bootstrap_corpus_if_empty(*, force: bool = False) -> dict[str, Any]:
     }
     if ingested:
         logger.info("knowledge_bootstrap", **{k: v for k, v in out.items() if k != "status"})
+
+    try:
+        from src.services.knowledge.insights_ingest import ingest_b3_insights
+
+        insights = ingest_b3_insights(offline=True)
+        if insights.get("ok"):
+            out["insights_ingested"] = insights.get("chunks", 0)
+    except Exception:
+        pass
+
     return out
