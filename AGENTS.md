@@ -35,10 +35,10 @@ Work **together** on the `Arbitragem` folder. Split by layer, not by “who’s 
 | A12.7 paper fills `fees_brl` from `clear_cost_model` | W12.3 trade product margin + fees row (100 lot) | no — extend `estimate_paper_fills` | **DONE** |
 | A11.3 `GET /archaeology/summary` | W11.4 layout preset **archaeology** (timeline hero) | no — partial exists | **DONE** |
 | A12.8 Clear API trade sync (optional, `CLEAR_API_KEY`) | W12.3 journal row shows synced Clear fill | no | backlog |
-| A11.1 FIFO P&L on archaeology rows | A11.5 symbol panel “your history” chip | no | **NEXT** |
-| A11.6 ingest insights → knowledge RAG | W11.1 Strategy Lab strip in hybrid layout | yes (static cards) | queued |
+| A11.1 FIFO P&L on archaeology rows | A11.5 symbol panel “your history” chip | no | **DONE** |
+| A11.6 ingest insights → knowledge RAG | W11.1 Strategy Lab strip in hybrid layout | yes (static cards) | **DONE** |
 | A11.14 bridge `/health` `dll_mode` + `is_paper` | W11.7 outbox ticker polish (copy hint) | no | polish |
-| A11.10 `filipe_core17` scanner mode | W11.4 Core17 sector strip | no | queued |
+| A11.10 `filipe_core17` scanner mode | W11.4 Core17 sector strip | no | **DONE** (API) · W11.4 UI queued |
 
 Full 11.0 tables: [docs/RELEASE_11.0_SCOPE.md](docs/RELEASE_11.0_SCOPE.md).
 
@@ -130,13 +130,15 @@ Exit `0` = API + Streamlit healthy at http://localhost:8501
 
 ### Supervisor (backend) — **12.0-beta + 11.0-alpha**
 
+**Done (11.0-alpha pack):** A11.1 FIFO archaeology P&L · A11.3 archaeology summary · A11.6 knowledge insights ingest · A11.10 `filipe_core17` scanner + `GET /universe/filipe-core17` · A12.7 paper `fees_brl`.
+
+**Next / backlog:**
+
 ```
-A12.7  Paper fills include fees_brl (clear_cost_model) — pairs W12.3
-A12.8  Clear API trade sync (optional)
-A11.3  GET /archaeology/summary — pairs W11.4 preset
-A11.1  FIFO archaeology P&L — pairs W11.5 history chip
-A11.6  Ingest b3_history_insights → knowledge FTS
-A11.10 filipe_core17 scanner mode
+A12.8  Clear API trade sync (optional, CLEAR_API_KEY) — pairs W12.3 journal sync row
+A4.20  WIN/WDO quotes API — pairs W4.19 futures row styling
+A4.21  RSS/Twitter signals API — pairs W4.20 pulse social chips
+A11.14 bridge /health dll_mode + is_paper — pairs W11.7 outbox polish
 ```
 
 Blocked on Filipe / external: Phase C gate, DLL ctypes orders (12.0-rc), live crypto.

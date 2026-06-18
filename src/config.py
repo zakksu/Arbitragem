@@ -65,7 +65,7 @@ class Settings(BaseSettings):
     scanner_cron_minute: int = 30
     scanner_min_volume: int = 5000
     scanner_symbols: str = "BOVA11"
-    scanner_mode: str = "filipe_core5"  # filipe_core5 | filipe_core14 | ibov_top20 | custom
+    scanner_mode: str = "filipe_core5"  # filipe_core5 | filipe_core14 | filipe_core17 | ibov_top20 | custom
     scanner_include_bova_options: bool = True
     scanner_include_stock_options: bool = True
     bova_options_symbols: str = "BOVAX125,BOVAY125,BOVA11"
@@ -303,6 +303,10 @@ class Settings(BaseSettings):
             from src.services.filipe_universe import symbol_list
 
             symbols = symbol_list()
+        elif self.scanner_mode == "filipe_core17":
+            from src.services.filipe_universe import core17_symbol_list
+
+            symbols = core17_symbol_list()
         elif self.scanner_mode == "ibov_top20":
             from src.services.ibov_universe import symbol_list
 

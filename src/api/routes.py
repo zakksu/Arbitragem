@@ -302,6 +302,32 @@ def filipe_core14():
     }
 
 
+@router.get("/universe/filipe-core17")
+def filipe_core17():
+    from src.services.filipe_universe import (
+        BOVA_UNDERLYING,
+        CORE17_SECTOR_BASKETS,
+        load_filipe_core17,
+    )
+
+    symbols = load_filipe_core17()
+    settings = get_settings()
+    sectors: dict[str, list[str]] = {}
+    for s in symbols:
+        key = (s.sector or "Outros").lower()
+        sectors.setdefault(key, []).append(s.symbol)
+    return {
+        "count": len(symbols),
+        "symbols": [s.to_dict() for s in symbols],
+        "bova_underlying": BOVA_UNDERLYING,
+        "stock_options_enabled": settings.scanner_include_stock_options,
+        "bova_options_enabled": settings.scanner_include_bova_options,
+        "sector_baskets": CORE17_SECTOR_BASKETS,
+        "sectors": sectors,
+        "scanner_mode": "filipe_core17",
+    }
+
+
 @router.get("/ideas")
 def list_trade_ideas(
     limit: int = 20,
@@ -1431,6 +1457,14 @@ def knowledge_ingest_strategies(limit: int = 50, db: Session = Depends(get_db)):
     from src.services.knowledge.replay_ingest import ingest_all_stored_strategies
 
     return ingest_all_stored_strategies(db, limit=min(limit, 100))
+
+
+@router.post("/knowledge/ingest/insights")
+def knowledge_ingest_insights():
+    """Ingest B3 archaeology insights JSON into knowledge FTS (A11.6)."""
+    from src.services.knowledge.insights_ingest import ingest_b3_insights
+
+    return ingest_b3_insights(offline=True)
 
 
 @router.get("/self-healing/breakers")

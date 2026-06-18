@@ -83,58 +83,47 @@ def archaeology_symbol_insights(session: Session, symbol: str) -> dict[str, Any]
 
 
 def _build_archaeology_summary_from_db(session: Session, *, limit: int = 15) -> dict[str, Any]:
-    """Top symbols by archaeology trade count with win rate and net flow."""
-    from sqlalchemy import func
+    """Top symbols by archaeology trade count with FIFO win rate and net flow (A11.1)."""
+    from collections import defaultdict
 
     from src.services.archaeology_fifo import fifo_stats, trade_lane
 
     all_trades = session.query(Trade).filter(Trade.source == "archaeology").all()
     fifo = fifo_stats(all_trades)
+    by_symbol: dict[str, list[Trade]] = defaultdict(list)
+    for t in all_trades:
+        by_symbol[t.symbol.upper()].append(t)
 
-    rows = (
-        session.query(
-            Trade.symbol,
-            func.count(Trade.id).label("trade_count"),
-            func.sum(Trade.pnl).label("net_pnl"),
-        )
-        .filter(Trade.source == "archaeology")
-        .group_by(Trade.symbol)
-        .order_by(func.count(Trade.id).desc())
-        .limit(max(1, min(limit, 50)))
-        .all()
-    )
+    ranked = sorted(by_symbol.items(), key=lambda x: len(x[1]), reverse=True)
     symbols: list[dict[str, Any]] = []
     total_trades = 0
-    total_pnl = 0.0
-    for sym, count, net in rows:
-        sym_trades = (
-            session.query(Trade.pnl)
-            .filter(Trade.source == "archaeology", Trade.symbol == sym, Trade.pnl.isnot(None))
-            .all()
-        )
-        pnls = [float(t[0]) for t in sym_trades]
-        wins = [p for p in pnls if p > 0]
+    total_fifo_pnl = 0.0
+    for sym, sym_trades in ranked[: max(1, min(limit, 50))]:
+        sym_fifo = fifo_stats(sym_trades)
+        net = float(sym_fifo.get("net_pnl") or 0)
         symbols.append(
             {
                 "symbol": sym,
-                "trade_count": int(count or 0),
-                "win_rate": round(len(wins) / len(pnls), 3) if pnls else None,
-                "net_pnl": round(float(net or 0), 2),
+                "trade_count": len(sym_trades),
+                "win_rate": sym_fifo.get("win_rate"),
+                "net_pnl": round(net, 2),
+                "fifo_round_trips": sym_fifo.get("round_trips"),
+                "fifo_net_pnl": net,
             }
         )
-        total_trades += int(count or 0)
-        total_pnl += float(net or 0)
+        total_trades += len(sym_trades)
+        total_fifo_pnl += net
 
     lanes = {"futures": 0, "cash": 0, "options": 0}
-    for sym, count, _ in rows:
-        n = int(count or 0)
-        lanes[trade_lane(str(sym))] = lanes.get(trade_lane(str(sym)), 0) + n
+    for sym, sym_trades in ranked:
+        n = len(sym_trades)
+        lanes[trade_lane(sym)] = lanes.get(trade_lane(sym), 0) + n
 
     return {
-        "total_trades": total_trades,
-        "net_pnl": round(total_pnl, 2),
+        "total_trades": total_trades if ranked else len(all_trades),
+        "net_pnl": round(total_fifo_pnl, 2),
         "fifo": fifo,
-        "symbol_count": len(symbols),
+        "symbol_count": len(by_symbol),
         "top_symbols": symbols,
         "lanes": lanes,
     }

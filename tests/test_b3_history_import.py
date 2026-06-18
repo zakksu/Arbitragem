@@ -54,7 +54,9 @@ def test_archaeology_summary(db_session, tmp_path):
 
     body = build_archaeology_summary(db_session)
     assert body["total_trades"] >= 2
-    assert any(s["symbol"] == "PETR4" for s in body["top_symbols"])
+    petr = next(s for s in body["top_symbols"] if s["symbol"] == "PETR4")
+    assert petr["fifo_round_trips"] is not None
+    assert "fifo_net_pnl" in petr
     assert body["lanes"]["cash"] >= 2
 
 

@@ -139,3 +139,66 @@ def get_stored_strategy(session: Session, stored_id: int) -> dict[str, Any] | No
         "strategy_id": row.strategy_id,
         "file_path": row.file_path,
     }
+
+
+_STRUCTURE_MATCH_TERMS: dict[str, tuple[str, ...]] = {
+    "stock_scalp_vwap": ("vwap", "s1", "s1_vwap", "reclaim", "scalp"),
+    "opening_range_break": ("orb", "opening", "s2", "range", "break"),
+    "mean_reversion_band": ("mean", "reversion", "s3", "bb", "fade"),
+    "archaeology_bias_long": ("archaeology", "s4", "bias", "history"),
+    "pulse_scalp": ("pulse", "s5", "radar", "scalp"),
+    "scalp_long": ("scalp", "long", "vwap", "s1"),
+    "scalp_short": ("scalp", "short"),
+    "scalp": ("scalp",),
+}
+
+
+def match_ntsl_for_structure(
+    session: Session,
+    structure_type: str,
+    *,
+    symbol: str | None = None,
+) -> dict[str, Any] | None:
+    """Best stored NTSL row for trade product + replay (W11.3)."""
+    from src.services.structure_types import replay_strategy_for_structure
+
+    st = (structure_type or "scalp").strip().lower()
+    replay_strategy = replay_strategy_for_structure(st)
+    terms = {st, st.replace("_", " "), replay_strategy}
+    terms.update(_STRUCTURE_MATCH_TERMS.get(st, ()))
+
+    rows = list_stored_strategies(session, limit=80)
+    sym = symbol.strip().upper() if symbol else None
+    best: dict[str, Any] | None = None
+    best_score = -1
+    for row in rows:
+        hay = " ".join(
+            [row.get("name") or "", row.get("summary") or ""]
+            + [str(t) for t in (row.get("tags") or [])]
+        ).lower()
+        score = 0
+        for term in terms:
+            if term and term.lower() in hay:
+                score += 2
+        if sym and sym in (row.get("symbols") or []):
+            score += 4
+        if score > best_score:
+            best_score = score
+            best = row
+
+    if best and best_score > 0:
+        return {
+            **best,
+            "replay_strategy": replay_strategy,
+            "structure_type": st,
+            "match_score": best_score,
+        }
+    return {
+        "name": replay_strategy,
+        "replay_strategy": replay_strategy,
+        "structure_type": st,
+        "file_path": None,
+        "tags": [],
+        "match_score": 0,
+        "summary": "No indexed NTSL — use exports/profit/ or run Strategy Store scan",
+    }

@@ -11,6 +11,7 @@ from src.config import PROJECT_ROOT
 
 CSV_PATH = PROJECT_ROOT / "data" / "filipe_core14.csv"
 CORE5_CSV_PATH = PROJECT_ROOT / "data" / "filipe_core5.csv"
+CORE17_CSV_PATH = PROJECT_ROOT / "data" / "filipe_core17.csv"
 CORE5_STOCKS = ("PETR4", "VALE3", "ITUB4", "BOVA11", "PRIO3")
 
 SECTOR_BASKETS: dict[str, list[str]] = {
@@ -18,6 +19,15 @@ SECTOR_BASKETS: dict[str, list[str]] = {
     "steel": ["GGBR4", "CSNA3", "USIM5"],
     "energy": ["PETR4", "PRIO3"],
     "defensive": ["ABEV3", "SUZB3", "WEGE3"],
+    "varejo": ["RADL3", "MGLU3"],
+    "index": ["BOVA11"],
+}
+
+CORE17_SECTOR_BASKETS: dict[str, list[str]] = {
+    **SECTOR_BASKETS,
+    "mineração": ["VALE3"],
+    "papel": ["SUZB3"],
+    "industrial": ["WEGE3"],
 }
 
 BOVA_UNDERLYING = "BOVA11"
@@ -83,8 +93,41 @@ def symbol_list() -> list[str]:
     return [s.symbol for s in load_filipe_core14()]
 
 
+@lru_cache
+def load_filipe_core17() -> list[CoreSymbol]:
+    if not CORE17_CSV_PATH.exists():
+        extra = [
+            CoreSymbol("BOVA11", "iShares Ibovespa", 45_000_000, "Index"),
+            CoreSymbol("RADL3", "Raia Drogasil ON", 18_000_000, "Varejo"),
+            CoreSymbol("MGLU3", "Magazine Luiza ON", 12_000_000, "Varejo"),
+        ]
+        base = {s.symbol: s for s in load_filipe_core14()}
+        for s in extra:
+            base[s.symbol] = s
+        return list(base.values())[:17]
+    rows: list[CoreSymbol] = []
+    with CORE17_CSV_PATH.open(encoding="utf-8") as f:
+        for row in csv.DictReader(f):
+            rows.append(
+                CoreSymbol(
+                    symbol=row["symbol"].strip().upper(),
+                    name=row.get("name", "").strip(),
+                    avg_volume_30d=int(float(row.get("avg_volume_30d", 0))),
+                    sector=row.get("sector", "").strip(),
+                )
+            )
+    return rows[:17]
+
+
+def core17_symbol_list() -> list[str]:
+    return [s.symbol for s in load_filipe_core17()]
+
+
 def sector_for(symbol: str) -> str | None:
     sym = symbol.upper()
+    for s in load_filipe_core17():
+        if s.symbol == sym:
+            return s.sector or None
     for s in load_filipe_core14():
         if s.symbol == sym:
             return s.sector or None

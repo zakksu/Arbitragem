@@ -465,6 +465,21 @@ Requires `PAPER_TRADING_MODE=true` and `CRYPTO_PAPER_ENABLED=true`. Crypto ideas
 
 `GET /archaeology/symbol/{sym}/insights` — merges imported trade stats + `BacktestRun` rows for timeline badges.
 
+| `GET /universe/filipe-core14` | Core14 symbols + sector baskets |
+| `GET /universe/filipe-core17` | Core17 symbols (14 + BOVA11, RADL3, MGLU3), `sectors` map, `CORE17_SECTOR_BASKETS` — pairs **W11.4** sector strip |
+
+**Env:** `SCANNER_MODE=filipe_core17` expands motor/scanner universe to 17 names.
+
+#### Knowledge ingest (A11.6)
+
+| Endpoint | Method | Purpose |
+|----------|--------|---------|
+| `/knowledge/ingest/insights` | POST | Chunk `data/.dev/b3_history_insights.json` into FTS |
+| `/knowledge/ingest/replays` | POST | Recent replay sessions |
+| `/knowledge/ingest/strategies` | POST | Indexed NTSL strategies |
+
+CLI: `python scripts/ingest_knowledge.py --path data/.dev/b3_history_insights.json`
+
 #### Archaeology summary (A11.3)
 
 `GET /archaeology/summary?limit=15` — top symbols by trade count, win rate, net P&L, lane split, and **`fifo`** block (round trips, FIFO net P&L). Reads archaeology `Trade` rows first; falls back to `data/.dev/b3_history_insights.json` when DB is empty.

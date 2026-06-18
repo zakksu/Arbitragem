@@ -12,9 +12,12 @@
 | A12.4 | Backend | `scripts/premarket_check.py` | ✅ |
 | A12.5 | Backend | `GET /ops/live-radar` | ✅ |
 | A12.6 | Backend | Breakeven gate on confirm | ✅ |
+| A12.7 | Backend | Paper fills `fees_brl` + `total_fees_brl` on confirm | ✅ |
 | W12.1 | Worker | Cost chip on confirm step | ✅ |
 | W12.2 | Worker | Live Radar lamps (HTMX poll) | ✅ |
+| W12.3 | Worker | Trade product margin + fees (100 lot) | ✅ |
 | W12.4 | Worker | Outbox copy hint in Live Radar | ✅ |
+| W11.4 | Worker | Archaeology layout preset + timeline hero | ✅ |
 
 ## Out of scope (12.0)
 
